@@ -331,18 +331,18 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm">
-                                                    {applicant.personalData.name.charAt(0).toUpperCase()}
+                                                    {applicant.personalData?.name?.charAt(0)?.toUpperCase() || 'A'}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-medium">{applicant.personalData.name}</p>
+                                                        <p className="font-medium">{applicant.personalData?.name || 'Unknown'}</p>
                                                         {applicant.isSuspicious && (
                                                             <AlertTriangle className="h-4 w-4 text-amber-500" />
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
                                                         <Mail className="h-3 w-3" />
-                                                        <span className="truncate max-w-[150px]">{applicant.personalData.email}</span>
+                                                        <span className="truncate max-w-[150px]">{applicant.personalData?.email || 'N/A'}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -368,7 +368,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
-                                            {applicant.personalData.yearsOfExperience !== undefined
+                                            {applicant.personalData?.yearsOfExperience !== undefined
                                                 ? `${applicant.personalData.yearsOfExperience} ${t("applicants.years")}`
                                                 : "-"}
                                         </TableCell>
@@ -401,14 +401,14 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                                     )}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem
-                                                        onClick={() => window.location.href = `mailto:${applicant.personalData.email}`}
+                                                        onClick={() => applicant.personalData?.email && (window.location.href = `mailto:${applicant.personalData.email}`)}
                                                         className="cursor-pointer"
                                                     >
                                                         <Mail className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                         {t("applicants.sendEmail")}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
-                                                        onClick={() => window.location.href = `tel:${applicant.personalData.phone}`}
+                                                        onClick={() => applicant.personalData?.phone && (window.location.href = `tel:${applicant.personalData.phone}`)}
                                                         className="cursor-pointer"
                                                     >
                                                         <Phone className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />

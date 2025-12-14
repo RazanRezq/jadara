@@ -5,11 +5,18 @@ import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import { cn } from "@/lib/utils"
 
+interface ProgressProps extends React.ComponentProps<typeof ProgressPrimitive.Root> {
+  isRTL?: boolean
+}
+
 function Progress({
   className,
   value,
+  isRTL = false,
   ...props
-}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+}: ProgressProps) {
+  const progressValue = value || 0
+
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
@@ -17,12 +24,13 @@ function Progress({
         "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
         className
       )}
+      dir={isRTL ? "rtl" : "ltr"}
       {...props}
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="bg-primary h-full w-full flex-1 transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+        className="bg-primary h-full transition-all absolute inset-y-0 start-0"
+        style={{ width: `${progressValue}%` }}
       />
     </ProgressPrimitive.Root>
   )

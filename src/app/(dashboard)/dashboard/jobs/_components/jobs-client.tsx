@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { hasPermission, type UserRole } from "@/lib/auth"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
@@ -42,8 +42,12 @@ import {
     RefreshCw,
     Users,
     FileQuestion,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    Activity,
 } from "lucide-react"
-import { AddJobDialog } from "./add-job-dialog"
+import { JobWizardDialog } from "./wizard"
 import { EditJobDialog } from "./edit-job-dialog"
 import { DeleteJobDialog } from "./delete-job-dialog"
 import { ViewJobDialog } from "./view-job-dialog"
@@ -164,6 +168,38 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
         })
     }
 
+    // Dummy stats data
+    const stats = [
+        {
+            labelKey: "jobs.stats.actionNeeded",
+            valueKey: "jobs.stats.actionNeededValue",
+            icon: AlertCircle,
+            color: "from-red-500 to-rose-500",
+            shadowColor: "shadow-red-500/20",
+        },
+        {
+            labelKey: "jobs.stats.qualityHires",
+            valueKey: "jobs.stats.qualityHiresValue",
+            icon: CheckCircle2,
+            color: "from-emerald-500 to-green-500",
+            shadowColor: "shadow-emerald-500/20",
+        },
+        {
+            labelKey: "jobs.stats.expiringSoon",
+            valueKey: "jobs.stats.expiringSoonValue",
+            icon: Clock,
+            color: "from-amber-500 to-yellow-500",
+            shadowColor: "shadow-amber-500/20",
+        },
+        {
+            labelKey: "jobs.stats.activeJobs",
+            valueKey: "jobs.stats.activeJobsValue",
+            icon: Activity,
+            color: "from-blue-500 to-indigo-500",
+            shadowColor: "shadow-blue-500/20",
+        },
+    ]
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -174,6 +210,40 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         {t("jobs.subtitle")}
                     </p>
                 </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {stats.map((stat, index) => (
+                    <Card key={index} className="relative overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className={cn(
+                                "text-sm font-medium text-muted-foreground",
+                                isRTL && "text-right"
+                            )}>
+                                {t(stat.labelKey)}
+                            </CardTitle>
+                            <div
+                                className={cn(
+                                    "w-10 h-10 rounded-lg bg-gradient-to-br",
+                                    stat.color,
+                                    "flex items-center justify-center shadow-lg",
+                                    stat.shadowColor
+                                )}
+                            >
+                                <stat.icon className="w-5 h-5 text-white" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className={cn(
+                                "text-2xl font-bold",
+                                isRTL && "text-right"
+                            )}>
+                                {t(stat.valueKey)}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
             {/* Filters and Actions Bar */}
@@ -370,7 +440,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
             </Card>
 
             {/* Dialogs */}
-            <AddJobDialog
+            <JobWizardDialog
                 open={addDialogOpen}
                 onOpenChange={setAddDialogOpen}
                 onSuccess={fetchJobs}

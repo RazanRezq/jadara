@@ -129,11 +129,11 @@ export function ViewApplicantDialog({
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
                             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold text-xl">
-                                {applicant.personalData.name.charAt(0).toUpperCase()}
+                                {applicant.personalData?.name?.charAt(0)?.toUpperCase() || 'A'}
                             </div>
                             <div>
                                 <DialogTitle className="text-xl flex items-center gap-2">
-                                    {applicant.personalData.name}
+                                    {applicant.personalData?.name || 'Unknown'}
                                     {applicant.isSuspicious && (
                                         <AlertTriangle className="h-5 w-5 text-amber-500" />
                                     )}
@@ -171,14 +171,14 @@ export function ViewApplicantDialog({
                                 <Mail className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-xs text-muted-foreground">{t("common.email")}</p>
-                                    <p className="font-medium">{applicant.personalData.email}</p>
+                                    <p className="font-medium">{applicant.personalData?.email || 'N/A'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                                 <Phone className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-xs text-muted-foreground">{t("applicants.phone")}</p>
-                                    <p className="font-medium">{applicant.personalData.phone}</p>
+                                    <p className="font-medium">{applicant.personalData?.phone || 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
@@ -187,7 +187,7 @@ export function ViewApplicantDialog({
 
                         {/* Professional Info */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            {applicant.personalData.age && (
+                            {applicant.personalData?.age && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                                     <User className="h-5 w-5 text-muted-foreground" />
                                     <div>
@@ -196,7 +196,7 @@ export function ViewApplicantDialog({
                                     </div>
                                 </div>
                             )}
-                            {applicant.personalData.major && (
+                            {applicant.personalData?.major && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                                     <GraduationCap className="h-5 w-5 text-muted-foreground" />
                                     <div>
@@ -205,7 +205,7 @@ export function ViewApplicantDialog({
                                     </div>
                                 </div>
                             )}
-                            {applicant.personalData.yearsOfExperience !== undefined && (
+                            {applicant.personalData?.yearsOfExperience !== undefined && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                                     <Briefcase className="h-5 w-5 text-muted-foreground" />
                                     <div>
@@ -215,7 +215,7 @@ export function ViewApplicantDialog({
                                 </div>
                             )}
                             {/* Only show salary to non-reviewers */}
-                            {!isReviewer && applicant.personalData.salaryExpectation && (
+                            {!isReviewer && applicant.personalData?.salaryExpectation && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                                     <DollarSign className="h-5 w-5 text-muted-foreground" />
                                     <div>
@@ -227,35 +227,35 @@ export function ViewApplicantDialog({
                         </div>
 
                         {/* Links */}
-                        {(applicant.personalData.linkedinUrl || applicant.personalData.behanceUrl || applicant.personalData.portfolioUrl || applicant.cvUrl) && (
+                        {(applicant.personalData?.linkedinUrl || applicant.personalData?.behanceUrl || applicant.personalData?.portfolioUrl || applicant.cvUrl) && (
                             <>
                                 <Separator />
                                 <div className="flex flex-wrap gap-3">
-                                    {applicant.personalData.linkedinUrl && (
+                                    {applicant.personalData?.linkedinUrl && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => window.open(applicant.personalData.linkedinUrl, "_blank")}
+                                            onClick={() => applicant.personalData?.linkedinUrl && window.open(applicant.personalData.linkedinUrl, "_blank")}
                                         >
                                             <Linkedin className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                             LinkedIn
                                         </Button>
                                     )}
-                                    {applicant.personalData.behanceUrl && (
+                                    {applicant.personalData?.behanceUrl && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => window.open(applicant.personalData.behanceUrl, "_blank")}
+                                            onClick={() => applicant.personalData?.behanceUrl && window.open(applicant.personalData.behanceUrl, "_blank")}
                                         >
                                             <Globe className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                             Behance
                                         </Button>
                                     )}
-                                    {applicant.personalData.portfolioUrl && (
+                                    {applicant.personalData?.portfolioUrl && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => window.open(applicant.personalData.portfolioUrl, "_blank")}
+                                            onClick={() => applicant.personalData?.portfolioUrl && window.open(applicant.personalData.portfolioUrl, "_blank")}
                                         >
                                             <Globe className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                             {t("applicants.portfolio")}
@@ -442,14 +442,14 @@ export function ViewApplicantDialog({
                             <div className="flex flex-wrap gap-3">
                                 <Button
                                     variant="outline"
-                                    onClick={() => window.location.href = `mailto:${applicant.personalData.email}`}
+                                    onClick={() => applicant.personalData?.email && (window.location.href = `mailto:${applicant.personalData.email}`)}
                                 >
                                     <Mail className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                     {t("applicants.sendEmail")}
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={() => window.location.href = `tel:${applicant.personalData.phone}`}
+                                    onClick={() => applicant.personalData?.phone && (window.location.href = `tel:${applicant.personalData.phone}`)}
                                 >
                                     <Phone className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                     {t("applicants.call")}

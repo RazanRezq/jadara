@@ -10,14 +10,61 @@ const criteriaSchema = z.object({
     required: z.boolean().default(false),
 })
 
+const skillSchema = z.object({
+    name: z.string().min(1, 'Skill name is required'),
+    importance: z.enum(['required', 'preferred']).default('preferred'),
+})
+
+const questionSchema = z.object({
+    text: z.string().min(1, 'Question text is required'),
+    type: z.enum(['text', 'voice']).default('text'),
+    weight: z.number().min(1).max(10).default(5),
+    timeLimit: z.enum(['30s', '1min', '2min', '3min', '5min']).optional(),
+    hideTextUntilRecording: z.boolean().optional().default(false),
+})
+
+const candidateDataConfigSchema = z.object({
+    requireCV: z.boolean().default(true),
+    requireLinkedIn: z.boolean().default(false),
+    requirePortfolio: z.boolean().default(false),
+    hideSalaryExpectation: z.boolean().default(false),
+    hidePersonalInfo: z.boolean().default(false),
+})
+
+const retakePolicySchema = z.object({
+    allowRetake: z.boolean().default(false),
+    maxAttempts: z.number().min(1).max(5).default(1),
+})
+
 const createJobSchema = z.object({
     title: z.string().min(3, 'Job title must be at least 3 characters'),
     description: z.string().min(10, 'Description must be at least 10 characters'),
     department: z.string().optional().default(''),
     location: z.string().optional().default(''),
-    employmentType: z.enum(['full-time', 'part-time', 'contract', 'internship']).default('full-time'),
+    employmentType: z.enum(['full-time', 'part-time', 'contract', 'internship', 'remote']).default('full-time'),
     salaryMin: z.number().min(0).optional(),
     salaryMax: z.number().min(0).optional(),
+    currency: z.enum(['SAR', 'USD', 'AED', 'EGP']).optional().default('SAR'),
+    // Step 2: Evaluation Criteria
+    skills: z.array(skillSchema).optional().default([]),
+    minExperience: z.number().min(0).max(20).optional().default(0),
+    autoRejectThreshold: z.number().min(0).max(100).optional().default(35),
+    // Step 3: Candidate Data
+    candidateDataConfig: candidateDataConfigSchema.optional().default({
+        requireCV: true,
+        requireLinkedIn: false,
+        requirePortfolio: false,
+        hideSalaryExpectation: false,
+        hidePersonalInfo: false,
+    }),
+    // Step 4: Exam Builder
+    candidateInstructions: z.string().optional().default(''),
+    questions: z.array(questionSchema).optional().default([]),
+    retakePolicy: retakePolicySchema.optional().default({
+        allowRetake: false,
+        maxAttempts: 1,
+    }),
+    // Legacy fields
     requiredSkills: z.array(z.string()).optional().default([]),
     responsibilities: z.array(z.string()).optional().default([]),
     criteria: z.array(criteriaSchema).optional().default([]),
@@ -138,6 +185,18 @@ app.get('/list', async (c) => {
                 employmentType: job.employmentType,
                 salaryMin: job.salaryMin,
                 salaryMax: job.salaryMax,
+                currency: job.currency,
+                // Step 2: Evaluation Criteria
+                skills: job.skills,
+                minExperience: job.minExperience,
+                autoRejectThreshold: job.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: job.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: job.candidateInstructions,
+                questions: job.questions,
+                retakePolicy: job.retakePolicy,
+                // Legacy fields
                 requiredSkills: job.requiredSkills,
                 responsibilities: job.responsibilities,
                 criteria: job.criteria,
@@ -195,6 +254,18 @@ app.get('/:id', async (c) => {
                 employmentType: job.employmentType,
                 salaryMin: job.salaryMin,
                 salaryMax: job.salaryMax,
+                currency: job.currency,
+                // Step 2: Evaluation Criteria
+                skills: job.skills,
+                minExperience: job.minExperience,
+                autoRejectThreshold: job.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: job.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: job.candidateInstructions,
+                questions: job.questions,
+                retakePolicy: job.retakePolicy,
+                // Legacy fields
                 requiredSkills: job.requiredSkills,
                 responsibilities: job.responsibilities,
                 criteria: job.criteria,
@@ -266,14 +337,42 @@ app.post('/update/:id', async (c) => {
         Object.assign(job, updateData)
         await job.save()
 
+        // Reload the job to get all fields
+        const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
+
         return c.json({
             success: true,
             message: 'Job updated successfully',
-            job: {
-                id: job._id.toString(),
-                title: job.title,
-                status: job.status,
-            },
+            job: updatedJob ? {
+                id: updatedJob._id.toString(),
+                title: updatedJob.title,
+                description: updatedJob.description,
+                department: updatedJob.department,
+                location: updatedJob.location,
+                employmentType: updatedJob.employmentType,
+                salaryMin: updatedJob.salaryMin,
+                salaryMax: updatedJob.salaryMax,
+                currency: updatedJob.currency,
+                // Step 2: Evaluation Criteria
+                skills: updatedJob.skills,
+                minExperience: updatedJob.minExperience,
+                autoRejectThreshold: updatedJob.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: updatedJob.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: updatedJob.candidateInstructions,
+                questions: updatedJob.questions,
+                retakePolicy: updatedJob.retakePolicy,
+                // Legacy fields
+                requiredSkills: updatedJob.requiredSkills,
+                responsibilities: updatedJob.responsibilities,
+                criteria: updatedJob.criteria,
+                status: updatedJob.status,
+                expiresAt: updatedJob.expiresAt,
+                createdBy: updatedJob.createdBy,
+                createdAt: updatedJob.createdAt,
+                updatedAt: updatedJob.updatedAt,
+            } : null,
         })
     } catch (error) {
         return c.json(

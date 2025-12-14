@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-const publicPaths = ['/login', '/register', '/forgot-password']
+const publicPaths = ['/login', '/register', '/forgot-password', '/apply']
 const authPaths = ['/login', '/register']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl
     const token = request.cookies.get('session')?.value
 
