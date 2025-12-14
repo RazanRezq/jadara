@@ -186,4 +186,24 @@
     border-right: none;
     border-left-width: 1px;
   }
+
+  /* RTL Placeholder Alignment */
+  [dir="rtl"] input::placeholder,
+  [dir="rtl"] textarea::placeholder {
+    text-align: right;
+    direction: rtl;
+  }
+
+  [dir="ltr"] input::placeholder,
+  [dir="ltr"] textarea::placeholder {
+    text-align: left;
+    direction: ltr;
+  }
+
+  /* Auto direction - Arabic text in placeholder should be RTL */
+  input[dir="auto"]::placeholder,
+  textarea[dir="auto"]::placeholder {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
 }

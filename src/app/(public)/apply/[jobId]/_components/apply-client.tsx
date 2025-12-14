@@ -15,6 +15,7 @@ interface Job {
     department: string
     location: string
     employmentType: string
+    currency?: string
     skills: Array<{ name: string; importance: string }>
     minExperience: number
     candidateDataConfig: {

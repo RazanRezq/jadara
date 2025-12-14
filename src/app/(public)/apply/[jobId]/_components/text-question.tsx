@@ -86,7 +86,7 @@ export function TextQuestion({
                         onChange={(e) => setAnswer(e.target.value)}
                         placeholder={t("apply.typeAnswer")}
                         className="min-h-[200px] resize-none text-base leading-relaxed"
-                        dir="auto"
+                        dir={locale === "ar" ? "rtl" : "ltr"}
                     />
                     <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
                         <span
@@ -102,7 +102,7 @@ export function TextQuestion({
 
                 {!isValidLength && charCount > 0 && (
                     <p className="text-sm text-muted-foreground">
-                        {t("apply.minCharacters", { count: minChars - charCount })}
+                        {t("apply.minCharacters").replace("{{count}}", String(minChars - charCount))}
                     </p>
                 )}
 

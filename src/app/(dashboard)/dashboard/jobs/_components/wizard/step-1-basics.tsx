@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTranslate } from "@/hooks/useTranslate"
@@ -101,20 +102,18 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>{t("jobWizard.step1.department")} *</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t("jobWizard.step1.selectDepartment")} />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {DEPARTMENT_OPTIONS.map((dept) => (
-                                        <SelectItem key={dept.value} value={dept.value}>
-                                            {locale === 'ar' ? dept.label : dept.labelEn}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <Combobox
+                                    options={DEPARTMENT_OPTIONS}
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                    placeholder={t("jobWizard.step1.selectDepartment")}
+                                    searchPlaceholder={locale === 'ar' ? 'ابحث أو اكتب قسم جديد...' : 'Search or type a new department...'}
+                                    emptyText={locale === 'ar' ? 'لا توجد نتائج' : 'No results found'}
+                                    allowCustom={true}
+                                    locale={locale}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}

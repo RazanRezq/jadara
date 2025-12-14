@@ -8,6 +8,7 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { CurrencyInput } from "@/components/ui/currency-input"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import {
@@ -43,6 +44,7 @@ interface Job {
     department: string
     location: string
     employmentType: string
+    currency?: string
     skills: Array<{ name: string; importance: string }>
     minExperience: number
     candidateDataConfig: {
@@ -376,6 +378,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                 placeholder={t(
                                                                     "apply.namePlaceholder"
                                                                 )}
+                                                                dir={locale === "ar" ? "rtl" : "ltr"}
                                                                 {...field}
                                                             />
                                                         </FormControl>
@@ -395,6 +398,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                             <Input
                                                                 type="email"
                                                                 placeholder="example@email.com"
+                                                                dir="ltr"
                                                                 {...field}
                                                             />
                                                         </FormControl>
@@ -416,6 +420,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                         <FormControl>
                                                             <Input
                                                                 placeholder="+966 5XX XXX XXXX"
+                                                                dir="ltr"
                                                                 {...field}
                                                             />
                                                         </FormControl>
@@ -437,6 +442,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                 min={16}
                                                                 max={100}
                                                                 placeholder="25"
+                                                                dir="ltr"
                                                                 {...field}
                                                                 value={field.value || ""}
                                                             />
@@ -458,6 +464,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                 placeholder={t(
                                                                     "apply.majorPlaceholder"
                                                                 )}
+                                                                dir={locale === "ar" ? "rtl" : "ltr"}
                                                                 {...field}
                                                             />
                                                         </FormControl>
@@ -482,6 +489,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                 min={0}
                                                                 max={50}
                                                                 placeholder="5"
+                                                                dir="ltr"
                                                                 {...field}
                                                                 value={field.value || ""}
                                                             />
@@ -500,10 +508,12 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                 {t("applicants.salaryExpectation")}
                                                             </FormLabel>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="number"
+                                                                <CurrencyInput
+                                                                    currency={job.currency || "SAR"}
+                                                                    currencyPosition="suffix"
                                                                     min={0}
                                                                     placeholder="10000"
+                                                                    dir="ltr"
                                                                     {...field}
                                                                     value={field.value || ""}
                                                                 />
@@ -530,6 +540,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                         <FormControl>
                                                             <Input
                                                                 placeholder="https://linkedin.com/in/..."
+                                                                dir="ltr"
                                                                 {...field}
                                                             />
                                                         </FormControl>
@@ -550,6 +561,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                         <FormControl>
                                                             <Input
                                                                 placeholder="https://behance.net/..."
+                                                                dir="ltr"
                                                                 {...field}
                                                             />
                                                         </FormControl>
