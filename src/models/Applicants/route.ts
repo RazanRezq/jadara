@@ -208,8 +208,15 @@ app.get('/list', async (c) => {
         const maxAge = c.req.query('maxAge')
         const minExperience = c.req.query('minExperience')
         const userRole = c.req.query('role') || 'admin'
+        const onlyComplete = c.req.query('onlyComplete') === 'true'
 
-        const query: Record<string, unknown> = { isComplete: true }
+        const query: Record<string, unknown> = {}
+        
+        // Only filter by isComplete if explicitly requested
+        // By default, show all applicants regardless of completion status
+        if (onlyComplete) {
+            query.isComplete = true
+        }
 
         if (searchTerm) {
             query.$or = [
@@ -255,10 +262,22 @@ app.get('/list', async (c) => {
             applicants: applicants.map((a) => ({
                 id: a._id.toString(),
                 jobId: a.jobId,
-                personalData: {
-                    ...a.personalData,
+                personalData: a.personalData ? {
+                    name: a.personalData.name || '',
+                    email: a.personalData.email || '',
+                    phone: a.personalData.phone || '',
+                    age: a.personalData.age,
+                    major: a.personalData.major,
+                    yearsOfExperience: a.personalData.yearsOfExperience,
                     // Hide salary expectation from reviewers
                     salaryExpectation: isReviewer ? undefined : a.personalData.salaryExpectation,
+                    linkedinUrl: a.personalData.linkedinUrl,
+                    behanceUrl: a.personalData.behanceUrl,
+                    portfolioUrl: a.personalData.portfolioUrl,
+                } : {
+                    name: '',
+                    email: '',
+                    phone: '',
                 },
                 cvUrl: a.cvUrl,
                 status: a.status,
