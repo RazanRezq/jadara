@@ -31,7 +31,10 @@
         "of": "من",
         "page": "صفحة",
         "view": "عرض",
-        "error": "حدث خطأ ما"
+        "error": "حدث خطأ ما",
+        "characters": "حرف",
+        "saving": "جارٍ الحفظ...",
+        "reset": "إعادة تعيين"
     },
     "auth": {
         "login": "تسجيل الدخول",
@@ -59,36 +62,28 @@
         "multiUserManagement": "إدارة المستخدمين المتعددين",
         "progressTracking": "تتبع التقدم في الوقت الفعلي"
     },
+    "breadcrumb": {
+        "company": "الشركة",
+        "roles": "الأدوار",
+        "system": "النظام",
+        "notifications": "الإشعارات",
+        "preferences": "التفضيلات"
+    },
     "sidebar": {
         "dashboard": "لوحة القيادة",
         "jobs": "الوظائف",
-        "applicants": "المرشحين",
+        "candidates": "المرشحين",
         "calendar": "التقويم",
-        "reports": "التقارير",
         "questionBank": "بنك الأسئلة",
-        "criteriaTemplates": "قوالب المعايير",
-        "interviewAnalysis": "تحليل المقابلات",
-        "team": "فريق العمل",
-        "auditLogs": "سجلات الرقابة",
+        "scorecards": "نماذج التقييم",
+        "interviews": "تحليل المقابلات",
+        "team": "فريق التوظيف",
         "settings": "الإعدادات",
         "categories": {
             "operations": "العمليات",
-            "analysis": "التحليل",
             "assessmentTools": "أدوات التقييم",
             "systemManagement": "إدارة النظام"
-        },
-        "content": "المحتوى",
-        "reviews": "المراجعات",
-        "analytics": "التحليلات",
-        "users": "المستخدمون",
-        "roles": "الأدوار",
-        "navigation": "التنقل",
-        "reading": "القراءة",
-        "writing": "الكتابة",
-        "listening": "الاستماع",
-        "speaking": "التحدث",
-        "support": "الدعم",
-        "feedback": "التعليقات"
+        }
     },
     "header": {
         "notifications": "الإشعارات",
@@ -217,6 +212,16 @@
         "evaluationCriteria": "معايير التقييم",
         "weight": "الوزن",
         "required": "مطلوب",
+        "copyApplicationLink": "نسخ رابط التقديم",
+        "linkCopied": "تم نسخ الرابط!",
+        "closeHiring": "إغلاق التقديم",
+        "activateHiring": "تفعيل التقديم",
+        "previewPage": "معاينة الصفحة",
+        "shareSection": "مشاركة هذه الوظيفة",
+        "jobUrl": "رابط التقديم على الوظيفة",
+        "copyLink": "نسخ الرابط",
+        "hiringClosed": "تم إغلاق التقديم بنجاح",
+        "hiringActivated": "تم تفعيل التقديم بنجاح",
         "stats": {
             "actionNeeded": "إجراء مطلوب",
             "actionNeededValue": "12 مرشح",
@@ -486,6 +491,91 @@
             "retakeAllowed": "إعادة الاختبار",
             "attempts": "محاولات",
             "lessThan": "أقل من"
+        },
+        "aiGeneration": {
+            "title": "مولد وصف الوظيفة بالذكاء الاصطناعي",
+            "subtitle": "دع الذكاء الاصطناعي ينشئ وصفاً احترافياً للوظيفة",
+            "howItWorks": "كيف يعمل",
+            "step1Description": "الذكاء الاصطناعي يولّد 4 أسئلة تحديد نطاق مخصصة لدورك",
+            "step2Description": "أنت تجيب على الأسئلة لتوفير السياق",
+            "step3Description": "الذكاء الاصطناعي ينشئ وصفاً شاملاً للوظيفة",
+            "jobDetails": "تفاصيل الوظيفة",
+            "startInterview": "بدء المقابلة",
+            "generating": "جارٍ التوليد...",
+            "answerQuestions": "أجب على أسئلة المقابلة",
+            "answerQuestionsDesc": "قدم إجابات تفصيلية لمساعدة الذكاء الاصطناعي على إنشاء أفضل وصف",
+            "generateDescription": "توليد الوصف",
+            "generatingDesc": "الذكاء الاصطناعي يحلل إجاباتك...",
+            "creatingDescription": "جارٍ إنشاء وصف الوظيفة",
+            "thisWillTake": "سيستغرق هذا بضع ثوانٍ",
+            "success": "تم توليد الوصف!",
+            "successDesc": "راجع الوصف المُولّد أدناه",
+            "editTip": "يمكنك تعديل الوصف بعد تطبيقه",
+            "regenerate": "إعادة التوليد",
+            "useDescription": "استخدام الوصف",
+            "pleaseAnswerAll": "يرجى الإجابة على جميع الأسئلة",
+            "descriptionApplied": "تم تطبيق الوصف بنجاح"
+        },
+        "contextSelector": {
+            "title": "مولد الذكاء الاصطناعي الذكي",
+            "subtitle": "اختر الأجواء والمزايا لتوليد وصف مخصص",
+            "jobDetails": "تفاصيل الوظيفة",
+            "vibeTitle": "أجواء الشركة",
+            "vibeDescription": "اختر العلامات التي تصف ثقافة شركتك بشكل أفضل (اختياري)",
+            "benefitsTitle": "المزايا والحوافز",
+            "benefitsDescription": "اختر المزايا التي تقدمها للموظفين (اختياري)",
+            "selected": "المحدد",
+            "items": "عنصر",
+            "generate": "توليد الوصف"
+        }
+    },
+    "settings": {
+        "title": "الإعدادات",
+        "description": "إدارة إعدادات النظام والتفضيلات",
+        "configure": "تكوين",
+        "accessLevel": "مستوى الوصول",
+        "currentRole": "دورك الحالي:",
+        "accessDescription": "يمكنك الوصول فقط إلى الإعدادات التي تتطابق مع مستوى الإذن الخاص بك.",
+        "company": {
+            "title": "إعدادات الشركة",
+            "subtitle": "قم بتكوين ملف شركتك لتوليد وصف وظيفي مدعوم بالذكاء الاصطناعي",
+            "description": "قم بتكوين ملف شركتك لدعم أوصاف الوظائف المولدة بالذكاء الاصطناعي",
+            "fetchError": "فشل تحميل ملف الشركة",
+            "saveSuccess": "تم تحديث ملف الشركة بنجاح",
+            "saveError": "فشل تحديث ملف الشركة",
+            "noPermission": "ليس لديك صلاحية لتعديل إعدادات الشركة",
+            "viewOnly": "أنت تشاهد إعدادات الشركة. يمكن للمسؤولين فقط تعديل هذه التفاصيل.",
+            "profileTitle": "ملف الشركة",
+            "profileDescription": "تُستخدم هذه المعلومات لتوليد أوصاف وظيفية سياقية",
+            "companyName": "اسم الشركة",
+            "companyNamePlaceholder": "GoIELTS",
+            "industry": "الصناعة",
+            "industryPlaceholder": "مثل: التكنولوجيا، التعليم، الرعاية الصحية",
+            "industryDescription": "يستخدمها الذكاء الاصطناعي لتخصيص أوصاف الوظائف لقطاعك",
+            "website": "موقع الشركة",
+            "bio": "نبذة عن الشركة",
+            "bioPlaceholder": "أخبرنا عن ثقافة شركتك، ورسالتها، وما يجعلها فريدة...",
+            "bioDescription": "سيتم استخدام هذا كسياق لجميع أوصاف الوظائف المولدة بالذكاء الاصطناعي"
+        },
+        "users": {
+            "title": "إدارة المستخدمين",
+            "description": "إضافة وتعديل وإدارة حسابات المستخدمين وأدوارهم"
+        },
+        "roles": {
+            "title": "الأدوار والصلاحيات",
+            "description": "تكوين التحكم في الوصول القائم على الأدوار والصلاحيات (للمسؤول العام فقط)"
+        },
+        "system": {
+            "title": "إعدادات النظام",
+            "description": "تكوين وصيانة النظام المتقدمة (للمسؤول العام فقط)"
+        },
+        "notifications": {
+            "title": "الإشعارات",
+            "description": "تكوين تفضيلات الإشعارات عبر البريد الإلكتروني وداخل التطبيق"
+        },
+        "preferences": {
+            "title": "التفضيلات",
+            "description": "تخصيص مظهر لوحة التحكم وإعدادات اللغة"
         }
     }
 }

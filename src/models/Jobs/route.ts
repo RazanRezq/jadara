@@ -386,6 +386,83 @@ app.post('/update/:id', async (c) => {
     }
 })
 
+// Toggle job status (quick action for active/closed)
+app.post('/toggle-status/:id', async (c) => {
+    try {
+        await dbConnect()
+        const id = c.req.param('id')
+        const userId = c.req.query('userId')
+
+        if (!userId) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'User ID is required',
+                },
+                400
+            )
+        }
+
+        const job = await Job.findById(id)
+        if (!job) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job not found',
+                },
+                404
+            )
+        }
+
+        // Toggle between active and closed
+        const newStatus = job.status === 'active' ? 'closed' : 'active'
+        job.status = newStatus
+        await job.save()
+
+        const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
+
+        return c.json({
+            success: true,
+            message: `Job status changed to ${newStatus}`,
+            job: updatedJob ? {
+                id: updatedJob._id.toString(),
+                title: updatedJob.title,
+                description: updatedJob.description,
+                department: updatedJob.department,
+                location: updatedJob.location,
+                employmentType: updatedJob.employmentType,
+                salaryMin: updatedJob.salaryMin,
+                salaryMax: updatedJob.salaryMax,
+                currency: updatedJob.currency,
+                skills: updatedJob.skills,
+                minExperience: updatedJob.minExperience,
+                autoRejectThreshold: updatedJob.autoRejectThreshold,
+                candidateDataConfig: updatedJob.candidateDataConfig,
+                candidateInstructions: updatedJob.candidateInstructions,
+                questions: updatedJob.questions,
+                retakePolicy: updatedJob.retakePolicy,
+                requiredSkills: updatedJob.requiredSkills,
+                responsibilities: updatedJob.responsibilities,
+                criteria: updatedJob.criteria,
+                status: updatedJob.status,
+                expiresAt: updatedJob.expiresAt,
+                createdBy: updatedJob.createdBy,
+                createdAt: updatedJob.createdAt,
+                updatedAt: updatedJob.updatedAt,
+            } : null,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
 // Delete job
 app.delete('/delete/:id', async (c) => {
     try {

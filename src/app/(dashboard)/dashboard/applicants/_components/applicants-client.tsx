@@ -47,7 +47,7 @@ import {
 import { ViewApplicantDialog } from "./view-applicant-dialog"
 import { toast } from "sonner"
 
-export type ApplicantStatus = 
+export type ApplicantStatus =
     | 'new'
     | 'screening'
     | 'interviewing'
@@ -331,16 +331,16 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm">
-                                                    {applicant.personalData?.name?.charAt(0)?.toUpperCase() || 
-                                                     applicant.personalData?.email?.charAt(0)?.toUpperCase() || 
-                                                     'A'}
+                                                    {applicant.personalData?.name?.charAt(0)?.toUpperCase() ||
+                                                        applicant.personalData?.email?.charAt(0)?.toUpperCase() ||
+                                                        'A'}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <p className="font-medium">
-                                                            {applicant.personalData?.name?.trim() || 
-                                                             applicant.personalData?.email?.split('@')[0] || 
-                                                             'Unknown'}
+                                                            {applicant.personalData?.name?.trim() ||
+                                                                applicant.personalData?.email?.split('@')[0] ||
+                                                                'Unknown'}
                                                         </p>
                                                         {applicant.isSuspicious && (
                                                             <AlertTriangle className="h-4 w-4 text-amber-500" />

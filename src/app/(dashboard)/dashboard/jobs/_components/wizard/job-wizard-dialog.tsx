@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import {
     Dialog,
     DialogContent,
+    DialogTitle,
 } from "@/components/ui/dialog"
 import { Form } from "@/components/ui/form"
 import { Button } from "@/components/ui/button"
@@ -202,9 +203,9 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
             >
                 {/* Header with Stepper */}
                 <div className="p-6 pb-4 border-b bg-gradient-to-b from-background to-muted/20">
-                    <h2 className="text-xl font-semibold text-primary text-center mb-4">
+                    <DialogTitle className="text-xl font-semibold text-primary text-center mb-4">
                         {t("jobWizard.title")}
-                    </h2>
+                    </DialogTitle>
 
                     {/* Progress Bar */}
                     <div className="mb-4">

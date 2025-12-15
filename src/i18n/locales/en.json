@@ -31,7 +31,10 @@
         "of": "of",
         "page": "Page",
         "view": "View",
-        "error": "Something went wrong"
+        "error": "Something went wrong",
+        "characters": "characters",
+        "saving": "Saving...",
+        "reset": "Reset"
     },
     "auth": {
         "login": "Login",
@@ -59,36 +62,28 @@
         "multiUserManagement": "Multi-User Management",
         "progressTracking": "Real-Time Progress Tracking"
     },
+    "breadcrumb": {
+        "company": "Company",
+        "roles": "Roles",
+        "system": "System",
+        "notifications": "Notifications",
+        "preferences": "Preferences"
+    },
     "sidebar": {
         "dashboard": "Dashboard",
         "jobs": "Jobs",
-        "applicants": "Candidates",
+        "candidates": "Candidates",
         "calendar": "Calendar",
-        "reports": "Reports",
         "questionBank": "Question Bank",
-        "criteriaTemplates": "Criteria Templates",
-        "interviewAnalysis": "Interview Analysis",
-        "team": "Team",
-        "auditLogs": "Audit Logs",
+        "scorecards": "Scorecards",
+        "interviews": "Interview Insights",
+        "team": "Hiring Team",
         "settings": "Settings",
         "categories": {
             "operations": "Operations",
-            "analysis": "Analysis",
             "assessmentTools": "Assessment Tools",
             "systemManagement": "System Management"
-        },
-        "content": "Content",
-        "reviews": "Reviews",
-        "analytics": "Analytics",
-        "users": "Users",
-        "roles": "Roles",
-        "navigation": "Navigation",
-        "reading": "Reading",
-        "writing": "Writing",
-        "listening": "Listening",
-        "speaking": "Speaking",
-        "support": "Support",
-        "feedback": "Feedback"
+        }
     },
     "header": {
         "notifications": "Notifications",
@@ -217,6 +212,16 @@
         "evaluationCriteria": "Evaluation Criteria",
         "weight": "Weight",
         "required": "Required",
+        "copyApplicationLink": "Copy Application Link",
+        "linkCopied": "Link copied to clipboard!",
+        "closeHiring": "Close Hiring",
+        "activateHiring": "Activate Hiring",
+        "previewPage": "Preview Page",
+        "shareSection": "Share This Job",
+        "jobUrl": "Job Application URL",
+        "copyLink": "Copy Link",
+        "hiringClosed": "Hiring closed successfully",
+        "hiringActivated": "Hiring activated successfully",
         "stats": {
             "actionNeeded": "Action Needed",
             "actionNeededValue": "12 Candidates",
@@ -486,6 +491,91 @@
             "retakeAllowed": "Retake Allowed",
             "attempts": "attempts",
             "lessThan": "Less than"
+        },
+        "aiGeneration": {
+            "title": "AI Job Description Generator",
+            "subtitle": "Let AI create a professional job description for you",
+            "howItWorks": "How it works",
+            "step1Description": "AI generates 4 scoping questions tailored to your role",
+            "step2Description": "You answer the questions to provide context",
+            "step3Description": "AI creates a comprehensive job description",
+            "jobDetails": "Job Details",
+            "startInterview": "Start Interview",
+            "generating": "Generating...",
+            "answerQuestions": "Answer Interview Questions",
+            "answerQuestionsDesc": "Provide detailed answers to help AI create the best description",
+            "generateDescription": "Generate Description",
+            "generatingDesc": "Our AI is analyzing your responses...",
+            "creatingDescription": "Creating your job description",
+            "thisWillTake": "This will take a few seconds",
+            "success": "Description Generated!",
+            "successDesc": "Review the generated description below",
+            "editTip": "You can edit the description after applying it",
+            "regenerate": "Regenerate",
+            "useDescription": "Use Description",
+            "pleaseAnswerAll": "Please answer all questions",
+            "descriptionApplied": "Description applied successfully"
+        },
+        "contextSelector": {
+            "title": "Smart AI Generator",
+            "subtitle": "Select atmosphere and benefits to generate a tailored description",
+            "jobDetails": "Job Details",
+            "vibeTitle": "Company Atmosphere",
+            "vibeDescription": "Select tags that best describe your company culture (optional)",
+            "benefitsTitle": "Benefits & Perks",
+            "benefitsDescription": "Select benefits you offer to employees (optional)",
+            "selected": "Selected",
+            "items": "items",
+            "generate": "Generate Description"
+        }
+    },
+    "settings": {
+        "title": "Settings",
+        "description": "Manage your system settings and preferences",
+        "configure": "Configure",
+        "accessLevel": "Access Level",
+        "currentRole": "Your current role:",
+        "accessDescription": "You can only access settings that match your permission level.",
+        "company": {
+            "title": "Company Settings",
+            "subtitle": "Configure your company profile for AI-powered job descriptions",
+            "description": "Configure your company profile to power AI-generated job descriptions",
+            "fetchError": "Failed to load company profile",
+            "saveSuccess": "Company profile updated successfully",
+            "saveError": "Failed to update company profile",
+            "noPermission": "You don't have permission to edit company settings",
+            "viewOnly": "You are viewing company settings. Only administrators can edit these details.",
+            "profileTitle": "Company Profile",
+            "profileDescription": "This information is used to generate contextual job descriptions",
+            "companyName": "Company Name",
+            "companyNamePlaceholder": "GoIELTS",
+            "industry": "Industry",
+            "industryPlaceholder": "e.g., Technology, Education, Healthcare",
+            "industryDescription": "Used by AI to tailor job descriptions to your sector",
+            "website": "Company Website",
+            "bio": "Company Bio",
+            "bioPlaceholder": "Tell us about your company culture, mission, and what makes you unique...",
+            "bioDescription": "This will be used as context for all AI-generated job descriptions"
+        },
+        "users": {
+            "title": "User Management",
+            "description": "Add, edit, and manage user accounts and their roles"
+        },
+        "roles": {
+            "title": "Role & Permissions",
+            "description": "Configure role-based access control and permissions (Super Admin only)"
+        },
+        "system": {
+            "title": "System Settings",
+            "description": "Advanced system configuration and maintenance (Super Admin only)"
+        },
+        "notifications": {
+            "title": "Notifications",
+            "description": "Configure email and in-app notification preferences"
+        },
+        "preferences": {
+            "title": "Preferences",
+            "description": "Customize your dashboard appearance and language settings"
         }
     }
 }

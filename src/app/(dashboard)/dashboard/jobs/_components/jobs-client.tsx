@@ -46,6 +46,9 @@ import {
     CheckCircle2,
     Clock,
     Activity,
+    Link as LinkIcon,
+    Ban,
+    ExternalLink,
 } from "lucide-react"
 import { JobWizardDialog } from "./wizard"
 import { EditJobDialog } from "./edit-job-dialog"
@@ -157,6 +160,40 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
     const handleDeleteJob = (job: Job) => {
         setSelectedJob(job)
         setDeleteDialogOpen(true)
+    }
+
+    const handleCopyApplicationLink = (jobId: string) => {
+        const jobUrl = `${window.location.origin}/apply/${jobId}`
+        navigator.clipboard.writeText(jobUrl).then(() => {
+            toast.success(t("jobs.linkCopied"))
+        }).catch((error) => {
+            console.error("Failed to copy link:", error)
+            toast.error(t("common.error"))
+        })
+    }
+
+    const handleToggleStatus = async (job: Job) => {
+        try {
+            const response = await fetch(`/api/jobs/toggle-status/${job.id}?userId=${userId}`, {
+                method: "POST",
+            })
+            const data = await response.json()
+
+            if (data.success) {
+                const newStatus = job.status === 'active' ? 'closed' : 'active'
+                toast.success(
+                    newStatus === 'closed'
+                        ? t("jobs.hiringClosed")
+                        : t("jobs.hiringActivated")
+                )
+                fetchJobs()
+            } else {
+                toast.error(data.error || t("common.error"))
+            }
+        } catch (error) {
+            console.error("Failed to toggle status:", error)
+            toast.error(t("common.error"))
+        }
     }
 
     const formatDate = (dateString?: string) => {
@@ -363,6 +400,49 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                    {/* Priority Action: Copy Application Link */}
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleCopyApplicationLink(job.id)}
+                                                        className="cursor-pointer font-medium"
+                                                    >
+                                                        <LinkIcon className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        {t("jobs.copyApplicationLink")}
+                                                    </DropdownMenuItem>
+
+                                                    <DropdownMenuSeparator />
+
+                                                    {/* Quick Status Toggle */}
+                                                    {(job.status === 'active' || job.status === 'closed') && (
+                                                        <>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleToggleStatus(job)}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                {job.status === 'active' ? (
+                                                                    <>
+                                                                        <Ban className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                                        {t("jobs.closeHiring")}
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CheckCircle2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                                        {t("jobs.activateHiring")}
+                                                                    </>
+                                                                )}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                        </>
+                                                    )}
+
+                                                    {/* Preview Page */}
+                                                    <DropdownMenuItem
+                                                        onClick={() => window.open(`/apply/${job.id}`, "_blank")}
+                                                        className="cursor-pointer"
+                                                    >
+                                                        <ExternalLink className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        {t("jobs.previewPage")}
+                                                    </DropdownMenuItem>
+
                                                     <DropdownMenuItem
                                                         onClick={() => handleViewJob(job)}
                                                         className="cursor-pointer"
@@ -370,19 +450,23 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         <Eye className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                         {t("common.view")}
                                                     </DropdownMenuItem>
+
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/jobs/${job.id}/questions`} className="cursor-pointer">
                                                             <FileQuestion className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                             {t("jobs.questions")}
                                                         </Link>
                                                     </DropdownMenuItem>
+
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/applicants?jobId=${job.id}`} className="cursor-pointer">
                                                             <Users className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                             {t("jobs.applicants")}
                                                         </Link>
                                                     </DropdownMenuItem>
+
                                                     <DropdownMenuSeparator />
+
                                                     <DropdownMenuItem
                                                         onClick={() => handleEditJob(job)}
                                                         className="cursor-pointer"
@@ -390,7 +474,9 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         <Pencil className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                         {t("common.edit")}
                                                     </DropdownMenuItem>
+
                                                     <DropdownMenuSeparator />
+
                                                     <DropdownMenuItem
                                                         onClick={() => handleDeleteJob(job)}
                                                         className="text-destructive focus:text-destructive cursor-pointer"

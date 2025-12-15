@@ -30,9 +30,22 @@ export function SiteHeader() {
         const href = "/" + pathSegments.slice(0, index + 1).join("/")
         const isLast = index === pathSegments.length - 1
         
-        // Translate segment name
-        const segmentKey = `sidebar.${segment}`
-        const translatedName = t(segmentKey) !== segmentKey ? t(segmentKey) : segment.charAt(0).toUpperCase() + segment.slice(1)
+        // Try multiple translation keys in order of preference
+        const translationKeys = [
+            `breadcrumb.${segment}`,  // Breadcrumb-specific translations
+            `sidebar.${segment}`,     // Sidebar translations
+            `settings.${segment}.title`, // Settings section titles
+        ]
+        
+        let translatedName = segment.charAt(0).toUpperCase() + segment.slice(1) // Default fallback
+        
+        for (const key of translationKeys) {
+            const translation = t(key)
+            if (translation !== key) {
+                translatedName = translation
+                break
+            }
+        }
         
         return { href, name: translatedName, isLast }
     })

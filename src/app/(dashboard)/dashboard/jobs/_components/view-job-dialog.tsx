@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 import {
@@ -17,7 +19,10 @@ import {
     DollarSign,
     Calendar,
     Clock,
+    Link as LinkIcon,
+    Copy,
 } from "lucide-react"
+import { toast } from "sonner"
 import type { Job, JobStatus } from "./jobs-client"
 
 interface ViewJobDialogProps {
@@ -35,6 +40,17 @@ const statusColors: Record<JobStatus, string> = {
 
 export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
     const { t, isRTL } = useTranslate()
+
+    const jobUrl = typeof window !== 'undefined' ? `${window.location.origin}/apply/${job.id}` : ''
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(jobUrl).then(() => {
+            toast.success(t("jobs.linkCopied"))
+        }).catch((error) => {
+            console.error("Failed to copy link:", error)
+            toast.error(t("common.error"))
+        })
+    }
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "-"
@@ -75,6 +91,38 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
                 </DialogHeader>
 
                 <div className="space-y-6 mt-4">
+                    {/* Share Section */}
+                    <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-2 border-indigo-200 dark:border-indigo-800">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                                <LinkIcon className="h-4 w-4 text-white" />
+                            </div>
+                            <h4 className="font-semibold text-lg">{t("jobs.shareSection")}</h4>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground mb-3">
+                            {t("jobs.jobUrl")}
+                        </p>
+                        
+                        <div className="flex gap-2">
+                            <Input
+                                value={jobUrl}
+                                readOnly
+                                className="bg-white dark:bg-slate-900 font-mono text-sm"
+                                dir="ltr"
+                            />
+                            <Button
+                                onClick={handleCopyLink}
+                                size="lg"
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0"
+                            >
+                                <Copy className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                {t("jobs.copyLink")}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator />
                     {/* Quick Info */}
                     <div className="grid grid-cols-2 gap-4">
                         {job.department && (

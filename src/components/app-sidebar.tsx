@@ -7,19 +7,15 @@ import {
     BookOpen,
     LayoutDashboard,
     Users,
-    FileText,
     Settings,
-    BarChart3,
-    MessageSquare,
     Shield,
-    LifeBuoy,
-    Send,
     Briefcase,
-    UserCheck,
+    Calendar,
+    Library,
+    ClipboardCheck,
+    Video,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
     Sidebar,
@@ -29,6 +25,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarGroup,
+    SidebarGroupLabel,
+    SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
 import { hasPermission, type UserRole } from "@/lib/auth"
@@ -45,94 +44,89 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     const { t, isRTL } = useTranslate()
     const pathname = usePathname()
 
-    const navMain = React.useMemo(() => {
-        const items = [
+    // Navigation structure with grouped sections for ATS
+    const navSections = React.useMemo(() => {
+        return [
             {
-                title: t("sidebar.dashboard"),
-                url: "/dashboard",
-                icon: LayoutDashboard,
-                isActive: pathname === "/dashboard",
-                requiredRole: "reviewer" as UserRole,
-            },
-            {
-                title: t("sidebar.jobs"),
-                url: "/dashboard/jobs",
-                icon: Briefcase,
-                isActive: pathname.startsWith("/dashboard/jobs"),
-                requiredRole: "admin" as UserRole,
-            },
-            {
-                title: t("sidebar.applicants"),
-                url: "/dashboard/applicants",
-                icon: UserCheck,
-                isActive: pathname.startsWith("/dashboard/applicants"),
-                requiredRole: "reviewer" as UserRole,
-            },
-            {
-                title: t("sidebar.content"),
-                url: "/dashboard/content",
-                icon: FileText,
-                isActive: pathname.startsWith("/dashboard/content"),
-                requiredRole: "reviewer" as UserRole,
+                title: t("sidebar.categories.operations"),
                 items: [
-                    { title: t("sidebar.reading") || "Reading", url: "/dashboard/content/reading" },
-                    { title: t("sidebar.writing") || "Writing", url: "/dashboard/content/writing" },
-                    { title: t("sidebar.listening") || "Listening", url: "/dashboard/content/listening" },
-                    { title: t("sidebar.speaking") || "Speaking", url: "/dashboard/content/speaking" },
+                    {
+                        title: t("sidebar.dashboard"),
+                        url: "/dashboard",
+                        icon: LayoutDashboard,
+                        isActive: pathname === "/dashboard",
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.jobs"),
+                        url: "/dashboard/jobs",
+                        icon: Briefcase,
+                        isActive: pathname.startsWith("/dashboard/jobs"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.candidates"),
+                        url: "/dashboard/candidates",
+                        icon: Users,
+                        isActive: pathname.startsWith("/dashboard/candidates"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.calendar"),
+                        url: "/dashboard/calendar",
+                        icon: Calendar,
+                        isActive: pathname.startsWith("/dashboard/calendar"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
                 ],
             },
             {
-                title: t("sidebar.reviews"),
-                url: "/dashboard/reviews",
-                icon: MessageSquare,
-                isActive: pathname.startsWith("/dashboard/reviews"),
-                requiredRole: "reviewer" as UserRole,
+                title: t("sidebar.categories.assessmentTools"),
+                items: [
+                    {
+                        title: t("sidebar.questionBank"),
+                        url: "/dashboard/questions",
+                        icon: Library,
+                        isActive: pathname.startsWith("/dashboard/questions"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.scorecards"),
+                        url: "/dashboard/scorecards",
+                        icon: ClipboardCheck,
+                        isActive: pathname.startsWith("/dashboard/scorecards"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.interviews"),
+                        url: "/dashboard/interviews",
+                        icon: Video,
+                        isActive: pathname.startsWith("/dashboard/interviews"),
+                        requiredRole: "reviewer" as UserRole,
+                    },
+                ],
             },
             {
-                title: t("sidebar.analytics"),
-                url: "/dashboard/analytics",
-                icon: BarChart3,
-                isActive: pathname.startsWith("/dashboard/analytics"),
-                requiredRole: "admin" as UserRole,
-            },
-            {
-                title: t("sidebar.users"),
-                url: "/dashboard/users",
-                icon: Users,
-                isActive: pathname.startsWith("/dashboard/users"),
-                requiredRole: "admin" as UserRole,
-            },
-            {
-                title: t("sidebar.roles"),
-                url: "/dashboard/roles",
-                icon: Shield,
-                isActive: pathname.startsWith("/dashboard/roles"),
-                requiredRole: "superadmin" as UserRole,
-            },
-            {
-                title: t("sidebar.settings"),
-                url: "/dashboard/settings",
-                icon: Settings,
-                isActive: pathname.startsWith("/dashboard/settings"),
-                requiredRole: "superadmin" as UserRole,
+                title: t("sidebar.categories.systemManagement"),
+                items: [
+                    {
+                        title: t("sidebar.team"),
+                        url: "/dashboard/team",
+                        icon: Shield,
+                        isActive: pathname.startsWith("/dashboard/team"),
+                        requiredRole: "admin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.settings"),
+                        url: "/dashboard/settings",
+                        icon: Settings,
+                        isActive: pathname.startsWith("/dashboard/settings"),
+                        requiredRole: "admin" as UserRole,
+                    },
+                ],
             },
         ]
-
-        return items.filter((item) => hasPermission(user.role, item.requiredRole))
-    }, [t, pathname, user.role])
-
-    const navSecondary = [
-        {
-            title: t("sidebar.support") || "Support",
-            url: "/dashboard/support",
-            icon: LifeBuoy,
-        },
-        {
-            title: t("sidebar.feedback") || "Feedback",
-            url: "/dashboard/feedback",
-            icon: Send,
-        },
-    ]
+    }, [t, pathname])
 
     return (
         <Sidebar
@@ -163,8 +157,39 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={navMain} />
-                <NavSecondary items={navSecondary} className="mt-auto" />
+                {navSections.map((section) => {
+                    // Filter items based on user permissions
+                    const filteredItems = section.items.filter((item) =>
+                        hasPermission(user.role, item.requiredRole)
+                    )
+
+                    // Only render section if there are visible items
+                    if (filteredItems.length === 0) return null
+
+                    return (
+                        <SidebarGroup key={section.title}>
+                            <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    {filteredItems.map((item) => (
+                                        <SidebarMenuItem key={item.url}>
+                                            <SidebarMenuButton
+                                                asChild
+                                                tooltip={item.title}
+                                                isActive={item.isActive}
+                                            >
+                                                <Link href={item.url}>
+                                                    <item.icon />
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    ))}
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    )
+                })}
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={user} />

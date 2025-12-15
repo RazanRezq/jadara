@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
 import {
     FormControl,
@@ -24,6 +25,7 @@ import { useTranslate } from "@/hooks/useTranslate"
 import { JobWizardFormValues, CURRENCY_OPTIONS, DEPARTMENT_OPTIONS } from "./types"
 import { Sparkles, Globe, Laptop, MapPin, Info, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ContextSelectorModal } from "./context-selector-modal"
 
 interface Step1BasicsProps {
     form: UseFormReturn<JobWizardFormValues>
@@ -31,6 +33,7 @@ interface Step1BasicsProps {
 
 export function Step1Basics({ form }: Step1BasicsProps) {
     const { t, locale } = useTranslate()
+    const [contextModalOpen, setContextModalOpen] = useState(false)
 
     const jobTitle = form.watch('title')
     const description = form.watch('description')
@@ -104,7 +107,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                             <FormLabel>{t("jobWizard.step1.department")} *</FormLabel>
                             <FormControl>
                                 <Combobox
-                                    options={DEPARTMENT_OPTIONS}
+                                    options={[...DEPARTMENT_OPTIONS]}
                                     value={field.value}
                                     onValueChange={field.onChange}
                                     placeholder={t("jobWizard.step1.selectDepartment")}
@@ -271,6 +274,8 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                 variant="outline"
                                 size="sm"
                                 className="gap-2 text-primary border-primary hover:bg-primary/10 transition-all hover:scale-105"
+                                onClick={() => setContextModalOpen(true)}
+                                disabled={!jobTitle || !employmentType || !location}
                             >
                                 <Sparkles className="h-4 w-4" />
                                 {t("jobWizard.step1.generateWithAI")}
@@ -348,6 +353,18 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Context Selector Modal */}
+            <ContextSelectorModal
+                open={contextModalOpen}
+                onOpenChange={setContextModalOpen}
+                jobTitle={jobTitle || ''}
+                employmentType={employmentType}
+                workPlace={location || ''}
+                onDescriptionGenerated={(description) => {
+                    form.setValue('description', description)
+                }}
+            />
         </div>
     )
 }

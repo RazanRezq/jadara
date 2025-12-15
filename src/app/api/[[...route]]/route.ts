@@ -7,6 +7,7 @@ import questions from '@/models/Questions/route'
 import applicants from '@/models/Applicants/route'
 import responses from '@/models/Responses/route'
 import evaluations from '@/models/Evaluations/route'
+import companyProfile from '@/models/CompanyProfile/route'
 
 const app = new Hono().basePath('/api')
 
@@ -17,6 +18,7 @@ const routes = app
     .route('/applicants', applicants)
     .route('/responses', responses)
     .route('/evaluations', evaluations)
+    .route('/company', companyProfile)
 
 export const GET = handle(app)
 export const POST = handle(app)
