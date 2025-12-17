@@ -5,6 +5,7 @@ import { useTranslate } from "@/hooks/useTranslate"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -89,31 +90,38 @@ const getPersonalDataSchema = (
     job: Job,
     t: (key: string) => string
 ) => {
-    let schema = z.object({
+    return z.object({
         name: z.string().min(2, t("apply.validation.nameMin")),
         email: z.string().email(t("apply.validation.emailInvalid")),
         phone: z.string().min(6, t("apply.validation.phoneMin")),
-        age: z.coerce.number().min(16).max(100).optional(),
+        age: z.union([
+            z.coerce
+                .number()
+                .min(16, t("apply.validation.ageMin"))
+                .max(100, t("apply.validation.ageMax")),
+            z.literal(""),
+        ]).optional(),
         major: z.string().optional(),
-        yearsOfExperience: z.coerce.number().min(0).max(50).optional(),
-        salaryExpectation: z.coerce.number().min(0).optional(),
-        linkedinUrl: z.string().url().optional().or(z.literal("")),
-        portfolioUrl: z.string().url().optional().or(z.literal("")),
+        yearsOfExperience: z.union([
+            z.coerce
+                .number()
+                .min(0, t("apply.validation.experienceMin"))
+                .max(50, t("apply.validation.experienceMax")),
+            z.literal(""),
+        ]).optional(),
+        salaryExpectation: z.union([
+            z.coerce
+                .number()
+                .min(0, t("apply.validation.salaryMin")),
+            z.literal(""),
+        ]).optional(),
+        linkedinUrl: job.candidateDataConfig.requireLinkedIn
+            ? z.string().url(t("apply.validation.linkedinRequired"))
+            : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
+        portfolioUrl: job.candidateDataConfig.requirePortfolio
+            ? z.string().url(t("apply.validation.portfolioRequired"))
+            : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
     })
-
-    if (job.candidateDataConfig.requireLinkedIn) {
-        schema = schema.extend({
-            linkedinUrl: z.string().url(t("apply.validation.linkedinRequired")),
-        })
-    }
-
-    if (job.candidateDataConfig.requirePortfolio) {
-        schema = schema.extend({
-            portfolioUrl: z.string().url(t("apply.validation.portfolioRequired")),
-        })
-    }
-
-    return schema
 }
 
 export function JobLanding({ job, onStartApplication }: JobLandingProps) {
@@ -122,10 +130,9 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
     const [showForm, setShowForm] = useState(false)
 
     const personalDataSchema = getPersonalDataSchema(job, t)
-    type PersonalDataForm = z.infer<typeof personalDataSchema>
 
-    const form = useForm<PersonalDataForm>({
-        resolver: zodResolver(personalDataSchema),
+    const form = useForm<PersonalData>({
+        resolver: zodResolver(personalDataSchema) as any,
         defaultValues: {
             name: "",
             email: "",
@@ -139,11 +146,12 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
         },
     })
 
-    const onSubmit = async (data: PersonalDataForm) => {
+    const onSubmit = async (data: PersonalData) => {
         setIsSubmitting(true)
         try {
-            await onStartApplication(data as PersonalData)
-            toast.success(t("apply.applicationStarted"))
+            await onStartApplication(data)
+            // No success toast here - user is just moving to next step
+            // Success feedback will be shown on final submission
         } catch (err) {
             toast.error(
                 err instanceof Error ? err.message : t("common.error")
@@ -236,9 +244,15 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                        {job.description}
-                                    </p>
+                                    <article
+                                        className={cn(
+                                            "prose max-w-none",
+                                            isRTL && "text-right"
+                                        )}
+                                        dir={isRTL ? "rtl" : "ltr"}
+                                    >
+                                        <ReactMarkdown>{job.description}</ReactMarkdown>
+                                    </article>
                                 </CardContent>
                             </Card>
 
@@ -362,6 +376,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                     <form
                                         onSubmit={form.handleSubmit(onSubmit)}
                                         className="space-y-6"
+                                        noValidate
                                     >
                                         {/* Basic Info */}
                                         <div className="grid md:grid-cols-2 gap-4">
@@ -560,7 +575,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                         </FormLabel>
                                                         <FormControl>
                                                             <Input
-                                                                placeholder="https://behance.net/..."
+                                                                placeholder="https://portfolio.com/..."
                                                                 dir="ltr"
                                                                 {...field}
                                                             />

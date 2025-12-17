@@ -12,9 +12,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
-import { Sparkles, CheckCircle2, AlertCircle, Zap, Heart } from "lucide-react"
+import { Sparkles, CheckCircle2, AlertCircle, Zap, Heart, Scissors, FileText, SpellCheck, Smile } from "lucide-react"
 import { generateJobDescription } from "./ai-actions"
 import { toast } from "sonner"
 
@@ -53,6 +57,51 @@ const BENEFIT_CHIPS = [
     { id: "flexible-hours", label: "Flexible Hours", labelAr: "ساعات عمل مرنة", icon: "⏰" },
 ]
 
+// Tone of voice options (updated - no emoji references)
+const TONE_OPTIONS = [
+    {
+        value: "professional-formal",
+        label: "Professional & Formal",
+        labelAr: "احترافي ورسمي",
+        description: "Best for Corporate/Senior roles",
+        descriptionAr: "الأفضل للوظائف المؤسسية/الرئيسية"
+    },
+    {
+        value: "friendly-smart",
+        label: "Friendly & Smart",
+        labelAr: "ودود وذكي",
+        description: "Best for Tech/Startups",
+        descriptionAr: "الأفضل للتقنية/الشركات الناشئة"
+    },
+    {
+        value: "energetic-engaging",
+        label: "Energetic & Engaging",
+        labelAr: "نشط وجذاب",
+        description: "Best for Marketing/Creative roles",
+        descriptionAr: "الأفضل لوظائف التسويق/الإبداعية"
+    },
+]
+
+// Emoji style options
+const EMOJI_OPTIONS = [
+    {
+        value: "no-emojis",
+        label: "No Emojis",
+        labelAr: "بدون إيموجي",
+        icon: "⛔",
+        description: "Strictly professional, no emojis",
+        descriptionAr: "احترافي تماماً، بدون إيموجي"
+    },
+    {
+        value: "moderate",
+        label: "Moderate",
+        labelAr: "معتدل",
+        icon: "✨",
+        description: "Light emoji use (1 per section)",
+        descriptionAr: "استخدام خفيف (1 لكل قسم)"
+    },
+]
+
 export function ContextSelectorModal({
     open,
     onOpenChange,
@@ -65,6 +114,9 @@ export function ContextSelectorModal({
     const [step, setStep] = useState<Step>("select")
     const [selectedVibes, setSelectedVibes] = useState<string[]>([])
     const [selectedBenefits, setSelectedBenefits] = useState<string[]>([])
+    const [toneOfVoice, setToneOfVoice] = useState<string>("")
+    const [emojiStyle, setEmojiStyle] = useState<string>("moderate")
+    const [customDetails, setCustomDetails] = useState<string>("")
     const [generatedDescription, setGeneratedDescription] = useState("")
     const [error, setError] = useState("")
 
@@ -75,6 +127,9 @@ export function ContextSelectorModal({
                 setStep("select")
                 setSelectedVibes([])
                 setSelectedBenefits([])
+                setToneOfVoice("")
+                setEmojiStyle("moderate")
+                setCustomDetails("")
                 setGeneratedDescription("")
                 setError("")
             }, 300)
@@ -97,7 +152,7 @@ export function ContextSelectorModal({
     }
 
     // Generate description
-    const handleGenerate = async () => {
+    const handleGenerate = async (refinementInstruction?: string) => {
         setError("")
         setStep("generating")
 
@@ -113,12 +168,25 @@ export function ContextSelectorModal({
                 return locale === 'ar' ? chip?.labelAr : chip?.label
             }).filter(Boolean) as string[]
 
+            // Get tone label
+            const toneLabel = toneOfVoice
+                ? TONE_OPTIONS.find(t => t.value === toneOfVoice)
+                : null
+            const toneLabelText = toneLabel
+                ? (locale === 'ar' ? toneLabel.labelAr : toneLabel.label)
+                : undefined
+
             const result = await generateJobDescription({
                 jobTitle,
                 employmentType,
                 workPlace,
                 vibeChips: vibeLabels,
                 benefitChips: benefitLabels,
+                toneOfVoice: toneLabelText,
+                emojiStyle: emojiStyle || undefined,
+                customDetails: customDetails.trim() || undefined,
+                refinementInstruction,
+                currentDescription: refinementInstruction ? generatedDescription : undefined,
             })
 
             if (result.success && result.description) {
@@ -135,6 +203,16 @@ export function ContextSelectorModal({
             toast.error(message)
             setStep("select")
         }
+    }
+
+    // Handle refinement - map button actions to clear English instructions
+    const handleRefinement = (action: 'shorten' | 'formal' | 'grammar') => {
+        const instructions = {
+            shorten: "Make the description more concise and shorter while keeping all essential information.",
+            formal: "Make the tone more formal and professional, suitable for corporate environments.",
+            grammar: "Fix any grammar, spelling, or language errors. Polish the text for clarity and professionalism."
+        }
+        handleGenerate(instructions[action])
     }
 
     // Use the generated description
@@ -247,6 +325,83 @@ export function ContextSelectorModal({
                                 </div>
                             </div>
 
+                            {/* Section 3: Tone of Voice Selector */}
+                            <div>
+                                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-blue-500" />
+                                    {t("jobWizard.contextSelector.toneTitle")}
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-3">
+                                    {t("jobWizard.contextSelector.toneDescription")}
+                                </p>
+                                <Select value={toneOfVoice} onValueChange={setToneOfVoice}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder={t("jobWizard.contextSelector.tonePlaceholder")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TONE_OPTIONS.map((tone) => (
+                                            <SelectItem key={tone.value} value={tone.value}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">
+                                                        {locale === 'ar' ? tone.labelAr : tone.label}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {locale === 'ar' ? tone.descriptionAr : tone.description}
+                                                    </span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Section 3.5: Emoji Style Selector */}
+                            <div>
+                                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                    <Smile className="h-5 w-5 text-yellow-500" />
+                                    {t("jobWizard.contextSelector.emojiTitle")}
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-3">
+                                    {t("jobWizard.contextSelector.emojiDescription")}
+                                </p>
+                                <RadioGroup value={emojiStyle} onValueChange={setEmojiStyle} className="space-y-3">
+                                    {EMOJI_OPTIONS.map((option) => (
+                                        <div key={option.value} className="flex items-start space-x-3 space-x-reverse">
+                                            <RadioGroupItem value={option.value} id={option.value} />
+                                            <Label
+                                                htmlFor={option.value}
+                                                className="flex flex-col cursor-pointer flex-1"
+                                            >
+                                                <span className="font-medium flex items-center gap-2">
+                                                    <span>{option.icon}</span>
+                                                    {locale === 'ar' ? option.labelAr : option.label}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground font-normal">
+                                                    {locale === 'ar' ? option.descriptionAr : option.description}
+                                                </span>
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            </div>
+
+                            {/* Section 4: Custom Details */}
+                            <div>
+                                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                    <Zap className="h-5 w-5 text-purple-500" />
+                                    {t("jobWizard.contextSelector.customDetailsTitle")}
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-3">
+                                    {t("jobWizard.contextSelector.customDetailsDescription")}
+                                </p>
+                                <Textarea
+                                    value={customDetails}
+                                    onChange={(e) => setCustomDetails(e.target.value)}
+                                    placeholder={t("jobWizard.contextSelector.customDetailsPlaceholder")}
+                                    className="min-h-[100px] resize-none"
+                                />
+                            </div>
+
                             {/* Selection Summary */}
                             {(selectedVibes.length > 0 || selectedBenefits.length > 0) && (
                                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
@@ -269,7 +424,7 @@ export function ContextSelectorModal({
                                 {t("common.cancel")}
                             </Button>
                             <Button
-                                onClick={handleGenerate}
+                                onClick={() => handleGenerate()}
                                 disabled={!jobTitle}
                                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                             >
@@ -329,6 +484,37 @@ export function ContextSelectorModal({
                                 <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                                     {generatedDescription}
                                 </div>
+                            </div>
+
+                            {/* Refinement Buttons */}
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRefinement('shorten')}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Scissors className="h-4 w-4" />
+                                    {t("jobWizard.contextSelector.refineShorten")}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRefinement('formal')}
+                                    className="flex items-center gap-2"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                    {t("jobWizard.contextSelector.refineFormal")}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRefinement('grammar')}
+                                    className="flex items-center gap-2"
+                                >
+                                    <SpellCheck className="h-4 w-4" />
+                                    {t("jobWizard.contextSelector.refineGrammar")}
+                                </Button>
                             </div>
 
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">

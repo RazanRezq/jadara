@@ -66,9 +66,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                     },
                     {
                         title: t("sidebar.candidates"),
-                        url: "/dashboard/candidates",
+                        url: "/dashboard/applicants",
                         icon: Users,
-                        isActive: pathname.startsWith("/dashboard/candidates"),
+                        isActive: pathname.startsWith("/dashboard/applicants"),
                         requiredRole: "reviewer" as UserRole,
                     },
                     {

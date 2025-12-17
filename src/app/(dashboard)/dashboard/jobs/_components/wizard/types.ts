@@ -1,9 +1,23 @@
 import { z } from 'zod'
 
-// Skill schema
+// Skill schema (enhanced for AI extraction)
 export const skillSchema = z.object({
     name: z.string().min(1, 'Skill name is required'),
     importance: z.enum(['required', 'preferred']),
+    type: z.enum(['technical', 'soft']).optional(),
+    reason: z.enum(['explicit', 'inferred']).optional(),
+})
+
+// Screening Question schema
+export const screeningQuestionSchema = z.object({
+    question: z.string().min(1, 'Question is required'),
+    disqualify: z.boolean(),
+})
+
+// Language schema
+export const languageSchema = z.object({
+    language: z.string().min(1, 'Language is required'),
+    level: z.enum(['beginner', 'intermediate', 'advanced', 'native']),
 })
 
 // Question schema
@@ -39,11 +53,13 @@ export const jobWizardSchema = z.object({
     location: z.string().optional(),
     salaryMin: z.number().min(0).optional(),
     salaryMax: z.number().min(0).optional(),
-    currency: z.enum(['SAR', 'USD', 'AED', 'EGP']),
+    currency: z.enum(['SAR', 'USD', 'AED', 'EGP', 'TRY']),
     description: z.string().min(10, 'Description must be at least 10 characters'),
     
     // Step 2: Evaluation Criteria
     skills: z.array(skillSchema),
+    screeningQuestions: z.array(screeningQuestionSchema),
+    languages: z.array(languageSchema),
     minExperience: z.number().min(0).max(20),
     autoRejectThreshold: z.number().min(0).max(100),
     
@@ -61,6 +77,8 @@ export const jobWizardSchema = z.object({
 
 export type JobWizardFormValues = z.infer<typeof jobWizardSchema>
 export type Skill = z.infer<typeof skillSchema>
+export type ScreeningQuestion = z.infer<typeof screeningQuestionSchema>
+export type Language = z.infer<typeof languageSchema>
 export type Question = z.infer<typeof questionSchema>
 export type CandidateDataConfig = z.infer<typeof candidateDataConfigSchema>
 export type RetakePolicy = z.infer<typeof retakePolicySchema>
@@ -78,6 +96,8 @@ export const defaultJobWizardValues: JobWizardFormValues = {
     
     // Step 2
     skills: [],
+    screeningQuestions: [],
+    languages: [],
     minExperience: 0,
     autoRejectThreshold: 35,
     
@@ -144,6 +164,26 @@ export const DEPARTMENT_OPTIONS = [
     { value: 'operations', label: 'العمليات', labelEn: 'Operations' },
     { value: 'design', label: 'التصميم', labelEn: 'Design' },
     { value: 'product', label: 'المنتجات', labelEn: 'Product' },
+] as const
+
+export const PROFICIENCY_LEVELS = [
+    { value: 'beginner', label: 'مبتدئ', labelEn: 'Beginner' },
+    { value: 'intermediate', label: 'متوسط', labelEn: 'Intermediate' },
+    { value: 'advanced', label: 'متقدم', labelEn: 'Advanced' },
+    { value: 'native', label: 'لغة أم', labelEn: 'Native' },
+] as const
+
+export const COMMON_LANGUAGES = [
+    'English',
+    'Arabic',
+    'Spanish',
+    'French',
+    'German',
+    'Chinese',
+    'Japanese',
+    'Turkish',
+    'Russian',
+    'Portuguese',
 ] as const
 
 

@@ -2,26 +2,6 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Applicant from './applicantSchema'
-import { v4 as uuidv4 } from 'uuid'
-
-const personalDataSchema = z.object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    phone: z.string().min(6, 'Phone number is required'),
-    age: z.number().min(16).max(100).optional(),
-    major: z.string().optional(),
-    yearsOfExperience: z.number().min(0).max(50).optional(),
-    salaryExpectation: z.number().min(0).optional(),
-    linkedinUrl: z.string().url().optional().or(z.literal('')),
-    behanceUrl: z.string().url().optional().or(z.literal('')),
-    portfolioUrl: z.string().url().optional().or(z.literal('')),
-})
-
-const createApplicantSchema = z.object({
-    jobId: z.string().min(1, 'Job ID is required'),
-    personalData: personalDataSchema,
-    cvUrl: z.string().optional(),
-})
 
 const updateApplicantSchema = z.object({
     status: z.enum(['new', 'screening', 'interviewing', 'evaluated', 'shortlisted', 'hired', 'rejected', 'withdrawn']).optional(),
@@ -36,164 +16,13 @@ const updateApplicantSchema = z.object({
 
 const app = new Hono()
 
-// Start application session
-app.post('/start', async (c) => {
-    try {
-        await dbConnect()
-        const body = await c.req.json()
-
-        const validation = createApplicantSchema.safeParse(body)
-        if (!validation.success) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Validation failed',
-                    details: validation.error.flatten().fieldErrors,
-                },
-                400
-            )
-        }
-
-        // Check if applicant already applied
-        const existing = await Applicant.findOne({
-            jobId: validation.data.jobId,
-            'personalData.email': validation.data.personalData.email.toLowerCase(),
-        })
-
-        if (existing) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'You have already applied for this position',
-                },
-                409
-            )
-        }
-
-        const sessionId = uuidv4()
-        const applicant = await Applicant.create({
-            ...validation.data,
-            sessionId,
-            ipAddress: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || '',
-            userAgent: c.req.header('user-agent') || '',
-        })
-
-        return c.json(
-            {
-                success: true,
-                message: 'Application started',
-                applicant: {
-                    id: applicant._id.toString(),
-                    sessionId: applicant.sessionId,
-                },
-            },
-            201
-        )
-    } catch (error) {
-        console.error('Start application error:', error)
-        return c.json(
-            {
-                success: false,
-                error: 'Internal server error',
-                details: error instanceof Error ? error.message : 'Unknown error',
-            },
-            500
-        )
-    }
-})
-
-// Submit/Complete application
-app.post('/submit/:sessionId', async (c) => {
-    try {
-        await dbConnect()
-        const sessionId = c.req.param('sessionId')
-        const body = await c.req.json()
-
-        const applicant = await Applicant.findOne({ sessionId })
-        if (!applicant) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Application session not found',
-                },
-                404
-            )
-        }
-
-        if (applicant.isComplete) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Application already submitted',
-                },
-                400
-            )
-        }
-
-        // Update with any additional data
-        if (body.cvUrl) applicant.cvUrl = body.cvUrl
-        if (body.cvParsedData) applicant.cvParsedData = body.cvParsedData
-
-        applicant.isComplete = true
-        applicant.submittedAt = new Date()
-        await applicant.save()
-
-        return c.json({
-            success: true,
-            message: 'Application submitted successfully',
-            applicant: {
-                id: applicant._id.toString(),
-            },
-        })
-    } catch (error) {
-        return c.json(
-            {
-                success: false,
-                error: 'Internal server error',
-                details: error instanceof Error ? error.message : 'Unknown error',
-            },
-            500
-        )
-    }
-})
-
-// Flag session as suspicious (tab closed, page refresh during exam)
-app.post('/flag-suspicious/:sessionId', async (c) => {
-    try {
-        await dbConnect()
-        const sessionId = c.req.param('sessionId')
-        const body = await c.req.json()
-
-        const applicant = await Applicant.findOne({ sessionId })
-        if (!applicant) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Application session not found',
-                },
-                404
-            )
-        }
-
-        applicant.isSuspicious = true
-        applicant.suspiciousReason = body.reason || 'Session interrupted'
-        await applicant.save()
-
-        return c.json({
-            success: true,
-            message: 'Session flagged',
-        })
-    } catch (error) {
-        return c.json(
-            {
-                success: false,
-                error: 'Internal server error',
-                details: error instanceof Error ? error.message : 'Unknown error',
-            },
-            500
-        )
-    }
-})
+// ============================================
+// REMOVED: /start, /submit, /flag-suspicious
+// ============================================
+// These endpoints violated the "Atomic Submission" principle.
+// Application creation now happens ONLY via the submitApplication() server action
+// in src/app/(public)/apply/[jobId]/_components/actions.ts
+// ============================================
 
 // Get all applicants with pagination and filtering (Admin)
 app.get('/list', async (c) => {

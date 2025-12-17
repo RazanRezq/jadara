@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/dialog"
 import { Form } from "@/components/ui/form"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Check, ArrowLeft, ArrowRight, Loader2, AlertCircle } from "lucide-react"
 
-import { jobWizardSchema, JobWizardFormValues, defaultJobWizardValues } from "./types"
+import { JobWizardFormValues, defaultJobWizardValues } from "./types"
+import { createLocalizedJobWizardSchema } from "./validation"
 import { Step1Basics } from "./step-1-basics"
 import { Step2Criteria } from "./step-2-criteria"
 import { Step3CandidateData } from "./step-3-candidate-data"
@@ -39,21 +39,38 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
     const [isTransitioning, setIsTransitioning] = useState(false)
     const [validationErrors, setValidationErrors] = useState<string[]>([])
 
+    // Ref to scroll container
+    const contentRef = useRef<HTMLDivElement>(null)
+
+    // Create localized schema based on current locale
+    const localizedSchema = useMemo(() => createLocalizedJobWizardSchema(t), [t])
+
     const form = useForm<JobWizardFormValues>({
-        resolver: zodResolver(jobWizardSchema),
+        resolver: zodResolver(localizedSchema),
         defaultValues: defaultJobWizardValues,
         mode: "onChange",
     })
 
-    // Calculate progress percentage
-    const progress = (currentStep / TOTAL_STEPS) * 100
+    // Scroll to top helper
+    const scrollToTop = () => {
+        if (contentRef.current) {
+            contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+    }
 
-    // Reset on open
+    // Scroll to top when step changes
+    useEffect(() => {
+        scrollToTop()
+    }, [currentStep])
+
+    // Reset on open and scroll to top
     useEffect(() => {
         if (open) {
             setCurrentStep(1)
             setValidationErrors([])
             form.reset(defaultJobWizardValues)
+            // Scroll to top when dialog opens
+            setTimeout(() => scrollToTop(), 100)
         }
     }, [open, form])
 
@@ -198,19 +215,14 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent
-                className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0"
+                className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0"
                 showCloseButton={true}
             >
                 {/* Header with Stepper */}
-                <div className="p-6 pb-4 border-b bg-gradient-to-b from-background to-muted/20">
+                <div className="p-6 sm:p-8 pb-4 border-b bg-gradient-to-b from-background to-muted/20">
                     <DialogTitle className="text-xl font-semibold text-primary text-center mb-4">
                         {t("jobWizard.title")}
                     </DialogTitle>
-
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                        <Progress value={progress} className="h-2" isRTL={isRTL} />
-                    </div>
 
                     {/* Stepper */}
                     <div className="flex items-center justify-center gap-2 mb-4" dir={isRTL ? "rtl" : "ltr"}>
@@ -261,7 +273,7 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div ref={contentRef} className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10">
                     {/* Validation Errors */}
                     {validationErrors.length > 0 && (
                         <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -296,7 +308,7 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 pt-4 border-t bg-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4" dir={isRTL ? "rtl" : "ltr"}>
+                <div className="p-6 sm:p-8 pt-4 border-t bg-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4" dir={isRTL ? "rtl" : "ltr"}>
                     {/* Previous Button - Left in LTR, Right in RTL */}
                     <Button
                         type="button"

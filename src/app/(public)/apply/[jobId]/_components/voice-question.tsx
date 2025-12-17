@@ -6,11 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
+import { Slider } from "@/components/ui/slider"
 import {
     Mic,
     MicOff,
     Play,
+    Pause,
     Square,
     AlertTriangle,
     Clock,
@@ -19,9 +22,12 @@ import {
     ArrowLeft,
     ArrowRight,
     CheckCircle2,
+    Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import type { QuestionResponse } from "./store"
+import { uploadAudio } from "./actions"
 
 interface Question {
     text: string
@@ -37,12 +43,16 @@ interface VoiceQuestionProps {
     totalQuestions: number
     onSubmit: (response: {
         type: "voice"
-        audioBlob: Blob
+        audioUrl: string
         audioDuration: number
-        startedAt: Date
-        completedAt: Date
+        startedAt: string
+        completedAt: string
         isAutoSubmitted: boolean
     }) => void
+    // Anti-cheat props
+    existingResponse?: QuestionResponse
+    readOnly?: boolean
+    onNext?: () => void
 }
 
 const parseTimeLimit = (timeLimit?: string): number => {
@@ -68,27 +78,49 @@ export function VoiceQuestion({
     questionNumber,
     totalQuestions,
     onSubmit,
+    existingResponse,
+    readOnly = false,
+    onNext,
 }: VoiceQuestionProps) {
     const { t, locale } = useTranslate()
-    const [stage, setStage] = useState<"permission" | "ready" | "countdown" | "recording" | "preview">("permission")
+    const [stage, setStage] = useState<"permission" | "ready" | "countdown" | "recording" | "preview" | "readonly">(
+        readOnly ? "readonly" : "permission"
+    )
     const [hasPermission, setHasPermission] = useState(false)
     const [countdown, setCountdown] = useState(3)
     const [timeRemaining, setTimeRemaining] = useState(parseTimeLimit(question.timeLimit))
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
-    const [audioUrl, setAudioUrl] = useState<string | null>(null)
-    const [isQuestionRevealed, setIsQuestionRevealed] = useState(!question.hideTextUntilRecording)
+    const [audioUrl, setAudioUrl] = useState<string | null>(existingResponse?.audioUrl || null)
+    const [isQuestionRevealed, setIsQuestionRevealed] = useState(!question.hideTextUntilRecording || readOnly)
     const [audioLevels, setAudioLevels] = useState<number[]>(Array(20).fill(5))
-    
+    const [isUploading, setIsUploading] = useState(false)
+
+    // Audio playback states
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [currentTime, setCurrentTime] = useState(0)
+    const [duration, setDuration] = useState(0)
+
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
-    const startTimeRef = useRef<Date | null>(null)
+    const startTimeRef = useRef<string | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
     const animationFrameRef = useRef<number | null>(null)
     const streamRef = useRef<MediaStream | null>(null)
+    const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
     const timeLimitSeconds = parseTimeLimit(question.timeLimit)
+
+    // Set initial stage based on readOnly
+    useEffect(() => {
+        if (readOnly && existingResponse?.audioUrl) {
+            setStage("readonly")
+            setAudioUrl(existingResponse.audioUrl)
+        } else if (!readOnly) {
+            setStage("permission")
+        }
+    }, [readOnly, existingResponse, questionNumber])
 
     // Request microphone permission
     const requestPermission = async () => {
@@ -97,7 +129,7 @@ export function VoiceQuestion({
             streamRef.current = stream
             setHasPermission(true)
             setStage("ready")
-            
+
             // Setup audio analyser for visualization
             const audioContext = new AudioContext()
             const source = audioContext.createMediaStreamSource(stream)
@@ -124,9 +156,9 @@ export function VoiceQuestion({
         const mediaRecorder = new MediaRecorder(streamRef.current, {
             mimeType: "audio/webm;codecs=opus",
         })
-        
+
         audioChunksRef.current = []
-        
+
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunksRef.current.push(event.data)
@@ -141,7 +173,7 @@ export function VoiceQuestion({
 
         mediaRecorder.start(100) // Collect data every 100ms
         mediaRecorderRef.current = mediaRecorder
-        startTimeRef.current = new Date()
+        startTimeRef.current = new Date().toISOString()
         setStage("recording")
         setTimeRemaining(timeLimitSeconds)
 
@@ -172,35 +204,73 @@ export function VoiceQuestion({
         animationFrameRef.current = requestAnimationFrame(updateAudioLevels)
     }, [])
 
+    /**
+     * Converts a Blob to a File object with proper naming
+     * This is crucial for the server action to correctly handle the upload
+     */
+    const blobToFile = useCallback((blob: Blob, fileName: string): File => {
+        return new File([blob], fileName, {
+            type: blob.type || "audio/webm",
+            lastModified: Date.now(),
+        })
+    }, [])
+
     // Stop recording
-    const stopRecording = useCallback((isAutoSubmit = false) => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            mediaRecorderRef.current.stop()
-        }
-        
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current)
-        }
+    const stopRecording = useCallback(
+        async (isAutoSubmit = false) => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                mediaRecorderRef.current.stop()
+            }
 
-        const duration = startTimeRef.current
-            ? (new Date().getTime() - startTimeRef.current.getTime()) / 1000
-            : 0
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current)
+            }
 
-        if (isAutoSubmit && audioChunksRef.current.length > 0) {
-            // Auto-submit when timer runs out
-            const blob = new Blob(audioChunksRef.current, { type: "audio/webm" })
-            onSubmit({
-                type: "voice",
-                audioBlob: blob,
-                audioDuration: duration,
-                startedAt: startTimeRef.current!,
-                completedAt: new Date(),
-                isAutoSubmitted: true,
-            })
-        } else {
-            setStage("preview")
-        }
-    }, [onSubmit])
+            const duration = startTimeRef.current
+                ? (new Date().getTime() - new Date(startTimeRef.current).getTime()) / 1000
+                : 0
+
+            if (isAutoSubmit && audioChunksRef.current.length > 0) {
+                // Auto-submit when timer runs out
+                const blob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+                setIsUploading(true)
+
+                try {
+                    // Convert Blob to File with proper naming
+                    const timestamp = Date.now()
+                    const audioFile = blobToFile(blob, `recording_q${questionNumber}_${timestamp}.webm`)
+
+                    // Upload audio to cloud storage
+                    const formData = new FormData()
+                    formData.append("audio", audioFile)
+                    formData.append("questionIndex", String(questionNumber - 1))
+
+                    const uploadResult = await uploadAudio(formData)
+
+                    if (!uploadResult.success || !uploadResult.url) {
+                        throw new Error(uploadResult.error || "Upload failed")
+                    }
+
+                    onSubmit({
+                        type: "voice",
+                        audioUrl: uploadResult.url,
+                        audioDuration: duration,
+                        startedAt: startTimeRef.current!,
+                        completedAt: new Date().toISOString(),
+                        isAutoSubmitted: true,
+                    })
+                } catch (error) {
+                    toast.error(t("apply.uploadError") || "Failed to upload audio")
+                    setStage("preview")
+                } finally {
+                    setIsUploading(false)
+                }
+            } else {
+                setStage("preview")
+            }
+        },
+        [onSubmit, questionNumber, t, blobToFile]
+    )
 
     // Countdown effect
     useEffect(() => {
@@ -236,25 +306,54 @@ export function VoiceQuestion({
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current)
             }
-            if (audioUrl) {
+            // Only revoke if it's a blob URL (not a cloud URL)
+            if (audioUrl && audioUrl.startsWith("blob:")) {
                 URL.revokeObjectURL(audioUrl)
             }
         }
     }, [audioUrl])
 
-    const handleSubmit = () => {
-        if (!audioBlob || !startTimeRef.current) return
+    const handleSubmit = async () => {
+        if (!audioBlob || !startTimeRef.current || readOnly) return
 
-        const duration = (new Date().getTime() - startTimeRef.current.getTime()) / 1000
+        const duration = (new Date().getTime() - new Date(startTimeRef.current).getTime()) / 1000
+        setIsUploading(true)
 
-        onSubmit({
-            type: "voice",
-            audioBlob,
-            audioDuration: duration,
-            startedAt: startTimeRef.current,
-            completedAt: new Date(),
-            isAutoSubmitted: false,
-        })
+        try {
+            // Convert Blob to File with proper naming
+            const timestamp = Date.now()
+            const audioFile = blobToFile(audioBlob, `recording_q${questionNumber}_${timestamp}.webm`)
+
+            // Upload audio to cloud storage
+            const formData = new FormData()
+            formData.append("audio", audioFile)
+            formData.append("questionIndex", String(questionNumber - 1))
+
+            const uploadResult = await uploadAudio(formData)
+
+            if (!uploadResult.success || !uploadResult.url) {
+                throw new Error(uploadResult.error || "Upload failed")
+            }
+
+            onSubmit({
+                type: "voice",
+                audioUrl: uploadResult.url,
+                audioDuration: duration,
+                startedAt: startTimeRef.current,
+                completedAt: new Date().toISOString(),
+                isAutoSubmitted: false,
+            })
+        } catch (error) {
+            toast.error(t("apply.uploadError") || "Failed to upload audio")
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
+    const handleNext = () => {
+        if (onNext) {
+            onNext()
+        }
     }
 
     const formatTime = (seconds: number) => {
@@ -263,7 +362,55 @@ export function VoiceQuestion({
         return `${mins}:${secs.toString().padStart(2, "0")}`
     }
 
-    const progressPercent = ((timeLimitSeconds - timeRemaining) / timeLimitSeconds) * 100
+    // Audio playback handlers
+    const handleTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+        const audio = e.currentTarget
+        setCurrentTime(audio.currentTime)
+    }
+
+    const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+        const audio = e.currentTarget
+        // Handle Infinity duration (common with Blobs) by setting a fallback
+        if (audio.duration === Infinity || isNaN(audio.duration)) {
+            setDuration(0)
+        } else {
+            setDuration(audio.duration)
+        }
+    }
+
+    const handleEnded = () => {
+        setIsPlaying(false)
+        setCurrentTime(0)
+    }
+
+    const handlePlay = () => {
+        setIsPlaying(true)
+    }
+
+    const handlePause = () => {
+        setIsPlaying(false)
+    }
+
+    const handlePlayPause = () => {
+        if (audioPlayerRef.current) {
+            if (isPlaying) {
+                audioPlayerRef.current.pause()
+            } else {
+                audioPlayerRef.current.play()
+            }
+        }
+    }
+
+    const handleSeek = (value: number[]) => {
+        if (audioPlayerRef.current && duration > 0) {
+            const newTime = (value[0] / 100) * duration
+            audioPlayerRef.current.currentTime = newTime
+            setCurrentTime(newTime)
+        }
+    }
+
+    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
+    const recordingProgressPercent = ((timeLimitSeconds - timeRemaining) / timeLimitSeconds) * 100
 
     return (
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
@@ -279,18 +426,27 @@ export function VoiceQuestion({
                         <Mic className={cn("size-3", stage === "recording" && "animate-pulse")} />
                         {t("apply.voiceQuestion")}
                     </Badge>
-                    <Badge variant="outline">
-                        {questionNumber} / {totalQuestions}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        {readOnly && (
+                            <Badge
+                                variant="outline"
+                                className="gap-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                            >
+                                <CheckCircle2 className="size-3" />
+                                {t("apply.answered") || "Answered"}
+                            </Badge>
+                        )}
+                        <Badge variant="outline">
+                            {questionNumber} / {totalQuestions}
+                        </Badge>
+                    </div>
                 </div>
 
                 {/* Question text - hidden or revealed based on settings */}
                 {!isQuestionRevealed ? (
                     <div className="p-6 rounded-lg bg-muted/50 border border-dashed border-border text-center">
                         <Eye className="size-8 mx-auto mb-3 text-muted-foreground" />
-                        <p className="text-muted-foreground">
-                            {t("apply.questionHidden")}
-                        </p>
+                        <p className="text-muted-foreground">{t("apply.questionHidden")}</p>
                     </div>
                 ) : (
                     <CardTitle className="text-xl leading-relaxed animate-in fade-in duration-500">
@@ -300,19 +456,96 @@ export function VoiceQuestion({
             </CardHeader>
 
             <CardContent className="space-y-6">
+                {/* Read-Only Mode - Show existing recording */}
+                {stage === "readonly" && (
+                    <div className="space-y-6">
+                        {/* Read-Only Warning */}
+                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                            <Lock className="size-4 text-amber-600" />
+                            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                                {t("apply.readOnlyVoiceWarning") ||
+                                    "This question has already been answered. You can listen to your recording but cannot re-record."}
+                            </AlertDescription>
+                        </Alert>
+
+                        <div className="text-center">
+                            <div className="size-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-4">
+                                <CheckCircle2 className="size-8 text-green-500" />
+                            </div>
+                            <h3 className="font-semibold mb-1">{t("apply.yourRecording") || "Your Recording"}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {t("apply.listenToRecording") || "Listen to your submitted answer below"}
+                            </p>
+                        </div>
+
+                        {/* Audio player */}
+                        {audioUrl && (
+                            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                                <audio
+                                    ref={audioPlayerRef}
+                                    src={audioUrl}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onEnded={handleEnded}
+                                    onPlay={handlePlay}
+                                    onPause={handlePause}
+                                    className="hidden"
+                                />
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        size="icon"
+                                        variant="outline"
+                                        onClick={handlePlayPause}
+                                        className="shrink-0"
+                                    >
+                                        {isPlaying ? (
+                                            <Pause className="size-4" />
+                                        ) : (
+                                            <Play className="size-4" />
+                                        )}
+                                    </Button>
+                                    <div className="flex-1 space-y-1">
+                                        <Slider
+                                            value={[progressPercent]}
+                                            onValueChange={handleSeek}
+                                            max={100}
+                                            step={0.1}
+                                            className="cursor-pointer"
+                                        />
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                            <span>{formatTime(Math.floor(currentTime))}</span>
+                                            <span>{duration > 0 ? formatTime(Math.floor(duration)) : "--:--"}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <Button size="lg" className="w-full h-12 text-base gap-2" onClick={handleNext}>
+                            {questionNumber < totalQuestions ? (
+                                <>
+                                    {t("apply.nextQuestion")}
+                                    <ArrowIcon className="size-4" />
+                                </>
+                            ) : (
+                                <>
+                                    {t("apply.continueToUpload") || "Continue"}
+                                    <ArrowIcon className="size-4" />
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
+
                 {/* Permission Request */}
-                {stage === "permission" && (
+                {stage === "permission" && !readOnly && (
                     <div className="text-center space-y-4">
                         <div className="size-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                             <Mic className="size-10 text-primary" />
                         </div>
                         <div>
-                            <h3 className="font-semibold mb-1">
-                                {t("apply.microphoneAccess")}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                {t("apply.microphoneAccessDescription")}
-                            </p>
+                            <h3 className="font-semibold mb-1">{t("apply.microphoneAccess")}</h3>
+                            <p className="text-sm text-muted-foreground">{t("apply.microphoneAccessDescription")}</p>
                         </div>
                         <Button onClick={requestPermission} size="lg" className="gap-2">
                             <Mic className="size-4" />
@@ -322,18 +555,14 @@ export function VoiceQuestion({
                 )}
 
                 {/* Ready to Record */}
-                {stage === "ready" && (
+                {stage === "ready" && !readOnly && (
                     <div className="text-center space-y-4">
                         <div className="size-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
                             <CheckCircle2 className="size-10 text-green-500" />
                         </div>
                         <div>
-                            <h3 className="font-semibold mb-1">
-                                {t("apply.readyToRecord")}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                {t("apply.readyToRecordDescription")}
-                            </p>
+                            <h3 className="font-semibold mb-1">{t("apply.readyToRecord")}</h3>
+                            <p className="text-sm text-muted-foreground">{t("apply.readyToRecordDescription")}</p>
                             <div className="flex items-center justify-center gap-2 mt-2 text-amber-500">
                                 <Clock className="size-4" />
                                 <span className="text-sm font-medium">
@@ -343,9 +572,7 @@ export function VoiceQuestion({
                         </div>
                         <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-start">
                             <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-amber-600 dark:text-amber-400">
-                                {t("apply.noRetakeWarning")}
-                            </p>
+                            <p className="text-sm text-amber-600 dark:text-amber-400">{t("apply.noRetakeWarning")}</p>
                         </div>
                         <Button
                             onClick={startCountdown}
@@ -359,46 +586,35 @@ export function VoiceQuestion({
                 )}
 
                 {/* Countdown */}
-                {stage === "countdown" && (
+                {stage === "countdown" && !readOnly && (
                     <div className="text-center py-8">
                         <div className="size-32 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                            <span className="text-6xl font-bold text-primary">
-                                {countdown}
-                            </span>
+                            <span className="text-6xl font-bold text-primary">{countdown}</span>
                         </div>
-                        <p className="mt-4 text-muted-foreground">
-                            {t("apply.getReady")}
-                        </p>
+                        <p className="mt-4 text-muted-foreground">{t("apply.getReady")}</p>
                     </div>
                 )}
 
                 {/* Recording */}
-                {stage === "recording" && (
+                {stage === "recording" && !readOnly && (
                     <div className="space-y-6">
                         {/* Timer */}
                         <div className="text-center">
                             <div
                                 className={cn(
                                     "inline-flex items-center gap-2 px-4 py-2 rounded-full",
-                                    timeRemaining <= 30
-                                        ? "bg-red-500/20 text-red-500"
-                                        : "bg-muted"
+                                    timeRemaining <= 30 ? "bg-red-500/20 text-red-500" : "bg-muted"
                                 )}
                             >
                                 <Clock className="size-5" />
-                                <span className="text-2xl font-mono font-bold">
-                                    {formatTime(timeRemaining)}
-                                </span>
+                                <span className="text-2xl font-mono font-bold">{formatTime(timeRemaining)}</span>
                             </div>
                         </div>
 
                         {/* Progress bar */}
                         <Progress
-                            value={progressPercent}
-                            className={cn(
-                                "h-2",
-                                timeRemaining <= 30 && "[&>div]:bg-red-500"
-                            )}
+                            value={recordingProgressPercent}
+                            className={cn("h-2", timeRemaining <= 30 && "[&>div]:bg-red-500")}
                         />
 
                         {/* Audio Visualizer */}
@@ -418,9 +634,7 @@ export function VoiceQuestion({
                         {/* Recording indicator */}
                         <div className="flex items-center justify-center gap-2">
                             <div className="size-3 rounded-full bg-red-500 animate-pulse" />
-                            <span className="text-sm text-muted-foreground">
-                                {t("apply.recording")}
-                            </span>
+                            <span className="text-sm text-muted-foreground">{t("apply.recording")}</span>
                         </div>
 
                         {/* Stop button */}
@@ -437,31 +651,69 @@ export function VoiceQuestion({
                 )}
 
                 {/* Preview */}
-                {stage === "preview" && audioUrl && (
+                {stage === "preview" && !readOnly && audioUrl && (
                     <div className="space-y-6">
                         <div className="text-center">
                             <div className="size-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-4">
                                 <CheckCircle2 className="size-8 text-green-500" />
                             </div>
-                            <h3 className="font-semibold mb-1">
-                                {t("apply.recordingComplete")}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                {t("apply.recordingCompleteDescription")}
-                            </p>
+                            <h3 className="font-semibold mb-1">{t("apply.recordingComplete")}</h3>
+                            <p className="text-sm text-muted-foreground">{t("apply.recordingCompleteDescription")}</p>
                         </div>
 
                         {/* Audio player */}
-                        <div className="p-4 rounded-lg bg-muted/50">
-                            <audio src={audioUrl} controls className="w-full" />
+                        <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                            <audio
+                                ref={audioPlayerRef}
+                                src={audioUrl}
+                                onTimeUpdate={handleTimeUpdate}
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onEnded={handleEnded}
+                                onPlay={handlePlay}
+                                onPause={handlePause}
+                                className="hidden"
+                            />
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    onClick={handlePlayPause}
+                                    className="shrink-0"
+                                >
+                                    {isPlaying ? (
+                                        <Pause className="size-4" />
+                                    ) : (
+                                        <Play className="size-4" />
+                                    )}
+                                </Button>
+                                <div className="flex-1 space-y-1">
+                                    <Slider
+                                        value={[progressPercent]}
+                                        onValueChange={handleSeek}
+                                        max={100}
+                                        step={0.1}
+                                        className="cursor-pointer"
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>{formatTime(Math.floor(currentTime))}</span>
+                                        <span>{duration > 0 ? formatTime(Math.floor(duration)) : "--:--"}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <Button
                             onClick={handleSubmit}
                             size="lg"
                             className="w-full h-12 text-base gap-2"
+                            disabled={isUploading}
                         >
-                            {questionNumber < totalQuestions ? (
+                            {isUploading ? (
+                                <>
+                                    <Spinner className="size-4" />
+                                    {t("apply.uploading") || "Uploading..."}
+                                </>
+                            ) : questionNumber < totalQuestions ? (
                                 <>
                                     {t("apply.nextQuestion")}
                                     <ArrowIcon className="size-4" />
@@ -479,5 +731,3 @@ export function VoiceQuestion({
         </Card>
     )
 }
-
-

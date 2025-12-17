@@ -2,13 +2,28 @@ import mongoose, { Document, Model, Schema } from 'mongoose'
 
 export type JobStatus = 'draft' | 'active' | 'closed' | 'archived'
 export type SkillImportance = 'required' | 'preferred'
+export type SkillType = 'technical' | 'soft'
+export type SkillReason = 'explicit' | 'inferred'
 export type QuestionType = 'text' | 'voice'
 export type TimeLimit = '30s' | '1min' | '2min' | '3min' | '5min'
-export type Currency = 'SAR' | 'USD' | 'AED' | 'EGP'
+export type Currency = 'SAR' | 'USD' | 'AED' | 'EGP' | 'TRY'
+export type ProficiencyLevel = 'beginner' | 'intermediate' | 'advanced' | 'native'
 
 export interface ISkill {
     name: string
     importance: SkillImportance
+    type?: SkillType
+    reason?: SkillReason
+}
+
+export interface IScreeningQuestion {
+    question: string
+    disqualify: boolean
+}
+
+export interface ILanguage {
+    language: string
+    level: ProficiencyLevel
 }
 
 export interface IQuestion {
@@ -53,6 +68,8 @@ export interface IJob extends Document {
     
     // Step 2: Evaluation Criteria
     skills: ISkill[]
+    screeningQuestions: IScreeningQuestion[]
+    languages: ILanguage[]
     minExperience: number // Years
     autoRejectThreshold: number // Percentage (0-100)
     
@@ -88,6 +105,45 @@ const skillSchema = new Schema<ISkill>(
             type: String,
             enum: ['required', 'preferred'],
             default: 'preferred',
+        },
+        type: {
+            type: String,
+            enum: ['technical', 'soft'],
+        },
+        reason: {
+            type: String,
+            enum: ['explicit', 'inferred'],
+        },
+    },
+    { _id: false }
+)
+
+const screeningQuestionSchema = new Schema<IScreeningQuestion>(
+    {
+        question: {
+            type: String,
+            required: [true, 'Question is required'],
+            trim: true,
+        },
+        disqualify: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    { _id: false }
+)
+
+const languageSchema = new Schema<ILanguage>(
+    {
+        language: {
+            type: String,
+            required: [true, 'Language is required'],
+            trim: true,
+        },
+        level: {
+            type: String,
+            enum: ['beginner', 'intermediate', 'advanced', 'native'],
+            default: 'intermediate',
         },
     },
     { _id: false }
@@ -232,13 +288,21 @@ const jobSchema = new Schema<IJob>(
         },
         currency: {
             type: String,
-            enum: ['SAR', 'USD', 'AED', 'EGP'],
+            enum: ['SAR', 'USD', 'AED', 'EGP', 'TRY'],
             default: 'SAR',
         },
         
         // Step 2: Evaluation Criteria
         skills: {
             type: [skillSchema],
+            default: [],
+        },
+        screeningQuestions: {
+            type: [screeningQuestionSchema],
+            default: [],
+        },
+        languages: {
+            type: [languageSchema],
             default: [],
         },
         minExperience: {

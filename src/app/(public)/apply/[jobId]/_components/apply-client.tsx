@@ -4,9 +4,13 @@ import { useEffect, useState, useCallback } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
 import { JobLanding } from "./job-landing"
 import { AssessmentWizard } from "./assessment-wizard"
+import { ThankYouPage } from "./thank-you-page"
 import { Spinner } from "@/components/ui/spinner"
 import { AlertCircle, Ban } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useApplicationStore, type PersonalData } from "./store"
+import { checkExistingApplication } from "./actions"
+import { toast } from "sonner"
 
 interface Job {
     id: string
@@ -49,10 +53,24 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     const [job, setJob] = useState<Job | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [hasStarted, setHasStarted] = useState(false)
-    const [sessionId, setSessionId] = useState<string | null>(null)
-    const [applicantId, setApplicantId] = useState<string | null>(null)
 
+    // Zustand store
+    const {
+        personalData,
+        wizardStep,
+        isSubmitted,
+        jobId: storedJobId,
+        jobTitle,
+        initSession,
+        setPersonalData,
+        setWizardStep,
+        resetSession,
+    } = useApplicationStore()
+
+    // Determine if user has started based on having personal data in store
+    const hasStarted = !!personalData && storedJobId === jobId
+
+    // Fetch job data
     const fetchJob = useCallback(async () => {
         try {
             const response = await fetch(`/api/jobs/${jobId}`)
@@ -69,64 +87,54 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
             }
 
             setJob(data.job)
+
+            // Initialize session if it's the same job (for recovery)
+            if (storedJobId === jobId && personalData && !isSubmitted) {
+                // Session recovery - don't reset
+            } else if (storedJobId !== jobId) {
+                // Different job - reset session
+                resetSession()
+            }
         } catch {
             setError(t("common.error"))
         } finally {
             setLoading(false)
         }
-    }, [jobId, t])
+    }, [jobId, t, storedJobId, personalData, isSubmitted, resetSession])
 
     useEffect(() => {
         fetchJob()
     }, [fetchJob])
 
-    const handleStartApplication = async (personalData: {
-        name: string
-        email: string
-        phone: string
-        age?: number
-        major?: string
-        yearsOfExperience?: number
-        salaryExpectation?: number
-        linkedinUrl?: string
-        portfolioUrl?: string
-    }) => {
+    /**
+     * Handle starting the application.
+     * This NO LONGER creates a DB record - it just stores data in Zustand.
+     */
+    const handleStartApplication = async (personalDataInput: PersonalData) => {
         try {
-            const response = await fetch("/api/applicants/start", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    jobId,
-                    personalData,
-                }),
-            })
+            // Check if already applied (duplicate check)
+            const { exists } = await checkExistingApplication(jobId, personalDataInput.email)
 
-            const data = await response.json()
-
-            if (!data.success) {
-                throw new Error(data.error)
+            if (exists) {
+                throw new Error(t("apply.alreadyApplied") || "You have already applied for this position")
             }
 
-            setSessionId(data.applicant.sessionId)
-            setApplicantId(data.applicant.id)
-            setHasStarted(true)
+            // Initialize the session in Zustand
+            initSession(jobId, job?.title || "")
 
-            // Store session in localStorage for recovery
-            localStorage.setItem(
-                `apply_session_${jobId}`,
-                JSON.stringify({
-                    sessionId: data.applicant.sessionId,
-                    applicantId: data.applicant.id,
-                    startedAt: new Date().toISOString(),
-                })
-            )
+            // Store personal data in Zustand (NOT in database)
+            setPersonalData(personalDataInput)
 
-            return data
+            // Move to instructions step
+            setWizardStep("instructions")
+
+            // No success toast - this is just a step transition, not a submission
         } catch (err) {
             throw err
         }
     }
 
+    // Show loading state
     if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center">
@@ -140,6 +148,7 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         )
     }
 
+    // Show error state
     if (error) {
         const isJobClosed = error === t("apply.jobClosed")
         return (
@@ -171,18 +180,18 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         return null
     }
 
+    // Show thank you page if already submitted
+    if (isSubmitted || wizardStep === "complete") {
+        return <ThankYouPage jobTitle={jobTitle || job.title} />
+    }
+
+    // Show landing/form if not started
     if (!hasStarted) {
         return (
             <JobLanding job={job} onStartApplication={handleStartApplication} />
         )
     }
 
-    return (
-        <AssessmentWizard
-            job={job}
-            sessionId={sessionId!}
-            applicantId={applicantId!}
-        />
-    )
+    // Show assessment wizard
+    return <AssessmentWizard job={job} />
 }
-

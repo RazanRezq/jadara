@@ -281,6 +281,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                 {t("jobWizard.step1.generateWithAI")}
                             </Button>
                         </div>
+
                         <FormControl>
                             <Textarea
                                 placeholder={t("jobWizard.step1.descriptionPlaceholder")}

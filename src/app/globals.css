@@ -6,6 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-ibm-arabic: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   --font-sans: var(--font-ibm-arabic), var(--font-outfit), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -205,5 +206,79 @@
   textarea[dir="auto"]::placeholder {
     unicode-bidi: plaintext;
     text-align: start;
+  }
+
+  /* Custom Prose Styles for Markdown */
+  .prose {
+    color: var(--foreground);
+    max-width: 65ch;
+  }
+
+  .prose :where(h2):not(:where([class~="not-prose"] *)) {
+    color: var(--foreground);
+    font-weight: 600;
+    font-size: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    line-height: 1.3333333;
+  }
+
+  .prose :where(h2:first-child):not(:where([class~="not-prose"] *)) {
+    margin-top: 0;
+  }
+
+  .prose :where(h3):not(:where([class~="not-prose"] *)) {
+    color: var(--foreground);
+    font-weight: 600;
+    font-size: 1.25em;
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+    line-height: 1.6;
+  }
+
+  .prose :where(p):not(:where([class~="not-prose"] *)) {
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+  }
+
+  .prose :where(ul, ol):not(:where([class~="not-prose"] *)) {
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+    padding-left: 1.625em;
+  }
+
+  .prose :where(li):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .prose :where(ul > li):not(:where([class~="not-prose"] *)) {
+    padding-left: 0.375em;
+  }
+
+  .prose :where(strong):not(:where([class~="not-prose"] *)) {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  .prose-sm {
+    font-size: 0.875rem;
+    line-height: 1.7142857;
+  }
+
+  .prose-sm :where(h2):not(:where([class~="not-prose"] *)) {
+    font-size: 1.2857143em;
+    margin-top: 1.7777778em;
+    margin-bottom: 0.8888889em;
+  }
+
+  .prose-sm :where(h3):not(:where([class~="not-prose"] *)) {
+    font-size: 1.1428571em;
+    margin-top: 1.5555556em;
+    margin-bottom: 0.4444444em;
+  }
+
+  .max-w-none {
+    max-width: none;
   }
 }

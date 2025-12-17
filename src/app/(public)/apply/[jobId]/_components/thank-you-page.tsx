@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
-    PartyPopper,
-    CheckCircle2,
     Clock,
     Mail,
     Sparkles,
@@ -15,6 +13,8 @@ import {
 } from "lucide-react"
 import confetti from "canvas-confetti"
 import { useEffect } from "react"
+import Lottie from "lottie-react"
+import successAnimation from "@/../public/lottie/Success.json"
 
 interface ThankYouPageProps {
     jobTitle: string
@@ -75,13 +75,14 @@ export function ThankYouPage({ jobTitle }: ThankYouPageProps) {
                 <div className="container mx-auto max-w-2xl">
                     <Card className="border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-500">
                         <CardContent className="pt-12 pb-8 text-center">
-                            {/* Success Icon */}
-                            <div className="relative mb-8">
-                                <div className="size-24 mx-auto rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
-                                    <PartyPopper className="size-12 text-green-500" />
-                                </div>
-                                <div className="absolute top-0 right-1/2 translate-x-12 -translate-y-2">
-                                    <CheckCircle2 className="size-8 text-green-500 animate-bounce" />
+                            {/* Success Animation */}
+                            <div className="relative mb-4">
+                                <div className="w-48 h-48 mx-auto">
+                                    <Lottie
+                                        animationData={successAnimation}
+                                        loop={false}
+                                        autoplay={true}
+                                    />
                                 </div>
                             </div>
 

@@ -39,16 +39,15 @@ const companyProfileSchema = new Schema<ICompanyProfile>(
 )
 
 // Singleton pattern - only allow one company profile
-companyProfileSchema.pre('save', async function (next) {
-    const count = await CompanyProfile.countDocuments({
+companyProfileSchema.pre('save', async function () {
+    const Model = this.constructor as Model<ICompanyProfile>
+    const count = await Model.countDocuments({
         _id: { $ne: this._id },
     })
     
     if (count > 0) {
         throw new Error('Only one company profile is allowed')
     }
-    
-    next()
 })
 
 const CompanyProfile: Model<ICompanyProfile> =

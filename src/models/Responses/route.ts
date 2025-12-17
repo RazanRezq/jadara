@@ -169,8 +169,7 @@ app.get('/by-applicant/:applicantId', async (c) => {
         const applicantId = c.req.param('applicantId')
 
         const responses = await Response.find({ applicantId })
-            .populate('questionId', 'text type order')
-            .sort({ 'questionId.order': 1 })
+            .sort({ questionId: 1 })
 
         return c.json({
             success: true,
@@ -220,7 +219,6 @@ app.get('/:id', async (c) => {
         const id = c.req.param('id')
 
         const response = await Response.findById(id)
-            .populate('questionId', 'text type order timeLimit')
             .populate('reviewedBy', 'name')
 
         if (!response) {

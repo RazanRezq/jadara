@@ -33,7 +33,13 @@ const companyProfileSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
     industry: z.string().min(1, "Industry is required"),
     bio: z.string().min(10, "Bio must be at least 10 characters"),
-    website: z.string().url("Invalid URL").optional().or(z.literal("")),
+    website: z
+        .union([
+            z.string().url("Invalid URL format"),
+            z.literal(""),
+        ])
+        .optional()
+        .default(""),
 })
 
 type CompanyProfileFormValues = z.infer<typeof companyProfileSchema>
@@ -88,26 +94,61 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
             return
         }
 
+        console.log("[CompanySettings] Submitting form data:", data)
+        console.log("[CompanySettings] User role:", userRole)
+
         setSaving(true)
         try {
+            const requestBody = JSON.stringify(data)
+            console.log("[CompanySettings] Request body:", requestBody)
+            
             const response = await fetch(`/api/company/profile?userRole=${userRole}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(data),
+                body: requestBody,
             })
 
-            const result = await response.json()
+            console.log("[CompanySettings] Response status:", response.status, response.statusText)
+
+            // Check if response is ok
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error("API response not OK:", response.status, errorText)
+                let errorData
+                try {
+                    errorData = JSON.parse(errorText)
+                } catch {
+                    errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` }
+                }
+                toast.error(errorData.error || t("settings.company.saveError"))
+                return
+            }
+
+            // Parse JSON response
+            let result
+            try {
+                const text = await response.text()
+                result = text ? JSON.parse(text) : {}
+            } catch (parseError) {
+                console.error("Failed to parse JSON response:", parseError)
+                toast.error(t("settings.company.saveError") + " (Invalid response)")
+                return
+            }
 
             if (result.success) {
                 toast.success(t("settings.company.saveSuccess"))
             } else {
-                toast.error(result.error || t("settings.company.saveError"))
+                // Show detailed error message
+                const errorMessage = result.error || result.details || t("settings.company.saveError")
+                console.error("Failed to save company profile:", result)
+                toast.error(errorMessage)
             }
         } catch (error) {
             console.error("Failed to save company profile:", error)
-            toast.error(t("settings.company.saveError"))
+            const errorMessage = error instanceof Error ? error.message : t("settings.company.saveError")
+            toast.error(errorMessage)
         } finally {
             setSaving(false)
         }

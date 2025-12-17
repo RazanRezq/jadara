@@ -6,75 +6,128 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
+import { Progress } from "@/components/ui/progress"
+import { Label } from "@/components/ui/label"
 import {
     Upload,
     FileText,
     X,
     CheckCircle2,
     AlertCircle,
-    Briefcase,
+    MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { uploadFile } from "./actions"
+import { useApplicationStore } from "./store"
 
 interface FileUploadStepProps {
     requireCV: boolean
     requirePortfolio: boolean
-    cvFile: File | null
-    portfolioFile: File | null
-    onCvChange: (file: File | null) => void
-    onPortfolioChange: (file: File | null) => void
-    onSubmit: () => void
+    onSubmit: (cvUrl?: string, portfolioUrl?: string) => Promise<void>
     isSubmitting: boolean
 }
 
 export function FileUploadStep({
     requireCV,
     requirePortfolio,
-    cvFile,
-    portfolioFile,
-    onCvChange,
-    onPortfolioChange,
     onSubmit,
     isSubmitting,
 }: FileUploadStepProps) {
-    const { t } = useTranslate()
+    const { t, locale } = useTranslate()
     const cvInputRef = useRef<HTMLInputElement>(null)
-    const portfolioInputRef = useRef<HTMLInputElement>(null)
-    const [cvDragActive, setCvDragActive] = useState(false)
-    const [portfolioDragActive, setPortfolioDragActive] = useState(false)
 
-    const handleCvDrop = (e: React.DragEvent) => {
+    // Zustand store for notes
+    const { notes, setNotes } = useApplicationStore()
+
+    // Local state for files and URLs
+    const [cvFile, setCvFile] = useState<File | null>(null)
+    const [cvUrl, setCvUrl] = useState<string | null>(null)
+    const [cvDragActive, setCvDragActive] = useState(false)
+    const [isUploadingCv, setIsUploadingCv] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState(0)
+
+    const handleCvDrop = async (e: React.DragEvent) => {
         e.preventDefault()
         setCvDragActive(false)
         const file = e.dataTransfer.files[0]
-        if (file && isValidFile(file, "cv")) {
-            onCvChange(file)
+        if (file && isValidFile(file)) {
+            await handleCvUpload(file)
         }
     }
 
-    const handlePortfolioDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        setPortfolioDragActive(false)
-        const file = e.dataTransfer.files[0]
-        if (file && isValidFile(file, "portfolio")) {
-            onPortfolioChange(file)
-        }
-    }
-
-    const isValidFile = (file: File, type: "cv" | "portfolio"): boolean => {
-        const maxSize = type === "cv" ? 10 * 1024 * 1024 : 25 * 1024 * 1024 // 10MB for CV, 25MB for portfolio
-        const validTypes =
-            type === "cv"
-                ? ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-                : ["application/pdf", "image/jpeg", "image/png", "application/zip"]
+    const isValidFile = (file: File): boolean => {
+        const maxSize = 10 * 1024 * 1024 // 10MB for CV
+        const validTypes = [
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ]
 
         if (file.size > maxSize) {
+            toast.error(t("apply.fileTooLarge") || "File is too large")
             return false
         }
         if (!validTypes.includes(file.type)) {
+            toast.error(t("apply.invalidFileType") || "Invalid file type")
             return false
         }
         return true
+    }
+
+    /**
+     * Upload CV to cloud storage and store URL locally
+     * This uploads immediately but does NOT save to database
+     */
+    const handleCvUpload = async (file: File) => {
+        if (!isValidFile(file)) return
+
+        setIsUploadingCv(true)
+        setCvFile(file)
+        setUploadProgress(0)
+
+        // Simulate progress while uploading (actual upload doesn't provide progress)
+        const progressInterval = setInterval(() => {
+            setUploadProgress((prev) => {
+                if (prev >= 90) {
+                    clearInterval(progressInterval)
+                    return 90
+                }
+                return prev + 10
+            })
+        }, 200)
+
+        try {
+            const formData = new FormData()
+            formData.append("file", file)
+            formData.append("fileType", "cv")
+
+            const result = await uploadFile(formData)
+
+            if (!result.success || !result.url) {
+                throw new Error(result.error || "Upload failed")
+            }
+
+            // Complete progress
+            setUploadProgress(100)
+
+            // Store URL locally (NOT in database)
+            setCvUrl(result.url)
+            toast.success(t("apply.cvUploaded") || "CV uploaded successfully")
+        } catch (error) {
+            toast.error(t("apply.uploadError") || "Failed to upload file")
+            setCvFile(null)
+            setUploadProgress(0)
+        } finally {
+            clearInterval(progressInterval)
+            setIsUploadingCv(false)
+        }
+    }
+
+    const handleRemoveCv = () => {
+        setCvFile(null)
+        setCvUrl(null)
     }
 
     const formatFileSize = (bytes: number): string => {
@@ -83,8 +136,14 @@ export function FileUploadStep({
         return (bytes / (1024 * 1024)).toFixed(1) + " MB"
     }
 
-    const canSubmit =
-        (!requireCV || cvFile) && (!requirePortfolio || portfolioFile)
+    const canSubmit = (!requireCV || cvUrl) && !isUploadingCv
+
+    /**
+     * Handle final submission - passes URLs to parent for atomic DB save
+     */
+    const handleSubmit = async () => {
+        await onSubmit(cvUrl || undefined, undefined)
+    }
 
     return (
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -102,7 +161,7 @@ export function FileUploadStep({
 
             <CardContent className="space-y-6">
                 {/* CV Upload */}
-                {(requireCV || !requirePortfolio) && (
+                {requireCV && (
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium flex items-center gap-2">
@@ -114,11 +173,11 @@ export function FileUploadStep({
                                     </Badge>
                                 )}
                             </label>
-                            {cvFile && (
+                            {cvFile && !isUploadingCv && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => onCvChange(null)}
+                                    onClick={handleRemoveCv}
                                     className="h-auto p-1 text-muted-foreground hover:text-destructive"
                                 >
                                     <X className="size-4" />
@@ -131,15 +190,28 @@ export function FileUploadStep({
                             type="file"
                             accept=".pdf,.doc,.docx"
                             className="hidden"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 const file = e.target.files?.[0]
-                                if (file && isValidFile(file, "cv")) {
-                                    onCvChange(file)
+                                if (file) {
+                                    await handleCvUpload(file)
                                 }
                             }}
                         />
 
-                        {cvFile ? (
+                        {isUploadingCv ? (
+                            <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <Spinner className="size-5" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium truncate text-sm">{cvFile?.name}</p>
+                                        <span className="text-xs text-muted-foreground">
+                                            {t("apply.uploading") || "Uploading..."} {uploadProgress}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <Progress value={uploadProgress} className="h-1.5" />
+                            </div>
+                        ) : cvUrl && cvFile ? (
                             <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 flex items-center gap-3">
                                 <div className="size-10 rounded-lg bg-green-500/10 flex items-center justify-center">
                                     <CheckCircle2 className="size-5 text-green-500" />
@@ -179,86 +251,39 @@ export function FileUploadStep({
                     </div>
                 )}
 
-                {/* Portfolio Upload */}
-                {requirePortfolio && (
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium flex items-center gap-2">
-                                <Briefcase className="size-4" />
-                                {t("apply.portfolio")}
-                                <Badge variant="secondary" className="text-xs">
-                                    {t("jobs.required")}
-                                </Badge>
-                            </label>
-                            {portfolioFile && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onPortfolioChange(null)}
-                                    className="h-auto p-1 text-muted-foreground hover:text-destructive"
-                                >
-                                    <X className="size-4" />
-                                </Button>
-                            )}
-                        </div>
-
-                        <input
-                            ref={portfolioInputRef}
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png,.zip"
-                            className="hidden"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file && isValidFile(file, "portfolio")) {
-                                    onPortfolioChange(file)
-                                }
-                            }}
-                        />
-
-                        {portfolioFile ? (
-                            <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 flex items-center gap-3">
-                                <div className="size-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                                    <CheckCircle2 className="size-5 text-green-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate">
-                                        {portfolioFile.name}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {formatFileSize(portfolioFile.size)}
-                                    </p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div
-                                className={cn(
-                                    "p-8 rounded-lg border-2 border-dashed transition-colors cursor-pointer text-center",
-                                    portfolioDragActive
-                                        ? "border-primary bg-primary/5"
-                                        : "border-border hover:border-primary/50 hover:bg-muted/50"
-                                )}
-                                onDragOver={(e) => {
-                                    e.preventDefault()
-                                    setPortfolioDragActive(true)
-                                }}
-                                onDragLeave={() => setPortfolioDragActive(false)}
-                                onDrop={handlePortfolioDrop}
-                                onClick={() => portfolioInputRef.current?.click()}
-                            >
-                                <Upload className="size-8 mx-auto mb-3 text-muted-foreground" />
-                                <p className="font-medium mb-1">
-                                    {t("apply.dropOrClick")}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    PDF, JPG, PNG, ZIP (max 25MB)
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
+                {/* Additional Notes */}
+                <div className="space-y-2">
+                    <Label
+                        htmlFor="notes"
+                        className="text-sm font-medium flex items-center gap-2"
+                    >
+                        <MessageSquare className="size-4" />
+                        {t("apply.additionalNotes")}
+                    </Label>
+                    <Textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => {
+                            const text = e.target.value
+                            if (text.length <= 500) {
+                                setNotes(text)
+                            }
+                        }}
+                        placeholder={t("apply.notesPlaceholder")}
+                        className="min-h-[120px] resize-none"
+                        dir={locale === "ar" ? "rtl" : "ltr"}
+                        maxLength={500}
+                    />
+                    <p className={cn(
+                        "text-xs",
+                        notes.length > 450 ? "text-amber-500" : "text-muted-foreground"
+                    )}>
+                        {notes.length} / 500
+                    </p>
+                </div>
 
                 {/* Warning if required files missing */}
-                {!canSubmit && (
+                {!canSubmit && !isUploadingCv && (
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                         <AlertCircle className="size-5 text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -270,7 +295,7 @@ export function FileUploadStep({
                 <Button
                     size="lg"
                     className="w-full h-12 text-base gap-2"
-                    onClick={onSubmit}
+                    onClick={handleSubmit}
                     disabled={!canSubmit || isSubmitting}
                 >
                     {isSubmitting ? (
@@ -289,4 +314,3 @@ export function FileUploadStep({
         </Card>
     )
 }
-

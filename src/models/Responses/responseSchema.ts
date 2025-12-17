@@ -5,7 +5,7 @@ export type ResponseType = 'text' | 'voice' | 'multiple-choice' | 'file'
 export interface IResponse extends Document {
     _id: mongoose.Types.ObjectId
     applicantId: mongoose.Types.ObjectId
-    questionId: mongoose.Types.ObjectId
+    questionId: string // Changed from ObjectId to string (e.g., "q_0", "q_1")
     type: ResponseType
     // Text response
     textAnswer?: string
@@ -45,8 +45,7 @@ const responseSchema = new Schema<IResponse>(
             index: true,
         },
         questionId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Question',
+            type: String,
             required: [true, 'Question ID is required'],
             index: true,
         },

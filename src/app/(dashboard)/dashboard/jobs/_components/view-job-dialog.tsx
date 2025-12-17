@@ -1,5 +1,6 @@
 "use client"
 
+import ReactMarkdown from "react-markdown"
 import {
     Dialog,
     DialogContent,
@@ -165,9 +166,15 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
                     {/* Description */}
                     <div>
                         <h4 className="font-semibold mb-2">{t("jobs.description")}</h4>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {job.description}
-                        </p>
+                        <article 
+                            className={cn(
+                                "prose prose-sm max-w-none",
+                                isRTL && "text-right"
+                            )}
+                            dir={isRTL ? "rtl" : "ltr"}
+                        >
+                            <ReactMarkdown>{job.description}</ReactMarkdown>
+                        </article>
                     </div>
 
                     {/* Required Skills */}

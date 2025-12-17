@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { FileText, ArrowLeft, ArrowRight, Send } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FileText, ArrowLeft, ArrowRight, Send, Lock, CheckCircle2 } from "lucide-react"
+import type { QuestionResponse } from "./store"
 
 interface Question {
     text: string
@@ -21,9 +23,14 @@ interface TextQuestionProps {
     onSubmit: (response: {
         type: "text"
         answer: string
-        startedAt: Date
-        completedAt: Date
+        startedAt: string
+        completedAt: string
+        isAutoSubmitted: boolean
     }) => void
+    // Anti-cheat props
+    existingResponse?: QuestionResponse
+    readOnly?: boolean
+    onNext?: () => void
 }
 
 export function TextQuestion({
@@ -31,31 +38,45 @@ export function TextQuestion({
     questionNumber,
     totalQuestions,
     onSubmit,
+    existingResponse,
+    readOnly = false,
+    onNext,
 }: TextQuestionProps) {
     const { t, locale } = useTranslate()
-    const [answer, setAnswer] = useState("")
-    const startedAtRef = useRef(new Date())
+    const [answer, setAnswer] = useState(existingResponse?.answer || "")
+    const startedAtRef = useRef(new Date().toISOString())
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
 
     useEffect(() => {
-        // Reset for new question
-        startedAtRef.current = new Date()
-        setAnswer("")
-        textareaRef.current?.focus()
-    }, [questionNumber])
+        // Reset for new question (if not read-only)
+        if (!readOnly && !existingResponse) {
+            startedAtRef.current = new Date().toISOString()
+            setAnswer("")
+            textareaRef.current?.focus()
+        } else if (existingResponse?.answer) {
+            setAnswer(existingResponse.answer)
+        }
+    }, [questionNumber, readOnly, existingResponse])
 
     const handleSubmit = () => {
-        if (!answer.trim()) return
+        if (!answer.trim() || readOnly) return
 
         onSubmit({
             type: "text",
             answer: answer.trim(),
             startedAt: startedAtRef.current,
-            completedAt: new Date(),
+            completedAt: new Date().toISOString(),
+            isAutoSubmitted: false,
         })
+    }
+
+    const handleNext = () => {
+        if (onNext) {
+            onNext()
+        }
     }
 
     const charCount = answer.length
@@ -70,62 +91,107 @@ export function TextQuestion({
                         <FileText className="size-3" />
                         {t("apply.textQuestion")}
                     </Badge>
-                    <Badge variant="outline">
-                        {questionNumber} / {totalQuestions}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        {readOnly && (
+                            <Badge variant="outline" className="gap-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                                <CheckCircle2 className="size-3" />
+                                {t("apply.answered") || "Answered"}
+                            </Badge>
+                        )}
+                        <Badge variant="outline">
+                            {questionNumber} / {totalQuestions}
+                        </Badge>
+                    </div>
                 </div>
                 <CardTitle className="text-xl leading-relaxed">
                     {question.text}
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+                {/* Read-Only Warning */}
+                {readOnly && (
+                    <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                        <Lock className="size-4 text-amber-600" />
+                        <AlertDescription className="text-amber-700 dark:text-amber-300">
+                            {t("apply.readOnlyWarning") || "This question has already been answered. You cannot edit your response."}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="relative">
                     <Textarea
                         ref={textareaRef}
                         value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
-                        placeholder={t("apply.typeAnswer")}
-                        className="min-h-[200px] resize-none text-base leading-relaxed"
+                        onChange={(e) => !readOnly && setAnswer(e.target.value)}
+                        placeholder={readOnly ? "" : t("apply.typeAnswer")}
+                        className={`min-h-[200px] resize-none text-base leading-relaxed ${readOnly ? "bg-muted/50 cursor-not-allowed opacity-80" : ""
+                            }`}
                         dir={locale === "ar" ? "rtl" : "ltr"}
+                        readOnly={readOnly}
+                        disabled={readOnly}
                     />
-                    <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
-                        <span
-                            className={
-                                isValidLength ? "text-green-500" : "text-muted-foreground"
-                            }
-                        >
-                            {charCount}
-                        </span>
-                        <span className="text-muted-foreground"> / {minChars}+</span>
-                    </div>
+                    {!readOnly && (
+                        <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
+                            <span
+                                className={
+                                    isValidLength ? "text-green-500" : "text-muted-foreground"
+                                }
+                            >
+                                {charCount}
+                            </span>
+                            <span className="text-muted-foreground"> / {minChars}+</span>
+                        </div>
+                    )}
                 </div>
 
-                {!isValidLength && charCount > 0 && (
+                {!readOnly && !isValidLength && charCount > 0 && (
                     <p className="text-sm text-muted-foreground">
                         {t("apply.minCharacters").replace("{{count}}", String(minChars - charCount))}
                     </p>
                 )}
 
-                <Button
-                    size="lg"
-                    className="w-full h-12 text-base gap-2"
-                    onClick={handleSubmit}
-                    disabled={!isValidLength}
-                >
-                    {questionNumber < totalQuestions ? (
-                        <>
-                            {t("apply.nextQuestion")}
-                            <ArrowIcon className="size-4" />
-                        </>
-                    ) : (
-                        <>
-                            {t("apply.submitAnswer")}
-                            <Send className="size-4" />
-                        </>
-                    )}
-                </Button>
+                {/* Action Button */}
+                {readOnly ? (
+                    // Read-only mode: Show "Next" button to navigate
+                    <Button
+                        size="lg"
+                        className="w-full h-12 text-base gap-2"
+                        onClick={handleNext}
+                    >
+                        {questionNumber < totalQuestions ? (
+                            <>
+                                {t("apply.nextQuestion")}
+                                <ArrowIcon className="size-4" />
+                            </>
+                        ) : (
+                            <>
+                                {t("apply.continueToUpload") || "Continue"}
+                                <ArrowIcon className="size-4" />
+                            </>
+                        )}
+                    </Button>
+                ) : (
+                    // Normal mode: Show submit button
+                    <Button
+                        size="lg"
+                        className="w-full h-12 text-base gap-2"
+                        onClick={handleSubmit}
+                        disabled={!isValidLength}
+                    >
+                        {questionNumber < totalQuestions ? (
+                            <>
+                                {t("apply.nextQuestion")}
+                                <ArrowIcon className="size-4" />
+                            </>
+                        ) : (
+                            <>
+                                {t("apply.submitAnswer")}
+                                <Send className="size-4" />
+                            </>
+                        )}
+                    </Button>
+                )}
             </CardContent>
         </Card>
     )
 }
-

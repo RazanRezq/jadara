@@ -44,7 +44,7 @@ const createJobSchema = z.object({
     employmentType: z.enum(['full-time', 'part-time', 'contract', 'internship', 'remote']).default('full-time'),
     salaryMin: z.number().min(0).optional(),
     salaryMax: z.number().min(0).optional(),
-    currency: z.enum(['SAR', 'USD', 'AED', 'EGP']).optional().default('SAR'),
+    currency: z.enum(['SAR', 'USD', 'AED', 'EGP', 'TRY']).optional().default('USD'),
     // Step 2: Evaluation Criteria
     skills: z.array(skillSchema).optional().default([]),
     minExperience: z.number().min(0).max(20).optional().default(0),
