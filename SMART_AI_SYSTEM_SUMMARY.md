@@ -252,3 +252,4 @@ Get your key at: https://makersuite.google.com/app/apikey
 The complete Smart AI Job Description System is now live and ready to use. Admin users can configure company settings, and all users can generate contextual, professional job descriptions with just a few clicks.
 
 
+

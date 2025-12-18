@@ -13,6 +13,18 @@ const criteriaSchema = z.object({
 const skillSchema = z.object({
     name: z.string().min(1, 'Skill name is required'),
     importance: z.enum(['required', 'preferred']).default('preferred'),
+    type: z.enum(['technical', 'soft']).optional(),
+    reason: z.enum(['explicit', 'inferred']).optional(),
+})
+
+const screeningQuestionSchema = z.object({
+    question: z.string().min(1, 'Question is required'),
+    disqualify: z.boolean().default(false),
+})
+
+const languageSchema = z.object({
+    language: z.string().min(1, 'Language is required'),
+    level: z.enum(['beginner', 'intermediate', 'advanced', 'native']).default('intermediate'),
 })
 
 const questionSchema = z.object({
@@ -47,6 +59,8 @@ const createJobSchema = z.object({
     currency: z.enum(['SAR', 'USD', 'AED', 'EGP', 'TRY']).optional().default('USD'),
     // Step 2: Evaluation Criteria
     skills: z.array(skillSchema).optional().default([]),
+    screeningQuestions: z.array(screeningQuestionSchema).optional().default([]),
+    languages: z.array(languageSchema).optional().default([]),
     minExperience: z.number().min(0).max(20).optional().default(0),
     autoRejectThreshold: z.number().min(0).max(100).optional().default(35),
     // Step 3: Candidate Data
@@ -256,7 +270,9 @@ app.get('/:id', async (c) => {
                 salaryMax: job.salaryMax,
                 currency: job.currency,
                 // Step 2: Evaluation Criteria
-                skills: job.skills,
+                skills: Array.isArray(job.skills) ? job.skills : [],
+                screeningQuestions: Array.isArray(job.screeningQuestions) ? job.screeningQuestions : [],
+                languages: Array.isArray(job.languages) ? job.languages : [],
                 minExperience: job.minExperience,
                 autoRejectThreshold: job.autoRejectThreshold,
                 // Step 3: Candidate Data

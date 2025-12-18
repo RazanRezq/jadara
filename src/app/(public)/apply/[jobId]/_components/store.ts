@@ -17,6 +17,8 @@ export interface PersonalData {
     salaryExpectation?: number
     linkedinUrl?: string
     portfolioUrl?: string
+    screeningAnswers?: Record<string, boolean> // question text as key, answer as value
+    languageProficiency?: Record<string, string> // language as key, proficiency level as value
 }
 
 export interface QuestionResponse {
@@ -78,6 +80,7 @@ export interface ApplicationActions {
 
     // Personal data
     setPersonalData: (data: PersonalData) => void
+    backToPersonalInfo: () => void
 
     // Question responses
     addResponse: (response: QuestionResponse) => void
@@ -175,6 +178,20 @@ export const useApplicationStore = create<ApplicationState & ApplicationActions>
             // Personal data
             setPersonalData: (data: PersonalData) => {
                 set({ personalData: data })
+            },
+
+            backToPersonalInfo: () => {
+                // Clear personal data to go back to the landing page
+                set({
+                    personalData: null,
+                    responses: [],
+                    fileUploads: {},
+                    currentQuestionIndex: 0,
+                    wizardStep: "instructions",
+                    isSuspicious: false,
+                    suspiciousReasons: [],
+                    notes: "",
+                })
             },
 
             // Question responses

@@ -207,3 +207,4 @@ src/app/(dashboard)/dashboard/settings/
 - [Project Rules](./.cursorrules)
 
 
+

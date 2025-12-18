@@ -314,3 +314,4 @@ The Jobs Management page now fully supports the Direct Link Hiring model with:
 All changes are production-ready with no linting errors.
 
 
+

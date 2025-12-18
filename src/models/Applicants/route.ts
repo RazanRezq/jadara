@@ -76,12 +76,26 @@ app.get('/list', async (c) => {
         }
 
         const skip = (page - 1) * limit
+        
+        // Debug: Log the query being used
+        console.log('🔍 Applicants Query:', JSON.stringify(query, null, 2))
+        
         const total = await Applicant.countDocuments(query)
+        console.log('📊 Total applicants found:', total)
+        
         const applicants = await Applicant.find(query)
             .populate('jobId', 'title')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
+        
+        // Debug: Log applicant IDs and names
+        console.log('👥 Applicants returned:', applicants.map(a => ({
+            id: a._id.toString(),
+            name: a.personalData?.name,
+            email: a.personalData?.email,
+            isComplete: a.isComplete
+        })))
 
         // Remove sensitive data for reviewers
         const isReviewer = userRole === 'reviewer'

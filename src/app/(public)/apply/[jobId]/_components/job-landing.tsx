@@ -8,10 +8,19 @@ import { z } from "zod"
 import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { CurrencyInput } from "@/components/ui/currency-input"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import {
     Form,
     FormControl,
@@ -19,6 +28,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FormDescription,
 } from "@/components/ui/form"
 import {
     MapPin,
@@ -32,6 +42,8 @@ import {
     Mic,
     FileText,
     Sparkles,
+    ShieldAlert,
+    Languages,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -47,6 +59,8 @@ interface Job {
     employmentType: string
     currency?: string
     skills: Array<{ name: string; importance: string }>
+    screeningQuestions: Array<{ question: string; disqualify: boolean }>
+    languages: Array<{ language: string; level: string }>
     minExperience: number
     candidateDataConfig: {
         requireCV: boolean
@@ -79,6 +93,8 @@ interface PersonalData {
     salaryExpectation?: number
     linkedinUrl?: string
     portfolioUrl?: string
+    screeningAnswers?: Record<string, boolean>
+    languageProficiency?: Record<string, string>
 }
 
 interface JobLandingProps {
@@ -90,6 +106,22 @@ const getPersonalDataSchema = (
     job: Job,
     t: (key: string) => string
 ) => {
+    // Build screening questions schema dynamically
+    const screeningSchema: Record<string, z.ZodBoolean> = {}
+    if (job.screeningQuestions && job.screeningQuestions.length > 0) {
+        job.screeningQuestions.forEach((sq) => {
+            screeningSchema[sq.question] = z.boolean()
+        })
+    }
+
+    // Build languages schema dynamically
+    const languageSchema: Record<string, z.ZodString> = {}
+    if (job.languages && job.languages.length > 0) {
+        job.languages.forEach((lang) => {
+            languageSchema[lang.language] = z.string().min(1, t("apply.validation.languageRequired"))
+        })
+    }
+
     return z.object({
         name: z.string().min(2, t("apply.validation.nameMin")),
         email: z.string().email(t("apply.validation.emailInvalid")),
@@ -109,18 +141,24 @@ const getPersonalDataSchema = (
                 .max(50, t("apply.validation.experienceMax")),
             z.literal(""),
         ]).optional(),
-        salaryExpectation: z.union([
-            z.coerce
-                .number()
-                .min(0, t("apply.validation.salaryMin")),
-            z.literal(""),
-        ]).optional(),
+        salaryExpectation: !job.candidateDataConfig.hideSalaryExpectation
+            ? z.coerce.number().min(0, t("apply.validation.salaryMin"))
+            : z.union([
+                z.coerce.number().min(0, t("apply.validation.salaryMin")),
+                z.literal(""),
+            ]).optional(),
         linkedinUrl: job.candidateDataConfig.requireLinkedIn
             ? z.string().url(t("apply.validation.linkedinRequired"))
             : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
         portfolioUrl: job.candidateDataConfig.requirePortfolio
             ? z.string().url(t("apply.validation.portfolioRequired"))
             : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
+        screeningAnswers: job.screeningQuestions && job.screeningQuestions.length > 0
+            ? z.object(screeningSchema)
+            : z.record(z.boolean()).optional(),
+        languageProficiency: job.languages && job.languages.length > 0
+            ? z.object(languageSchema)
+            : z.record(z.string()).optional(),
     })
 }
 
@@ -130,6 +168,24 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
     const [showForm, setShowForm] = useState(false)
 
     const personalDataSchema = getPersonalDataSchema(job, t)
+
+    // Build default screening answers
+    const defaultScreeningAnswers: Record<string, boolean> = {}
+    const screeningQuestions = Array.isArray(job.screeningQuestions) ? job.screeningQuestions : []
+    if (screeningQuestions.length > 0) {
+        screeningQuestions.forEach((sq) => {
+            defaultScreeningAnswers[sq.question] = false
+        })
+    }
+
+    // Build default language proficiency
+    const defaultLanguageProficiency: Record<string, string> = {}
+    const languages = Array.isArray(job.languages) ? job.languages : []
+    if (languages.length > 0) {
+        languages.forEach((lang) => {
+            defaultLanguageProficiency[lang.language] = ""
+        })
+    }
 
     const form = useForm<PersonalData>({
         resolver: zodResolver(personalDataSchema) as any,
@@ -143,10 +199,24 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
             salaryExpectation: undefined,
             linkedinUrl: "",
             portfolioUrl: "",
+            screeningAnswers: defaultScreeningAnswers,
+            languageProficiency: defaultLanguageProficiency,
         },
     })
 
     const onSubmit = async (data: PersonalData) => {
+        // Knockout validation - check if any disqualifying question was answered "No"
+        if (job.screeningQuestions && job.screeningQuestions.length > 0 && data.screeningAnswers) {
+            for (const sq of job.screeningQuestions) {
+                if (sq.disqualify && data.screeningAnswers[sq.question] === false) {
+                    toast.error(t("apply.knockoutMessage"), {
+                        duration: 6000,
+                    })
+                    return // Stop submission
+                }
+            }
+        }
+
         setIsSubmitting(true)
         try {
             await onStartApplication(data)
@@ -375,11 +445,11 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                 <Form {...form}>
                                     <form
                                         onSubmit={form.handleSubmit(onSubmit)}
-                                        className="space-y-6"
+                                        className="space-y-5"
                                         noValidate
                                     >
                                         {/* Basic Info */}
-                                        <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="grid md:grid-cols-2 gap-3">
                                             <FormField
                                                 control={form.control}
                                                 name="name"
@@ -423,7 +493,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                             />
                                         </div>
 
-                                        <div className="grid md:grid-cols-3 gap-4">
+                                        <div className="grid md:grid-cols-3 gap-3">
                                             <FormField
                                                 control={form.control}
                                                 name="phone"
@@ -489,7 +559,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                             />
                                         </div>
 
-                                        <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="grid md:grid-cols-2 gap-3">
                                             <FormField
                                                 control={form.control}
                                                 name="yearsOfExperience"
@@ -540,8 +610,110 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                             )}
                                         </div>
 
+                                        {/* Screening Questions */}
+                                        {Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0 && (
+                                            <>
+                                                <Separator className="my-4" />
+                                                <div className="space-y-3">
+                                                    {job.screeningQuestions.map((sq, index) => (
+                                                        <FormField
+                                                            key={index}
+                                                            control={form.control}
+                                                            name={`screeningAnswers.${sq.question}` as any}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel className="flex items-center justify-between gap-2 text-sm">
+                                                                        <span>
+                                                                            {index + 1}. {sq.question}
+                                                                        </span>
+                                                                        {sq.disqualify && (
+                                                                            <Badge variant="destructive" className="text-xs shrink-0">
+                                                                                {t("apply.disqualifyWarning")}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <RadioGroup
+                                                                            onValueChange={(value) => {
+                                                                                const boolValue = value === "true"
+                                                                                field.onChange(boolValue)
+                                                                            }}
+                                                                            value={field.value === undefined || field.value === null ? "" : String(field.value)}
+                                                                            dir={isRTL ? "rtl" : "ltr"}
+                                                                            className="flex gap-6 mt-2"
+                                                                        >
+                                                                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                                                                <RadioGroupItem value="true" id={`sq-${index}-yes`} />
+                                                                                <label
+                                                                                    htmlFor={`sq-${index}-yes`}
+                                                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                                                >
+                                                                                    {t("common.yes")}
+                                                                                </label>
+                                                                            </div>
+                                                                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                                                                <RadioGroupItem value="false" id={`sq-${index}-no`} />
+                                                                                <label
+                                                                                    htmlFor={`sq-${index}-no`}
+                                                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                                                >
+                                                                                    {t("common.no")}
+                                                                                </label>
+                                                                            </div>
+                                                                        </RadioGroup>
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Languages */}
+                                        {Array.isArray(job.languages) && job.languages.length > 0 && (
+                                            <>
+                                                <Separator className="my-4" />
+                                                <div className="grid md:grid-cols-2 gap-3">
+                                                    {job.languages.map((lang, index) => (
+                                                        <FormField
+                                                            key={index}
+                                                            control={form.control}
+                                                            name={`languageProficiency.${lang.language}` as any}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel className="text-sm">
+                                                                        {lang.language}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <Select 
+                                                                            onValueChange={field.onChange} 
+                                                                            value={field.value}
+                                                                            dir={isRTL ? "rtl" : "ltr"}
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder={t("apply.languageProficiency")} />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="beginner">{t("apply.beginner")}</SelectItem>
+                                                                                <SelectItem value="intermediate">{t("apply.intermediate")}</SelectItem>
+                                                                                <SelectItem value="advanced">{t("apply.advanced")}</SelectItem>
+                                                                                <SelectItem value="native">{t("apply.native")}</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+
                                         {/* Links */}
-                                        <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="grid md:grid-cols-2 gap-3">
                                             <FormField
                                                 control={form.control}
                                                 name="linkedinUrl"

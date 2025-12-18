@@ -21,6 +21,8 @@ export interface IPersonalData {
     linkedinUrl?: string
     behanceUrl?: string
     portfolioUrl?: string
+    screeningAnswers?: Record<string, boolean>
+    languageProficiency?: Record<string, string>
 }
 
 export interface IApplicant extends Document {
@@ -97,6 +99,14 @@ const personalDataSchema = new Schema<IPersonalData>(
         portfolioUrl: {
             type: String,
             trim: true,
+        },
+        screeningAnswers: {
+            type: Map,
+            of: Boolean,
+        },
+        languageProficiency: {
+            type: Map,
+            of: String,
         },
     },
     { _id: false }

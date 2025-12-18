@@ -21,6 +21,8 @@ interface Job {
     employmentType: string
     currency?: string
     skills: Array<{ name: string; importance: string }>
+    screeningQuestions: Array<{ question: string; disqualify: boolean }>
+    languages: Array<{ language: string; level: string }>
     minExperience: number
     candidateDataConfig: {
         requireCV: boolean
@@ -65,6 +67,7 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         setPersonalData,
         setWizardStep,
         resetSession,
+        backToPersonalInfo,
     } = useApplicationStore()
 
     // Determine if user has started based on having personal data in store
@@ -134,6 +137,13 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         }
     }
 
+    /**
+     * Handle going back to personal info from assessment wizard
+     */
+    const handleBackToPersonalInfo = () => {
+        backToPersonalInfo()
+    }
+
     // Show loading state
     if (loading) {
         return (
@@ -193,5 +203,5 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     }
 
     // Show assessment wizard
-    return <AssessmentWizard job={job} />
+    return <AssessmentWizard job={job} onBackToPersonalInfo={handleBackToPersonalInfo} />
 }

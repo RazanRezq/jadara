@@ -53,6 +53,7 @@ interface VoiceQuestionProps {
     existingResponse?: QuestionResponse
     readOnly?: boolean
     onNext?: () => void
+    onBack?: () => void
 }
 
 const parseTimeLimit = (timeLimit?: string): number => {
@@ -81,6 +82,7 @@ export function VoiceQuestion({
     existingResponse,
     readOnly = false,
     onNext,
+    onBack,
 }: VoiceQuestionProps) {
     const { t, locale } = useTranslate()
     const [stage, setStage] = useState<"permission" | "ready" | "countdown" | "recording" | "preview" | "readonly">(
@@ -110,6 +112,7 @@ export function VoiceQuestion({
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
+    const ArrowPrev = isRTL ? ArrowRight : ArrowLeft
     const timeLimitSeconds = parseTimeLimit(question.timeLimit)
 
     // Set initial stage based on readOnly
@@ -121,6 +124,15 @@ export function VoiceQuestion({
             setStage("permission")
         }
     }, [readOnly, existingResponse, questionNumber])
+
+    // Reset playback state when stage changes to preview or readonly
+    useEffect(() => {
+        if (stage === "preview" || stage === "readonly") {
+            setIsPlaying(false)
+            setCurrentTime(0)
+            setDuration(0)
+        }
+    }, [stage])
 
     // Request microphone permission
     const requestPermission = async () => {
@@ -166,9 +178,11 @@ export function VoiceQuestion({
         }
 
         mediaRecorder.onstop = () => {
-            const blob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+            const blob = new Blob(audioChunksRef.current, { type: "audio/webm;codecs=opus" })
             setAudioBlob(blob)
-            setAudioUrl(URL.createObjectURL(blob))
+            const url = URL.createObjectURL(blob)
+            setAudioUrl(url)
+            setStage("preview")
         }
 
         mediaRecorder.start(100) // Collect data every 100ms
@@ -232,7 +246,7 @@ export function VoiceQuestion({
 
             if (isAutoSubmit && audioChunksRef.current.length > 0) {
                 // Auto-submit when timer runs out
-                const blob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+                const blob = new Blob(audioChunksRef.current, { type: "audio/webm;codecs=opus" })
                 setIsUploading(true)
 
                 try {
@@ -370,10 +384,25 @@ export function VoiceQuestion({
 
     const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement>) => {
         const audio = e.currentTarget
-        // Handle Infinity duration (common with Blobs) by setting a fallback
+        // Handle Infinity duration (common with Blobs) by seeking to resolve it
         if (audio.duration === Infinity || isNaN(audio.duration)) {
-            setDuration(0)
+            // Force seek to end to get real duration (blob audio workaround)
+            audio.currentTime = 1e101
+            audio.addEventListener('timeupdate', function getDuration() {
+                audio.currentTime = 0
+                if (audio.duration !== Infinity && !isNaN(audio.duration)) {
+                    setDuration(audio.duration)
+                }
+                audio.removeEventListener('timeupdate', getDuration)
+            }, { once: true })
         } else {
+            setDuration(audio.duration)
+        }
+    }
+
+    const handleDurationChange = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+        const audio = e.currentTarget
+        if (audio.duration !== Infinity && !isNaN(audio.duration) && audio.duration > 0) {
             setDuration(audio.duration)
         }
     }
@@ -413,7 +442,7 @@ export function VoiceQuestion({
     const recordingProgressPercent = ((timeLimitSeconds - timeRemaining) / timeLimitSeconds) * 100
 
     return (
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+        <Card className="border-2 border-border bg-card shadow-sm">
             <CardHeader>
                 <div className="flex items-center justify-between mb-4">
                     <Badge
@@ -486,9 +515,11 @@ export function VoiceQuestion({
                                     src={audioUrl}
                                     onTimeUpdate={handleTimeUpdate}
                                     onLoadedMetadata={handleLoadedMetadata}
+                                    onDurationChange={handleDurationChange}
                                     onEnded={handleEnded}
                                     onPlay={handlePlay}
                                     onPause={handlePause}
+                                    preload="metadata"
                                     className="hidden"
                                 />
                                 <div className="flex items-center gap-3">
@@ -512,76 +543,104 @@ export function VoiceQuestion({
                                             step={0.1}
                                             className="cursor-pointer"
                                         />
-                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                        <div className="flex justify-between text-xs text-muted-foreground" dir="ltr">
                                             <span>{formatTime(Math.floor(currentTime))}</span>
-                                            <span>{duration > 0 ? formatTime(Math.floor(duration)) : "--:--"}</span>
+                                            <span>{formatTime(Math.floor(duration))}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        <Button size="lg" className="w-full h-12 text-base gap-2" onClick={handleNext}>
-                            {questionNumber < totalQuestions ? (
-                                <>
-                                    {t("apply.nextQuestion")}
-                                    <ArrowIcon className="size-4" />
-                                </>
-                            ) : (
-                                <>
-                                    {t("apply.continueToUpload") || "Continue"}
-                                    <ArrowIcon className="size-4" />
-                                </>
+                        <div className="flex gap-3">
+                            {onBack && (
+                                <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
+                                    <ArrowPrev className="size-4" />
+                                    {t("common.back")}
+                                </Button>
                             )}
-                        </Button>
+                            <Button size="lg" className="flex-1 h-12 text-base gap-2" onClick={handleNext}>
+                                {questionNumber < totalQuestions ? (
+                                    <>
+                                        {t("apply.nextQuestion")}
+                                        <ArrowIcon className="size-4" />
+                                    </>
+                                ) : (
+                                    <>
+                                        {t("apply.continueToUpload") || "Continue"}
+                                        <ArrowIcon className="size-4" />
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 )}
 
                 {/* Permission Request */}
                 {stage === "permission" && !readOnly && (
-                    <div className="text-center space-y-4">
-                        <div className="size-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                            <Mic className="size-10 text-primary" />
+                    <div className="space-y-4">
+                        <div className="text-center space-y-4">
+                            <div className="size-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                                <Mic className="size-10 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold mb-1">{t("apply.microphoneAccess")}</h3>
+                                <p className="text-sm text-muted-foreground">{t("apply.microphoneAccessDescription")}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-semibold mb-1">{t("apply.microphoneAccess")}</h3>
-                            <p className="text-sm text-muted-foreground">{t("apply.microphoneAccessDescription")}</p>
+                        <div className="flex gap-3">
+                            {onBack && (
+                                <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
+                                    <ArrowPrev className="size-4" />
+                                    {t("common.back")}
+                                </Button>
+                            )}
+                            <Button onClick={requestPermission} size="lg" className="flex-1 h-12 text-base gap-2">
+                                <Mic className="size-4" />
+                                {t("apply.allowMicrophone")}
+                            </Button>
                         </div>
-                        <Button onClick={requestPermission} size="lg" className="gap-2">
-                            <Mic className="size-4" />
-                            {t("apply.allowMicrophone")}
-                        </Button>
                     </div>
                 )}
 
                 {/* Ready to Record */}
                 {stage === "ready" && !readOnly && (
-                    <div className="text-center space-y-4">
-                        <div className="size-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
-                            <CheckCircle2 className="size-10 text-green-500" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold mb-1">{t("apply.readyToRecord")}</h3>
-                            <p className="text-sm text-muted-foreground">{t("apply.readyToRecordDescription")}</p>
-                            <div className="flex items-center justify-center gap-2 mt-2 text-amber-500">
-                                <Clock className="size-4" />
-                                <span className="text-sm font-medium">
-                                    {formatTime(timeLimitSeconds)} {t("apply.timeLimit")}
-                                </span>
+                    <div className="space-y-4">
+                        <div className="text-center space-y-4">
+                            <div className="size-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
+                                <CheckCircle2 className="size-10 text-green-500" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold mb-1">{t("apply.readyToRecord")}</h3>
+                                <p className="text-sm text-muted-foreground">{t("apply.readyToRecordDescription")}</p>
+                                <div className="flex items-center justify-center gap-2 mt-2 text-amber-500">
+                                    <Clock className="size-4" />
+                                    <span className="text-sm font-medium">
+                                        {formatTime(timeLimitSeconds)} {t("apply.timeLimit")}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-start">
+                                <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-amber-600 dark:text-amber-400">{t("apply.noRetakeWarning")}</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-start">
-                            <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-amber-600 dark:text-amber-400">{t("apply.noRetakeWarning")}</p>
+                        <div className="flex gap-3">
+                            {onBack && (
+                                <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
+                                    <ArrowPrev className="size-4" />
+                                    {t("common.back")}
+                                </Button>
+                            )}
+                            <Button
+                                onClick={startCountdown}
+                                size="lg"
+                                className="flex-1 h-12 text-base gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                            >
+                                <Play className="size-4" />
+                                {t("apply.startRecording")}
+                            </Button>
                         </div>
-                        <Button
-                            onClick={startCountdown}
-                            size="lg"
-                            className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                        >
-                            <Play className="size-4" />
-                            {t("apply.startRecording")}
-                        </Button>
                     </div>
                 )}
 
@@ -668,9 +727,11 @@ export function VoiceQuestion({
                                 src={audioUrl}
                                 onTimeUpdate={handleTimeUpdate}
                                 onLoadedMetadata={handleLoadedMetadata}
+                                onDurationChange={handleDurationChange}
                                 onEnded={handleEnded}
                                 onPlay={handlePlay}
                                 onPause={handlePause}
+                                preload="metadata"
                                 className="hidden"
                             />
                             <div className="flex items-center gap-3">
@@ -694,37 +755,51 @@ export function VoiceQuestion({
                                         step={0.1}
                                         className="cursor-pointer"
                                     />
-                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                    <div className="flex justify-between text-xs text-muted-foreground" dir="ltr">
                                         <span>{formatTime(Math.floor(currentTime))}</span>
-                                        <span>{duration > 0 ? formatTime(Math.floor(duration)) : "--:--"}</span>
+                                        <span>{formatTime(Math.floor(duration))}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <Button
-                            onClick={handleSubmit}
-                            size="lg"
-                            className="w-full h-12 text-base gap-2"
-                            disabled={isUploading}
-                        >
-                            {isUploading ? (
-                                <>
-                                    <Spinner className="size-4" />
-                                    {t("apply.uploading") || "Uploading..."}
-                                </>
-                            ) : questionNumber < totalQuestions ? (
-                                <>
-                                    {t("apply.nextQuestion")}
-                                    <ArrowIcon className="size-4" />
-                                </>
-                            ) : (
-                                <>
-                                    {t("apply.submitAnswer")}
-                                    <Send className="size-4" />
-                                </>
+                        <div className="flex gap-3">
+                            {onBack && (
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="h-12 text-base gap-2"
+                                    onClick={onBack}
+                                    disabled={isUploading}
+                                >
+                                    <ArrowPrev className="size-4" />
+                                    {t("common.back")}
+                                </Button>
                             )}
-                        </Button>
+                            <Button
+                                onClick={handleSubmit}
+                                size="lg"
+                                className="flex-1 h-12 text-base gap-2"
+                                disabled={isUploading}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Spinner className="size-4" />
+                                        {t("apply.uploading") || "Uploading..."}
+                                    </>
+                                ) : questionNumber < totalQuestions ? (
+                                    <>
+                                        {t("apply.nextQuestion")}
+                                        <ArrowIcon className="size-4" />
+                                    </>
+                                ) : (
+                                    <>
+                                        {t("apply.submitAnswer")}
+                                        <Send className="size-4" />
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </CardContent>

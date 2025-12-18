@@ -20,6 +20,8 @@ export interface PersonalData {
     salaryExpectation?: number
     linkedinUrl?: string
     portfolioUrl?: string
+    screeningAnswers?: Record<string, boolean>
+    languageProficiency?: Record<string, string>
 }
 
 export interface QuestionResponse {
@@ -104,13 +106,32 @@ export async function submitApplication(
         // Generate unique session ID
         const sessionId = uuidv4()
 
+        // Convert screeningAnswers and languageProficiency to Maps for MongoDB
+        const personalData: any = {
+            ...payload.personalData,
+            email: payload.personalData.email.toLowerCase(),
+        }
+
+        // Convert screeningAnswers object to Map if it exists
+        if (payload.personalData.screeningAnswers && Object.keys(payload.personalData.screeningAnswers).length > 0) {
+            personalData.screeningAnswers = new Map(
+                Object.entries(payload.personalData.screeningAnswers)
+            )
+            console.log('✅ Screening Answers being saved:', Object.fromEntries(personalData.screeningAnswers))
+        }
+
+        // Convert languageProficiency object to Map if it exists
+        if (payload.personalData.languageProficiency && Object.keys(payload.personalData.languageProficiency).length > 0) {
+            personalData.languageProficiency = new Map(
+                Object.entries(payload.personalData.languageProficiency)
+            )
+            console.log('✅ Language Proficiency being saved:', Object.fromEntries(personalData.languageProficiency))
+        }
+
         // Create the applicant record
         const applicant = await Applicant.create({
             jobId: payload.jobId,
-            personalData: {
-                ...payload.personalData,
-                email: payload.personalData.email.toLowerCase(),
-            },
+            personalData,
             cvUrl: payload.fileUploads.cvUrl,
             notes: payload.notes || "",
             sessionId,

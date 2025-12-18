@@ -31,6 +31,7 @@ interface TextQuestionProps {
     existingResponse?: QuestionResponse
     readOnly?: boolean
     onNext?: () => void
+    onBack?: () => void
 }
 
 export function TextQuestion({
@@ -41,6 +42,7 @@ export function TextQuestion({
     existingResponse,
     readOnly = false,
     onNext,
+    onBack,
 }: TextQuestionProps) {
     const { t, locale } = useTranslate()
     const [answer, setAnswer] = useState(existingResponse?.answer || "")
@@ -49,6 +51,7 @@ export function TextQuestion({
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
+    const ArrowPrev = isRTL ? ArrowRight : ArrowLeft
 
     useEffect(() => {
         // Reset for new question (if not read-only)
@@ -84,7 +87,7 @@ export function TextQuestion({
     const isValidLength = charCount >= minChars
 
     return (
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+        <Card className="border-2 border-border bg-card shadow-sm">
             <CardHeader>
                 <div className="flex items-center justify-between mb-4">
                     <Badge variant="secondary" className="gap-1.5">
@@ -150,46 +153,72 @@ export function TextQuestion({
                     </p>
                 )}
 
-                {/* Action Button */}
+                {/* Action Buttons */}
                 {readOnly ? (
-                    // Read-only mode: Show "Next" button to navigate
-                    <Button
-                        size="lg"
-                        className="w-full h-12 text-base gap-2"
-                        onClick={handleNext}
-                    >
-                        {questionNumber < totalQuestions ? (
-                            <>
-                                {t("apply.nextQuestion")}
-                                <ArrowIcon className="size-4" />
-                            </>
-                        ) : (
-                            <>
-                                {t("apply.continueToUpload") || "Continue"}
-                                <ArrowIcon className="size-4" />
-                            </>
+                    // Read-only mode: Show "Back" and "Next" buttons
+                    <div className="flex gap-3">
+                        {onBack && (
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className="h-12 text-base gap-2"
+                                onClick={onBack}
+                            >
+                                <ArrowPrev className="size-4" />
+                                {t("common.back")}
+                            </Button>
                         )}
-                    </Button>
+                        <Button
+                            size="lg"
+                            className="flex-1 h-12 text-base gap-2"
+                            onClick={handleNext}
+                        >
+                            {questionNumber < totalQuestions ? (
+                                <>
+                                    {t("apply.nextQuestion")}
+                                    <ArrowIcon className="size-4" />
+                                </>
+                            ) : (
+                                <>
+                                    {t("apply.continueToUpload") || "Continue"}
+                                    <ArrowIcon className="size-4" />
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 ) : (
-                    // Normal mode: Show submit button
-                    <Button
-                        size="lg"
-                        className="w-full h-12 text-base gap-2"
-                        onClick={handleSubmit}
-                        disabled={!isValidLength}
-                    >
-                        {questionNumber < totalQuestions ? (
-                            <>
-                                {t("apply.nextQuestion")}
-                                <ArrowIcon className="size-4" />
-                            </>
-                        ) : (
-                            <>
-                                {t("apply.submitAnswer")}
-                                <Send className="size-4" />
-                            </>
+                    // Normal mode: Show "Back" and submit button
+                    <div className="flex gap-3">
+                        {onBack && (
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className="h-12 text-base gap-2"
+                                onClick={onBack}
+                            >
+                                <ArrowPrev className="size-4" />
+                                {t("common.back")}
+                            </Button>
                         )}
-                    </Button>
+                        <Button
+                            size="lg"
+                            className="flex-1 h-12 text-base gap-2"
+                            onClick={handleSubmit}
+                            disabled={!isValidLength}
+                        >
+                            {questionNumber < totalQuestions ? (
+                                <>
+                                    {t("apply.nextQuestion")}
+                                    <ArrowIcon className="size-4" />
+                                </>
+                            ) : (
+                                <>
+                                    {t("apply.submitAnswer")}
+                                    <Send className="size-4" />
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 )}
             </CardContent>
         </Card>

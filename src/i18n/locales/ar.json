@@ -34,7 +34,8 @@
         "error": "حدث خطأ ما",
         "characters": "حرف",
         "saving": "جارٍ الحفظ...",
-        "reset": "إعادة تعيين"
+        "reset": "إعادة تعيين",
+        "required": "مطلوب"
     },
     "auth": {
         "login": "تسجيل الدخول",
@@ -334,8 +335,22 @@
             "experienceMin": "سنوات الخبرة لا يمكن أن تكون سالبة",
             "experienceMax": "سنوات الخبرة لا يمكن أن تتجاوز 50",
             "salaryMin": "التوقعات المالية يجب أن تكون رقم موجب",
-            "urlInvalid": "يرجى إدخال رابط صحيح"
+            "urlInvalid": "يرجى إدخال رابط صحيح",
+            "screeningQuestionRequired": "هذا السؤال مطلوب",
+            "languageRequired": "يرجى تحديد مستوى كفاءتك اللغوية"
         },
+        "screeningQuestions": "أسئلة الفرز",
+        "screeningQuestionsDescription": "يرجى الإجابة على هذه الأسئلة بصدق",
+        "disqualifyWarning": "هذا سؤال حاسم",
+        "languages": "اللغات",
+        "languagesDescription": "يرجى تحديد مستوى كفاءتك في اللغات المطلوبة",
+        "languageProficiency": "مستوى الكفاءة",
+        "beginner": "مبتدئ",
+        "intermediate": "متوسط",
+        "advanced": "متقدم",
+        "native": "لغة أم",
+        "knockoutTitle": "لا يمكن المتابعة في التقديم",
+        "knockoutMessage": "للأسف، أنت لا تستوفي الحد الأدنى من المتطلبات لهذه الوظيفة. شكراً لاهتمامك.",
         "instructions": "التعليمات",
         "question": "السؤال",
         "uploadDocuments": "رفع المستندات",

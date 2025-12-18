@@ -16,6 +16,8 @@ import {
     CheckCircle2,
     AlertCircle,
     MessageSquare,
+    ArrowLeft,
+    ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -27,6 +29,7 @@ interface FileUploadStepProps {
     requirePortfolio: boolean
     onSubmit: (cvUrl?: string, portfolioUrl?: string) => Promise<void>
     isSubmitting: boolean
+    onBack?: () => void
 }
 
 export function FileUploadStep({
@@ -34,9 +37,13 @@ export function FileUploadStep({
     requirePortfolio,
     onSubmit,
     isSubmitting,
+    onBack,
 }: FileUploadStepProps) {
     const { t, locale } = useTranslate()
     const cvInputRef = useRef<HTMLInputElement>(null)
+    
+    const isRTL = locale === "ar"
+    const ArrowPrev = isRTL ? ArrowRight : ArrowLeft
 
     // Zustand store for notes
     const { notes, setNotes } = useApplicationStore()
@@ -146,7 +153,7 @@ export function FileUploadStep({
     }
 
     return (
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Card className="border-2 border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CardHeader className="text-center">
                 <div className="mx-auto mb-4 size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <Upload className="size-8 text-primary" />
@@ -292,24 +299,38 @@ export function FileUploadStep({
                     </div>
                 )}
 
-                <Button
-                    size="lg"
-                    className="w-full h-12 text-base gap-2"
-                    onClick={handleSubmit}
-                    disabled={!canSubmit || isSubmitting}
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Spinner className="size-4" />
-                            {t("apply.submitting")}
-                        </>
-                    ) : (
-                        <>
-                            {t("apply.submitApplication")}
-                            <CheckCircle2 className="size-4" />
-                        </>
+                <div className="flex gap-3">
+                    {onBack && (
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            className="h-12 text-base gap-2"
+                            onClick={onBack}
+                            disabled={isSubmitting}
+                        >
+                            <ArrowPrev className="size-4" />
+                            {t("common.back")}
+                        </Button>
                     )}
-                </Button>
+                    <Button
+                        size="lg"
+                        className="flex-1 h-12 text-base gap-2"
+                        onClick={handleSubmit}
+                        disabled={!canSubmit || isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Spinner className="size-4" />
+                                {t("apply.submitting")}
+                            </>
+                        ) : (
+                            <>
+                                {t("apply.submitApplication")}
+                                <CheckCircle2 className="size-4" />
+                            </>
+                        )}
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     )

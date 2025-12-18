@@ -119,3 +119,4 @@ To prevent similar issues in the future:
 **Fixed Date**: December 16, 2025  
 **Status**: ✅ Resolved - Candidates page now accessible
 
+

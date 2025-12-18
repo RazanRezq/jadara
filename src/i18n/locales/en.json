@@ -34,7 +34,8 @@
         "error": "Something went wrong",
         "characters": "characters",
         "saving": "Saving...",
-        "reset": "Reset"
+        "reset": "Reset",
+        "required": "Required"
     },
     "auth": {
         "login": "Login",
@@ -334,8 +335,22 @@
             "experienceMin": "Years of experience cannot be negative",
             "experienceMax": "Years of experience cannot exceed 50",
             "salaryMin": "Salary expectation must be a positive number",
-            "urlInvalid": "Please enter a valid URL"
+            "urlInvalid": "Please enter a valid URL",
+            "screeningQuestionRequired": "This question is required",
+            "languageRequired": "Please specify your language proficiency"
         },
+        "screeningQuestions": "Screening Questions",
+        "screeningQuestionsDescription": "Please answer these questions honestly",
+        "disqualifyWarning": "This is a critical question",
+        "languages": "Languages",
+        "languagesDescription": "Please indicate your proficiency in the required languages",
+        "languageProficiency": "Proficiency",
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced",
+        "native": "Native",
+        "knockoutTitle": "Application Cannot Continue",
+        "knockoutMessage": "Unfortunately, you do not meet the minimum requirements for this position. Thank you for your interest.",
         "instructions": "Instructions",
         "question": "Question",
         "uploadDocuments": "Upload Documents",

@@ -32,6 +32,8 @@ interface Job {
     id: string
     title: string
     description: string
+    screeningQuestions: Array<{ question: string; disqualify: boolean }>
+    languages: Array<{ language: string; level: string }>
     candidateDataConfig: {
         requireCV: boolean
         requireLinkedIn: boolean
@@ -49,11 +51,12 @@ interface Job {
 
 interface AssessmentWizardProps {
     job: Job
+    onBackToPersonalInfo?: () => void
 }
 
 type WizardStep = "instructions" | "questions" | "upload" | "complete"
 
-export function AssessmentWizard({ job }: AssessmentWizardProps) {
+export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizardProps) {
     const { t, locale } = useTranslate()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const hasVisibilityListenerRef = useRef(false)
@@ -62,8 +65,6 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
     const {
         wizardStep,
         currentQuestionIndex,
-        responses,
-        fileUploads,
         setWizardStep,
         setCurrentQuestionIndex,
         addResponse,
@@ -184,20 +185,14 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
     }
 
     /**
-     * Handle navigation back to a previous question
-     */
-    const handleNavigateToQuestion = (index: number) => {
-        if (index >= 0 && index < totalQuestions) {
-            setCurrentQuestionIndex(index)
-        }
-    }
-
-    /**
      * Handle going back to previous step/question
      */
     const handleGoBack = () => {
         if (wizardStep === "instructions") {
-            // Can't go back from instructions (would need to go back to personal info)
+            // Go back to personal info form
+            if (onBackToPersonalInfo) {
+                onBackToPersonalInfo()
+            }
             return
         } else if (wizardStep === "questions") {
             if (currentQuestionIndex > 0) {
@@ -221,7 +216,7 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
     /**
      * Check if back button should be shown
      */
-    const canGoBack = wizardStep !== "instructions"
+    const canGoBack = true // Always show back button, including on instructions step
 
     /**
      * Handle file upload completion
@@ -301,7 +296,7 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
     return (
         <div className="min-h-screen">
             {/* Header */}
-            <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/40">
+            <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/95 border-b border-border">
                 <div className="container mx-auto px-4 py-4">
                     {/* Top Row: Logo, Title, and Controls */}
                     <div className="flex items-center justify-between mb-4">
@@ -374,11 +369,11 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
             </header>
 
             {/* Main Content */}
-            <main className="pt-32 pb-16 px-4">
+            <main className="pt-45 pb-16 px-4">
                 <div className="container mx-auto max-w-2xl">
                     {/* Instructions Step */}
                     {wizardStep === "instructions" && (
-                        <Card className="border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card className="border-2 border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <CardHeader className="text-center">
                                 <div className="mx-auto mb-4 size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                                     <AlertCircle className="size-8 text-primary" />
@@ -490,7 +485,7 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                             {totalQuestions === 0 ? (
                                 /* No Questions - Show friendly message */
-                                <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                                <Card className="border-2 border-border bg-card shadow-sm">
                                     <CardHeader className="text-center">
                                         <div className="mx-auto mb-4 size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                                             <Info className="size-8 text-primary" />
@@ -536,45 +531,6 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
                             ) : currentQuestion ? (
                                 /* Has Questions - Normal flow */
                                 <div key={currentQuestionIndex}>
-                                    {/* Question Navigation - Shows completed questions */}
-                                    {responses.length > 0 && (
-                                        <div className="mb-4 flex flex-wrap gap-2">
-                                            {job.questions.map((_, idx) => {
-                                                const hasResponse = hasResponseForQuestion(idx)
-                                                const isCurrent = idx === currentQuestionIndex
-                                                return (
-                                                    <Button
-                                                        key={idx}
-                                                        variant={isCurrent ? "default" : hasResponse ? "secondary" : "outline"}
-                                                        size="sm"
-                                                        className={cn(
-                                                            "min-w-[40px]",
-                                                            hasResponse && !isCurrent && "bg-green-100 dark:bg-green-900/30"
-                                                        )}
-                                                        onClick={() => handleNavigateToQuestion(idx)}
-                                                    >
-                                                        {hasResponse && !isCurrent && (
-                                                            <CheckCircle2 className="size-3 mr-1 text-green-600" />
-                                                        )}
-                                                        {idx + 1}
-                                                    </Button>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Add Back Button */}
-                                    {canGoBack && (
-                                        <Button
-                                            variant="outline"
-                                            className="mb-4 gap-2"
-                                            onClick={handleGoBack}
-                                        >
-                                            <ArrowPrev className="size-4" />
-                                            {t("common.back")}
-                                        </Button>
-                                    )}
-
                                     {currentQuestion.type === "text" ? (
                                         <TextQuestion
                                             question={currentQuestion}
@@ -590,6 +546,7 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
                                                     setWizardStep("upload")
                                                 }
                                             }}
+                                            onBack={canGoBack ? handleGoBack : undefined}
                                         />
                                     ) : (
                                         <VoiceQuestion
@@ -606,6 +563,7 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
                                                     setWizardStep("upload")
                                                 }
                                             }}
+                                            onBack={canGoBack ? handleGoBack : undefined}
                                         />
                                     )}
                                 </div>
@@ -615,25 +573,13 @@ export function AssessmentWizard({ job }: AssessmentWizardProps) {
 
                     {/* File Upload Step */}
                     {wizardStep === "upload" && (
-                        <div className="space-y-4">
-                            {canGoBack && (
-                                <Button
-                                    variant="outline"
-                                    className="gap-2"
-                                    onClick={handleGoBack}
-                                    disabled={isSubmitting}
-                                >
-                                    <ArrowPrev className="size-4" />
-                                    {t("common.back")}
-                                </Button>
-                            )}
-                            <FileUploadStep
-                                requireCV={job.candidateDataConfig.requireCV}
-                                requirePortfolio={job.candidateDataConfig.requirePortfolio}
-                                onSubmit={handleFileUploadComplete}
-                                isSubmitting={isSubmitting}
-                            />
-                        </div>
+                        <FileUploadStep
+                            requireCV={job.candidateDataConfig.requireCV}
+                            requirePortfolio={job.candidateDataConfig.requirePortfolio}
+                            onSubmit={handleFileUploadComplete}
+                            isSubmitting={isSubmitting}
+                            onBack={canGoBack ? handleGoBack : undefined}
+                        />
                     )}
                 </div>
             </main>
