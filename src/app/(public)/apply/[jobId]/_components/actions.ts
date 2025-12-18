@@ -117,7 +117,6 @@ export async function submitApplication(
             personalData.screeningAnswers = new Map(
                 Object.entries(payload.personalData.screeningAnswers)
             )
-            console.log('✅ Screening Answers being saved:', Object.fromEntries(personalData.screeningAnswers))
         }
 
         // Convert languageProficiency object to Map if it exists
@@ -125,7 +124,6 @@ export async function submitApplication(
             personalData.languageProficiency = new Map(
                 Object.entries(payload.personalData.languageProficiency)
             )
-            console.log('✅ Language Proficiency being saved:', Object.fromEntries(personalData.languageProficiency))
         }
 
         // Create the applicant record
