@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { useTranslate } from "@/hooks/useTranslate"
-import { JobWizardFormValues, Skill, ScreeningQuestion, Language, PROFICIENCY_LEVELS, COMMON_LANGUAGES } from "./types"
+import { JobWizardFormValues, Skill, ScreeningQuestion, Language, PROFICIENCY_LEVELS, COMMON_LANGUAGES, LANGUAGE_TRANSLATIONS } from "./types"
 import { Plus, Trash2, ShieldAlert, Globe2, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
@@ -29,7 +29,7 @@ interface Step2CriteriaProps {
 
 export function Step2Criteria({ form }: Step2CriteriaProps) {
     const { t, locale } = useTranslate()
-    
+
     const skills = form.watch('skills') || []
     const screeningQuestions = form.watch('screeningQuestions') || []
     const languages = form.watch('languages') || []
@@ -98,7 +98,19 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
     const updateLanguage = (index: number, field: keyof Language, value: string) => {
         const current = form.getValues('languages') || []
         const updated = [...current]
-        updated[index] = { ...updated[index], [field]: value }
+
+        // If updating language name, convert localized name back to English for storage
+        if (field === 'language') {
+            const langKey = Object.keys(LANGUAGE_TRANSLATIONS).find(
+                key => value === LANGUAGE_TRANSLATIONS[key]?.en ||
+                    value === LANGUAGE_TRANSLATIONS[key]?.ar
+            )
+            updated[index] = { ...updated[index], language: langKey || value }
+        } else {
+            // For level field, we know it's a valid proficiency level
+            updated[index] = { ...updated[index], level: value as Language['level'] }
+        }
+
         form.setValue('languages', updated, { shouldValidate: true, shouldDirty: true })
     }
 
@@ -127,8 +139,8 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 {skills.length > 0 && (
                     <div className="space-y-2">
                         {skills.map((skill, index) => (
-                            <div 
-                                key={index} 
+                            <div
+                                key={index}
                                 className={cn(
                                     "flex items-center gap-3 p-3 border rounded-lg bg-background transition-all",
                                     "hover:shadow-md hover:border-primary/20"
@@ -213,8 +225,8 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 {/* Screening Questions List */}
                 <div className="space-y-3">
                     {screeningQuestions.map((sq, index) => (
-                        <div 
-                            key={index} 
+                        <div
+                            key={index}
                             className="flex items-start gap-3 p-4 border rounded-lg bg-background hover:shadow-md transition-all"
                         >
                             <Button
@@ -241,9 +253,9 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                         onCheckedChange={(checked) => updateScreeningQuestion(index, 'disqualify', checked)}
                                     />
                                     <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
+                                        <span className="text-sm font-medium">
                                             {t("jobWizard.step2.disqualifyIfNo")}
-                            </span>
+                                        </span>
                                         {sq.disqualify && (
                                             <Badge variant="destructive" className="text-xs">
                                                 {t("jobWizard.step2.disqualifying")}
@@ -258,7 +270,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
 
                 <Button
                     type="button"
-                                    variant="outline"
+                    variant="outline"
                     className="w-full border-dashed hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all"
                     onClick={addScreeningQuestion}
                 >
@@ -284,8 +296,8 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 {/* Languages List */}
                 <div className="space-y-3">
                     {languages.map((lang, index) => (
-                        <div 
-                            key={index} 
+                        <div
+                            key={index}
                             className="flex items-center gap-3 p-4 border rounded-lg bg-background hover:shadow-md transition-all"
                         >
                             <Button
@@ -299,16 +311,27 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                             </Button>
 
                             <Input
-                                value={lang.language}
+                                value={(() => {
+                                    // Display localized name if it's a known language, otherwise show as-is
+                                    if (LANGUAGE_TRANSLATIONS[lang.language]) {
+                                        const translation = LANGUAGE_TRANSLATIONS[lang.language]
+                                        return locale === 'ar' ? translation.ar : translation.en
+                                    }
+                                    return lang.language
+                                })()}
                                 onChange={(e) => updateLanguage(index, 'language', e.target.value)}
                                 placeholder={t("jobWizard.step2.languagePlaceholder")}
                                 className="flex-1 transition-all focus:ring-2 focus:ring-primary/20"
                                 list={`languages-${index}`}
                             />
                             <datalist id={`languages-${index}`}>
-                                {COMMON_LANGUAGES.map((l) => (
-                                    <option key={l} value={l} />
-                                ))}
+                                {COMMON_LANGUAGES.map((l) => {
+                                    const translation = LANGUAGE_TRANSLATIONS[l] || { en: l, ar: l }
+                                    const displayName = locale === 'ar' ? translation.ar : translation.en
+                                    return (
+                                        <option key={l} value={displayName} />
+                                    )
+                                })}
                             </datalist>
 
                             <Select
@@ -328,7 +351,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                             </Select>
                         </div>
                     ))}
-                    </div>
+                </div>
 
                 <Button
                     type="button"
@@ -349,9 +372,9 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                     <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-1" />
                     <div className="space-y-1 flex-1">
                         <h3 className="text-lg font-semibold">{t("jobWizard.step2.minExperience")}</h3>
-                    <p className="text-muted-foreground text-sm">
+                        <p className="text-muted-foreground text-sm">
                             {t("jobWizard.step2.minExperienceDesc")}
-                    </p>
+                        </p>
                     </div>
                 </div>
 
@@ -375,7 +398,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     {minExperience}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {minExperience === 0 
+                                    {minExperience === 0
                                         ? (locale === 'ar' ? 'بدون خبرة مطلوبة' : 'No experience required')
                                         : `${minExperience} ${t("jobWizard.step2.years")}`
                                     }

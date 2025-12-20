@@ -101,6 +101,7 @@ export function VoiceQuestion({
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
+    const [audioError, setAudioError] = useState<string | null>(null)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
@@ -161,39 +162,26 @@ export function VoiceQuestion({
         setCountdown(3)
     }
 
-    // Start actual recording
-    const startRecording = useCallback(() => {
-        if (!streamRef.current) return
+    // Get supported MIME type for recording
+    const getSupportedMimeType = () => {
+        const types = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/ogg;codecs=opus',
+            'audio/mp4',
+            'audio/mpeg',
+        ]
 
-        const mediaRecorder = new MediaRecorder(streamRef.current, {
-            mimeType: "audio/webm;codecs=opus",
-        })
-
-        audioChunksRef.current = []
-
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                audioChunksRef.current.push(event.data)
+        for (const type of types) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                console.log('[Voice Recording] Using MIME type:', type)
+                return type
             }
         }
 
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(audioChunksRef.current, { type: "audio/webm;codecs=opus" })
-            setAudioBlob(blob)
-            const url = URL.createObjectURL(blob)
-            setAudioUrl(url)
-            setStage("preview")
-        }
-
-        mediaRecorder.start(100) // Collect data every 100ms
-        mediaRecorderRef.current = mediaRecorder
-        startTimeRef.current = new Date().toISOString()
-        setStage("recording")
-        setTimeRemaining(timeLimitSeconds)
-
-        // Start audio visualization
-        updateAudioLevels()
-    }, [timeLimitSeconds])
+        console.warn('[Voice Recording] No preferred MIME type supported, using default')
+        return ''
+    }
 
     // Update audio visualization
     const updateAudioLevels = useCallback(() => {
@@ -217,6 +205,73 @@ export function VoiceQuestion({
         setAudioLevels(levels)
         animationFrameRef.current = requestAnimationFrame(updateAudioLevels)
     }, [])
+
+    // Start actual recording
+    const startRecording = useCallback(() => {
+        if (!streamRef.current) {
+            console.error('[Voice Recording] No stream available')
+            toast.error(t("apply.microphoneError") || "Microphone not available")
+            return
+        }
+
+        try {
+            const mimeType = getSupportedMimeType()
+            const options = mimeType ? { mimeType } : undefined
+
+            console.log('[Voice Recording] Creating MediaRecorder with options:', options)
+            const mediaRecorder = new MediaRecorder(streamRef.current, options)
+
+            audioChunksRef.current = []
+
+            mediaRecorder.ondataavailable = (event) => {
+                console.log('[Voice Recording] Data available:', event.data.size, 'bytes')
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data)
+                }
+            }
+
+            mediaRecorder.onstop = () => {
+                console.log('[Voice Recording] Recording stopped, chunks:', audioChunksRef.current.length)
+                if (audioChunksRef.current.length === 0) {
+                    console.error('[Voice Recording] No audio data captured!')
+                    toast.error(t("apply.recordingFailed") || "Recording failed - no audio captured")
+                    setStage("ready")
+                    return
+                }
+
+                const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' })
+                console.log('[Voice Recording] Created blob:', blob.size, 'bytes, type:', blob.type)
+                setAudioBlob(blob)
+                const url = URL.createObjectURL(blob)
+                setAudioUrl(url)
+                setStage("preview")
+            }
+
+            mediaRecorder.onerror = (event) => {
+                console.error('[Voice Recording] MediaRecorder error:', event)
+                toast.error(t("apply.recordingError") || "Recording error occurred")
+                setStage("ready")
+            }
+
+            mediaRecorder.onstart = () => {
+                console.log('[Voice Recording] Recording started')
+            }
+
+            console.log('[Voice Recording] Starting MediaRecorder...')
+            mediaRecorder.start(100) // Collect data every 100ms
+            mediaRecorderRef.current = mediaRecorder
+            startTimeRef.current = new Date().toISOString()
+            setStage("recording")
+            setTimeRemaining(timeLimitSeconds)
+
+            // Start audio visualization
+            updateAudioLevels()
+        } catch (error) {
+            console.error('[Voice Recording] Failed to start recording:', error)
+            toast.error(t("apply.recordingError") || "Failed to start recording")
+            setStage("ready")
+        }
+    }, [timeLimitSeconds, t, updateAudioLevels])
 
     /**
      * Converts a Blob to a File object with proper naming
@@ -384,6 +439,7 @@ export function VoiceQuestion({
 
     const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement>) => {
         const audio = e.currentTarget
+        setAudioError(null)
         // Handle Infinity duration (common with Blobs) by seeking to resolve it
         if (audio.duration === Infinity || isNaN(audio.duration)) {
             // Force seek to end to get real duration (blob audio workaround)
@@ -414,18 +470,56 @@ export function VoiceQuestion({
 
     const handlePlay = () => {
         setIsPlaying(true)
+        setAudioError(null)
     }
 
     const handlePause = () => {
         setIsPlaying(false)
     }
 
-    const handlePlayPause = () => {
+    const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+        console.error('Audio element error:', e)
+        const audio = e.currentTarget
+        let errorMessage = 'Failed to load audio'
+
+        if (audio.error) {
+            switch (audio.error.code) {
+                case MediaError.MEDIA_ERR_ABORTED:
+                    errorMessage = 'Audio loading was aborted'
+                    break
+                case MediaError.MEDIA_ERR_NETWORK:
+                    errorMessage = 'Network error while loading audio'
+                    break
+                case MediaError.MEDIA_ERR_DECODE:
+                    errorMessage = 'Audio file is corrupted or in an unsupported format'
+                    break
+                case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                    errorMessage = 'Audio format not supported by your browser'
+                    break
+                default:
+                    errorMessage = 'Unknown error loading audio'
+            }
+        }
+
+        setAudioError(errorMessage)
+        setIsPlaying(false)
+        toast.error(errorMessage)
+    }
+
+    const handlePlayPause = async () => {
         if (audioPlayerRef.current) {
-            if (isPlaying) {
-                audioPlayerRef.current.pause()
-            } else {
-                audioPlayerRef.current.play()
+            try {
+                if (isPlaying) {
+                    audioPlayerRef.current.pause()
+                } else {
+                    setAudioError(null)
+                    await audioPlayerRef.current.play()
+                }
+            } catch (error) {
+                console.error('Audio playback error:', error)
+                setAudioError('Failed to play audio. The file may be corrupted or in an unsupported format.')
+                setIsPlaying(false)
+                toast.error('Failed to play audio recording')
             }
         }
     }
@@ -508,7 +602,7 @@ export function VoiceQuestion({
                         </div>
 
                         {/* Audio player */}
-                        {audioUrl && (
+                        {audioUrl ? (
                             <div className="p-4 rounded-lg bg-muted/50 space-y-3">
                                 <audio
                                     ref={audioPlayerRef}
@@ -519,9 +613,17 @@ export function VoiceQuestion({
                                     onEnded={handleEnded}
                                     onPlay={handlePlay}
                                     onPause={handlePause}
+                                    onError={handleAudioError}
                                     preload="metadata"
+                                    crossOrigin="anonymous"
                                     className="hidden"
                                 />
+                                {audioError && (
+                                    <div className="text-xs text-red-500 flex items-center gap-1 justify-center">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        {audioError}
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-3">
                                     <Button
                                         size="icon"
@@ -549,6 +651,11 @@ export function VoiceQuestion({
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 rounded-lg bg-muted/50 text-center text-muted-foreground">
+                                <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">{t("apply.noAudioAvailable") || "No audio recording available"}</p>
                             </div>
                         )}
 
@@ -731,9 +838,17 @@ export function VoiceQuestion({
                                 onEnded={handleEnded}
                                 onPlay={handlePlay}
                                 onPause={handlePause}
+                                onError={handleAudioError}
                                 preload="metadata"
+                                crossOrigin="anonymous"
                                 className="hidden"
                             />
+                            {audioError && (
+                                <div className="text-xs text-red-500 flex items-center gap-1 justify-center">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {audioError}
+                                </div>
+                            )}
                             <div className="flex items-center gap-3">
                                 <Button
                                     size="icon"

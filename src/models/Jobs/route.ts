@@ -109,11 +109,33 @@ app.post('/add', async (c) => {
 
         const validation = createJobSchema.safeParse(body)
         if (!validation.success) {
+            // Extract meaningful field errors from Zod validation
+            const issues = validation.error.issues
+            const fieldErrors: Record<string, string[]> = {}
+            
+            // Process each issue to get user-friendly error messages
+            for (const issue of issues) {
+                const path = issue.path
+                // Get the top-level field name (e.g., "languages" from ["languages", 0, "language"])
+                const fieldName = String(path[0] || 'form')
+                
+                if (!fieldErrors[fieldName]) {
+                    fieldErrors[fieldName] = []
+                }
+                
+                // Add the error message if not already added
+                if (!fieldErrors[fieldName].includes(issue.message)) {
+                    fieldErrors[fieldName].push(issue.message)
+                }
+            }
+            
+            console.error('[Job Creation] Validation failed:', JSON.stringify(fieldErrors, null, 2))
+            
             return c.json(
                 {
                     success: false,
                     error: 'Validation failed',
-                    details: validation.error.flatten().fieldErrors,
+                    details: fieldErrors,
                 },
                 400
             )

@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { getLocalizedLanguageName } from "@/lib/language-translations"
 
 interface Job {
     id: string
@@ -684,7 +685,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                             render={({ field }) => (
                                                                 <FormItem>
                                                                     <FormLabel className="text-sm">
-                                                                        {lang.language}
+                                                                        {getLocalizedLanguageName(lang.language, locale)}
                                                                     </FormLabel>
                                                                     <FormControl>
                                                                         <Select 

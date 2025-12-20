@@ -3,8 +3,14 @@
 import dbConnect from "@/lib/mongodb"
 import Applicant from "@/models/Applicants/applicantSchema"
 import Response from "@/models/Responses/responseSchema"
+import Job from "@/models/Jobs/jobSchema"
+import Evaluation from "@/models/Evaluations/evaluationSchema"
 import { v4 as uuidv4 } from "uuid"
 import { uploadFile as uploadToSpaces } from "@/lib/s3"
+import {
+    evaluateCandidate,
+    CandidateEvaluationInput,
+} from "@/services/evaluation"
 
 // ============================================
 // TYPES
@@ -62,6 +68,11 @@ export interface SubmitApplicationResult {
     success: boolean
     error?: string
     applicantId?: string
+    // AI Evaluation status
+    evaluationStarted?: boolean
+    evaluationCompleted?: boolean
+    evaluationScore?: number
+    evaluationError?: string
 }
 
 // ============================================
@@ -161,9 +172,168 @@ export async function submitApplication(
             await Response.insertMany(responseDocuments)
         }
 
+        // ============================================
+        // TRIGGER AI EVALUATION (Real-time)
+        // ============================================
+        // Run evaluation immediately after saving
+        // Errors here won't affect the application submission
+        const applicantId = applicant._id.toString()
+        let evaluationResult: {
+            started: boolean
+            completed: boolean
+            score?: number
+            error?: string
+        } = { started: false, completed: false }
+
+        try {
+            console.log("[Submission] Starting AI evaluation for applicant:", applicantId)
+            
+            // Fetch the job to get criteria
+            const job = await Job.findById(payload.jobId)
+            
+            if (job) {
+                // Build voice responses from the submitted data
+                const voiceResponses: CandidateEvaluationInput['voiceResponses'] = []
+                const textResponses: CandidateEvaluationInput['textResponses'] = []
+
+                for (const response of payload.responses) {
+                    const questionText = job.questions?.[response.questionIndex]?.text || `Question ${response.questionIndex + 1}`
+                    const questionWeight = job.questions?.[response.questionIndex]?.weight || 5
+
+                    if (response.type === 'voice' && response.audioUrl) {
+                        voiceResponses.push({
+                            questionId: `q_${response.questionIndex}`,
+                            questionText,
+                            questionWeight,
+                            audioUrl: response.audioUrl,
+                        })
+                    } else if (response.type === 'text' && response.answer) {
+                        textResponses.push({
+                            questionId: `q_${response.questionIndex}`,
+                            questionText,
+                            answer: response.answer,
+                        })
+                    }
+                }
+
+                // Build job criteria
+                const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
+                    title: job.title,
+                    description: job.description,
+                    skills: job.skills?.map(s => ({
+                        name: s.name,
+                        importance: s.importance,
+                        type: s.type,
+                    })) || [],
+                    minExperience: job.minExperience || 0,
+                    languages: job.languages?.map(l => ({
+                        language: l.language,
+                        level: l.level,
+                    })) || [],
+                    criteria: job.criteria?.map(c => ({
+                        name: c.name,
+                        description: c.description,
+                        weight: c.weight,
+                        required: c.required,
+                    })) || [],
+                    salaryMin: job.salaryMin,
+                    salaryMax: job.salaryMax,
+                    autoRejectThreshold: job.autoRejectThreshold || 35,
+                }
+
+                // Build candidate input
+                const candidateInput: CandidateEvaluationInput = {
+                    applicantId,
+                    jobId: payload.jobId,
+                    personalData: {
+                        name: payload.personalData.name,
+                        email: payload.personalData.email,
+                        phone: payload.personalData.phone,
+                        age: payload.personalData.age,
+                        yearsOfExperience: payload.personalData.yearsOfExperience,
+                        salaryExpectation: payload.personalData.salaryExpectation,
+                        linkedinUrl: payload.personalData.linkedinUrl,
+                        portfolioUrl: payload.personalData.portfolioUrl,
+                    },
+                    voiceResponses,
+                    textResponses,
+                    cvUrl: payload.fileUploads.cvUrl,
+                    jobCriteria,
+                }
+
+                evaluationResult.started = true
+                console.log("[Submission] Evaluation input prepared, starting AI analysis...")
+
+                // Run the evaluation
+                const result = await evaluateCandidate(candidateInput)
+
+                if (result.success && result.evaluation) {
+                    evaluationResult.completed = true
+                    evaluationResult.score = result.evaluation.overallScore
+
+                    // Save evaluation to database
+                    await Evaluation.create({
+                        applicantId,
+                        jobId: payload.jobId,
+                        overallScore: result.evaluation.overallScore,
+                        criteriaMatches: result.evaluation.criteriaMatches,
+                        strengths: result.evaluation.strengths,
+                        weaknesses: result.evaluation.weaknesses,
+                        redFlags: result.evaluation.redFlags,
+                        summary: result.evaluation.summary,
+                        recommendation: result.evaluation.recommendation,
+                        recommendationReason: result.evaluation.recommendationReason,
+                        suggestedQuestions: result.evaluation.suggestedQuestions,
+                        sentimentScore: result.evaluation.sentimentScore,
+                        confidenceScore: result.evaluation.confidenceScore,
+                        isProcessed: true,
+                        processedAt: new Date(),
+                    })
+
+                    // Update applicant with AI results
+                    await Applicant.findByIdAndUpdate(applicantId, {
+                        status: 'evaluated',
+                        aiScore: result.evaluation.overallScore,
+                        aiSummary: result.evaluation.summary,
+                        aiRedFlags: result.evaluation.redFlags,
+                        cvParsedData: result.evaluation.parsedResume,
+                    })
+
+                    // Update voice response transcripts
+                    for (const transcript of result.evaluation.transcripts) {
+                        await Response.findOneAndUpdate(
+                            { applicantId, questionId: transcript.questionId },
+                            {
+                                rawTranscript: transcript.rawTranscript,
+                                cleanTranscript: transcript.cleanTranscript,
+                            }
+                        )
+                    }
+
+                    console.log("[Submission] AI evaluation completed successfully!")
+                    console.log("[Submission] Score:", result.evaluation.overallScore)
+                    console.log("[Submission] Recommendation:", result.evaluation.recommendation)
+                } else {
+                    evaluationResult.error = result.error || "Evaluation failed"
+                    console.warn("[Submission] AI evaluation failed:", result.error)
+                }
+            } else {
+                evaluationResult.error = "Job not found for evaluation"
+                console.warn("[Submission] Job not found for AI evaluation")
+            }
+        } catch (evalError) {
+            // Graceful error handling - don't fail the submission
+            evaluationResult.error = evalError instanceof Error ? evalError.message : "Evaluation error"
+            console.error("[Submission] AI evaluation error (non-blocking):", evalError)
+        }
+
         return {
             success: true,
-            applicantId: applicant._id.toString(),
+            applicantId,
+            evaluationStarted: evaluationResult.started,
+            evaluationCompleted: evaluationResult.completed,
+            evaluationScore: evaluationResult.score,
+            evaluationError: evaluationResult.error,
         }
     } catch (error) {
         console.error("Submit application error:", error)
@@ -282,8 +452,27 @@ export async function uploadAudio(
         const arrayBuffer = await audio.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
-        // Determine content type
-        const contentType = audio.type || "audio/webm"
+        // Determine content type - ensure it's browser-compatible
+        // Strip codec info for better compatibility, use base MIME type
+        let contentType = audio.type || "audio/webm"
+        
+        // Normalize content type for better browser compatibility
+        if (contentType.includes("webm")) {
+            contentType = "audio/webm"
+        } else if (contentType.includes("ogg")) {
+            contentType = "audio/ogg"
+        } else if (contentType.includes("mp4")) {
+            contentType = "audio/mp4"
+        } else if (contentType.includes("mpeg")) {
+            contentType = "audio/mpeg"
+        }
+
+        console.log("🎤 Audio upload details:", {
+            originalType: audio.type,
+            normalizedType: contentType,
+            size: audio.size,
+            key,
+        })
 
         // Upload to DigitalOcean Spaces
         const url = await uploadToSpaces(buffer, key, contentType, true)

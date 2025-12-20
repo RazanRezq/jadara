@@ -9,14 +9,24 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 // DigitalOcean Spaces Configuration
-const SPACES_ENDPOINT = process.env.DO_SPACES_ENDPOINT || 'https://sfo3.digitaloceanspaces.com'
 const SPACES_REGION = process.env.DO_SPACES_REGION || 'sfo3'
 const SPACES_BUCKET = process.env.DO_SPACES_BUCKET || 'razanstorage'
 const SPACES_ACCESS_KEY_ID = process.env.DO_SPACES_ACCESS_KEY_ID || ''
 const SPACES_SECRET_ACCESS_KEY = process.env.DO_SPACES_SECRET_ACCESS_KEY || ''
 
+// Construct the correct endpoint (should NOT include bucket name)
+// Format: https://REGION.digitaloceanspaces.com
+const SPACES_ENDPOINT = `https://${SPACES_REGION}.digitaloceanspaces.com`
+
+// Log configuration for debugging
+console.log('🔧 S3 Configuration:', {
+    endpoint: SPACES_ENDPOINT,
+    region: SPACES_REGION,
+    bucket: SPACES_BUCKET,
+})
+
 // Initialize S3 Client for DigitalOcean Spaces
-// Using path-style to avoid hostname doubling issues
+// Using virtual-hosted style URLs (bucket.region.digitaloceanspaces.com)
 const s3Client = new S3Client({
     endpoint: SPACES_ENDPOINT,
     region: SPACES_REGION,
@@ -24,7 +34,7 @@ const s3Client = new S3Client({
         accessKeyId: SPACES_ACCESS_KEY_ID,
         secretAccessKey: SPACES_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: true, // Use path-style URLs: endpoint/bucket/key
+    forcePathStyle: false, // Use virtual-hosted style: bucket.region.digitaloceanspaces.com/key
 })
 
 /**
@@ -32,41 +42,71 @@ const s3Client = new S3Client({
  * @param file - File buffer or stream
  * @param key - File path/key in the bucket
  * @param contentType - MIME type of the file
- * @param isPublic - Whether to return public URL or file key (default: false)
- *                   Note: Actual file permissions are controlled at the bucket level in DigitalOcean Spaces
+ * @param isPublic - Whether the file should be publicly accessible (default: true for Standard buckets)
  * @returns Promise with the file URL (if public) or file key (if private)
  */
 export async function uploadFile(
     file: Buffer | Uint8Array,
     key: string,
     contentType: string,
-    isPublic: boolean = false
+    isPublic: boolean = true
 ): Promise<string> {
     try {
+        // Prepare upload parameters
         const params: PutObjectCommandInput = {
             Bucket: SPACES_BUCKET,
             Key: key,
             Body: file,
             ContentType: contentType,
-            // Note: DigitalOcean Spaces doesn't support ACL in PutObject
-            // File permissions are controlled at the bucket level
+            // Set ACL to public-read for Standard buckets to make files publicly accessible
+            ACL: isPublic ? 'public-read' : 'private',
+            // Add cache control for better performance
+            CacheControl: 'public, max-age=31536000', // 1 year
         }
 
+        // For audio files, ensure proper content disposition for inline playback
+        if (contentType.startsWith('audio/')) {
+            params.ContentDisposition = 'inline'
+            console.log('🎵 Audio file detected - setting ContentDisposition to inline')
+        }
+
+        console.log('📤 Uploading file to Spaces:', {
+            bucket: SPACES_BUCKET,
+            region: SPACES_REGION,
+            key,
+            contentType,
+            isPublic,
+            fileSize: file.length,
+            cacheControl: params.CacheControl,
+            contentDisposition: params.ContentDisposition,
+        })
+
         const command = new PutObjectCommand(params)
-        await s3Client.send(command)
+        const response = await s3Client.send(command)
+
+        console.log('✅ Upload successful:', {
+            etag: response.ETag,
+            key,
+        })
 
         // Return the public URL
         if (isPublic) {
             // DigitalOcean Spaces public URL format: https://bucket-name.region.digitaloceanspaces.com/key
-            // Always construct using bucket.region format regardless of path-style config
             const publicUrl = `https://${SPACES_BUCKET}.${SPACES_REGION}.digitaloceanspaces.com/${key}`
+            console.log('🔗 Public URL:', publicUrl)
             return publicUrl
         }
 
         // For private files, return the key (you'll need to generate signed URLs later)
         return key
     } catch (error) {
-        console.error('Error uploading file to Spaces:', error)
+        console.error('❌ Error uploading file to Spaces:', {
+            bucket: SPACES_BUCKET,
+            region: SPACES_REGION,
+            key,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            errorDetails: error,
+        })
         throw new Error('Failed to upload file')
     }
 }

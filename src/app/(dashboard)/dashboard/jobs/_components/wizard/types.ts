@@ -173,6 +173,8 @@ export const PROFICIENCY_LEVELS = [
     { value: 'native', label: 'لغة أم', labelEn: 'Native' },
 ] as const
 
+import { LANGUAGE_TRANSLATIONS } from '@/lib/language-translations'
+
 export const COMMON_LANGUAGES = [
     'English',
     'Arabic',
@@ -185,6 +187,8 @@ export const COMMON_LANGUAGES = [
     'Russian',
     'Portuguese',
 ] as const
+
+export { LANGUAGE_TRANSLATIONS }
 
 
 

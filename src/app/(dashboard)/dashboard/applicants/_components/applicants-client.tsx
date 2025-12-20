@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
 import {
     Select,
     SelectContent,
@@ -12,38 +15,29 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { type UserRole } from "@/lib/auth"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 import {
     Search,
-    MoreHorizontal,
-    Eye,
     RefreshCw,
     Users,
-    Star,
-    AlertTriangle,
-    Mail,
-    Phone,
-    Download,
+    Sparkles,
+    Filter,
+    Building2,
+    X,
 } from "lucide-react"
+import { CandidateCard } from "./candidate-card"
+import { DashboardStats } from "./dashboard-stats"
 import { ViewApplicantDialog } from "./view-applicant-dialog"
 import { toast } from "sonner"
 
@@ -85,42 +79,75 @@ export interface Applicant {
     createdAt: string
 }
 
+export interface EvaluationData {
+    id: string
+    applicantId: string
+    overallScore: number
+    recommendation: 'hire' | 'hold' | 'reject' | 'pending'
+    strengths: string[]
+    weaknesses: string[]
+    redFlags: string[]
+    summary: string
+    recommendationReason: string
+    suggestedQuestions: string[]
+    criteriaMatches: Array<{
+        criteriaName: string
+        matched: boolean
+        score: number
+        reason: string
+    }>
+    sentimentScore?: number
+    confidenceScore?: number
+}
+
 interface ApplicantsClientProps {
     currentUserRole: UserRole
     userId: string
 }
 
-const statusColors: Record<ApplicantStatus, string> = {
-    new: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    screening: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-    interviewing: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-    evaluated: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
-    shortlisted: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
-    hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-    rejected: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-    withdrawn: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-}
+// Available skills for filtering
+const SKILL_OPTIONS = [
+    "React", "Node.js", "TypeScript", "Python", "Angular", "Vue.js",
+    "Docker", "AWS", "Java", "GraphQL"
+]
 
 export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientProps) {
     const { t, isRTL } = useTranslate()
     const searchParams = useSearchParams()
     const jobIdFromUrl = searchParams.get("jobId")
 
+    // Data states
     const [applicants, setApplicants] = useState<Applicant[]>([])
+    const [evaluations, setEvaluations] = useState<Map<string, EvaluationData>>(new Map())
     const [jobs, setJobs] = useState<{ id: string; title: string }[]>([])
     const [loading, setLoading] = useState(true)
+
+    // Filter states
     const [searchTerm, setSearchTerm] = useState("")
-    const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set())
     const [jobFilter, setJobFilter] = useState<string>(jobIdFromUrl || "all")
-    const [minScore, setMinScore] = useState("")
+    const [minScore, setMinScore] = useState<number>(0)
+    const [experienceRange, setExperienceRange] = useState<[number, number]>([0, 20])
+    const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
+
+    // Pagination
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
+
+    // Stats
+    const [stats, setStats] = useState({
+        totalApplicants: 0,
+        aiRecommended: 0,
+        averageScore: 0,
+        topMissingSkill: "React",
+    })
 
     // Dialog states
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
 
+    // Fetch jobs list
     const fetchJobs = useCallback(async () => {
         try {
             const response = await fetch("/api/jobs/list?limit=100")
@@ -133,18 +160,21 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }, [])
 
+    // Fetch applicants with evaluations
     const fetchApplicants = useCallback(async () => {
         setLoading(true)
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: "10",
+                limit: "50",
                 role: currentUserRole,
             })
             if (searchTerm) params.append("search", searchTerm)
-            if (statusFilter && statusFilter !== "all") params.append("status", statusFilter)
+            if (statusFilters.size > 0 && !statusFilters.has("all")) {
+                params.append("status", Array.from(statusFilters)[0])
+            }
             if (jobFilter && jobFilter !== "all") params.append("jobId", jobFilter)
-            if (minScore) params.append("minScore", minScore)
+            if (minScore > 0) params.append("minScore", minScore.toString())
 
             const response = await fetch(`/api/applicants/list?${params}`)
             const data = await response.json()
@@ -153,14 +183,57 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 setApplicants(data.applicants)
                 setTotalPages(data.pagination.totalPages)
                 setTotal(data.pagination.total)
+
+                // Fetch evaluations for applicants
+                const applicantIds = data.applicants.map((a: Applicant) => a.id)
+                await fetchEvaluations(applicantIds)
+
+                // Calculate stats
+                const evaluated = data.applicants.filter((a: Applicant) => a.aiScore !== undefined)
+                const recommended = data.applicants.filter((a: Applicant) => (a.aiScore || 0) >= 75)
+                const avgScore = evaluated.length > 0
+                    ? evaluated.reduce((sum: number, a: Applicant) => sum + (a.aiScore || 0), 0) / evaluated.length
+                    : 0
+
+                setStats({
+                    totalApplicants: data.pagination.total,
+                    aiRecommended: recommended.length,
+                    averageScore: avgScore,
+                    topMissingSkill: "React", // This would come from aggregated data
+                })
             }
         } catch (error) {
             console.error("Failed to fetch applicants:", error)
-            toast.error(t("common.loading"))
+            toast.error(t("common.error"))
         } finally {
             setLoading(false)
         }
-    }, [page, searchTerm, statusFilter, jobFilter, minScore, currentUserRole, t])
+    }, [page, searchTerm, statusFilters, jobFilter, minScore, currentUserRole, t])
+
+    // Fetch evaluation data for applicants
+    const fetchEvaluations = async (applicantIds: string[]) => {
+        const newEvaluations = new Map<string, EvaluationData>()
+        
+        // Fetch evaluations in parallel (batch of 5)
+        const batchSize = 5
+        for (let i = 0; i < applicantIds.length; i += batchSize) {
+            const batch = applicantIds.slice(i, i + batchSize)
+            const promises = batch.map(async (id) => {
+                try {
+                    const response = await fetch(`/api/evaluations/by-applicant/${id}?role=${currentUserRole}`)
+                    const data = await response.json()
+                    if (data.success && data.evaluation) {
+                        newEvaluations.set(id, data.evaluation)
+                    }
+                } catch (error) {
+                    // Silently fail for missing evaluations
+                }
+            })
+            await Promise.all(promises)
+        }
+        
+        setEvaluations(newEvaluations)
+    }
 
     useEffect(() => {
         fetchJobs()
@@ -176,18 +249,40 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }, [jobIdFromUrl])
 
+    // Filter handlers
     const handleSearch = (value: string) => {
         setSearchTerm(value)
         setPage(1)
     }
 
-    const handleStatusFilter = (value: string) => {
-        setStatusFilter(value)
+    const handleStatusToggle = (status: string) => {
+        const newFilters = new Set(statusFilters)
+        if (newFilters.has(status)) {
+            newFilters.delete(status)
+        } else {
+            newFilters.add(status)
+        }
+        setStatusFilters(newFilters)
         setPage(1)
     }
 
-    const handleJobFilter = (value: string) => {
-        setJobFilter(value)
+    const handleSkillToggle = (skill: string) => {
+        const newSkills = new Set(selectedSkills)
+        if (newSkills.has(skill)) {
+            newSkills.delete(skill)
+        } else {
+            newSkills.add(skill)
+        }
+        setSelectedSkills(newSkills)
+    }
+
+    const clearAllFilters = () => {
+        setSearchTerm("")
+        setStatusFilters(new Set())
+        setJobFilter("all")
+        setMinScore(0)
+        setExperienceRange([0, 20])
+        setSelectedSkills(new Set())
         setPage(1)
     }
 
@@ -196,270 +291,345 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         setViewDialogOpen(true)
     }
 
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return "-"
-        return new Date(dateString).toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        })
-    }
+    // Filter applicants client-side for additional filters
+    const filteredApplicants = applicants.filter(applicant => {
+        // Experience filter
+        const exp = applicant.personalData?.yearsOfExperience ?? 0
+        if (exp < experienceRange[0] || exp > experienceRange[1]) return false
+        
+        // Skills filter (check tags)
+        if (selectedSkills.size > 0) {
+            const hasSkill = applicant.tags?.some(tag => 
+                Array.from(selectedSkills).some(skill => 
+                    tag.toLowerCase().includes(skill.toLowerCase())
+                )
+            )
+            if (!hasSkill) return false
+        }
+        
+        return true
+    })
 
-    const getScoreColor = (score?: number) => {
-        if (!score) return "text-muted-foreground"
-        if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
-        if (score >= 60) return "text-amber-600 dark:text-amber-400"
-        return "text-red-600 dark:text-red-400"
-    }
+    // Separate recommended candidates
+    const recommendedApplicants = filteredApplicants.filter(a => (a.aiScore || 0) >= 75)
+    const otherApplicants = filteredApplicants.filter(a => (a.aiScore || 0) < 75)
+
+    const hasActiveFilters = searchTerm || statusFilters.size > 0 || jobFilter !== "all" || 
+        minScore > 0 || selectedSkills.size > 0 || experienceRange[0] > 0 || experienceRange[1] < 20
 
     return (
-        <div className="space-y-6">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">{t("applicants.title")}</h1>
-                    <p className="text-muted-foreground mt-1">
-                        {t("applicants.subtitle")}
-                    </p>
+        <div className="flex flex-col lg:flex-row gap-6">
+            {/* Main Content */}
+            <div className="flex-1 space-y-6">
+                {/* Page Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/60">
+                            <Building2 className="h-6 w-6 text-primary-foreground" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold">{t("applicants.smartDashboard")}</h1>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Select value={jobFilter} onValueChange={(v) => { setJobFilter(v); setPage(1); }}>
+                                    <SelectTrigger className="w-auto h-7 text-xs border-0 bg-transparent hover:bg-muted/50 px-2">
+                                        <SelectValue placeholder={t("applicants.selectJob")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t("applicants.allJobs")}</SelectItem>
+                                        {jobs.map((job) => (
+                                            <SelectItem key={job.id} value={job.id}>
+                                                {job.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative w-full sm:w-80">
+                        <Search className={cn(
+                            "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
+                            isRTL ? "right-3" : "left-3"
+                        )} />
+                        <Input
+                            placeholder={t("applicants.searchPlaceholder")}
+                            value={searchTerm}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            className={cn("h-10", isRTL ? "pr-10" : "pl-10")}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Filters Bar */}
-            <div className="flex flex-col lg:flex-row gap-4">
-                {/* Search */}
-                <div className="relative flex-1">
-                    <Search className={cn(
-                        "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                        isRTL ? "right-3" : "left-3"
-                    )} />
-                    <Input
-                        placeholder={t("applicants.searchPlaceholder")}
-                        value={searchTerm}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        className={cn(
-                            isRTL ? "pr-10 text-right" : "pl-10"
-                        )}
-                    />
-                </div>
+                {/* Stats Cards */}
+                <DashboardStats stats={stats} />
 
-                {/* Job Filter */}
-                <Select value={jobFilter} onValueChange={handleJobFilter}>
-                    <SelectTrigger className="w-full lg:w-[200px]">
-                        <SelectValue placeholder={t("applicants.filterByJob")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">{t("applicants.allJobs")}</SelectItem>
-                        {jobs.map((job) => (
-                            <SelectItem key={job.id} value={job.id}>
-                                {job.title}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                {/* AI Recommended Section */}
+                {recommendedApplicants.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                            <h2 className="text-lg font-semibold">{t("applicants.aiRecommendedTitle")}</h2>
+                            <Badge variant="secondary" className="text-xs">
+                                {recommendedApplicants.length} {t("applicants.candidates")}
+                            </Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {recommendedApplicants.slice(0, 6).map((applicant) => (
+                                <CandidateCard
+                                    key={applicant.id}
+                                    applicant={applicant}
+                                    evaluation={evaluations.get(applicant.id)}
+                                    onView={handleViewApplicant}
+                                    isRecommended
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-                {/* Status Filter */}
-                <Select value={statusFilter} onValueChange={handleStatusFilter}>
-                    <SelectTrigger className="w-full lg:w-[180px]">
-                        <SelectValue placeholder={t("applicants.filterByStatus")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">{t("applicants.allStatuses")}</SelectItem>
-                        <SelectItem value="new">{t("applicants.status.new")}</SelectItem>
-                        <SelectItem value="screening">{t("applicants.status.screening")}</SelectItem>
-                        <SelectItem value="interviewing">{t("applicants.status.interviewing")}</SelectItem>
-                        <SelectItem value="evaluated">{t("applicants.status.evaluated")}</SelectItem>
-                        <SelectItem value="shortlisted">{t("applicants.status.shortlisted")}</SelectItem>
-                        <SelectItem value="hired">{t("applicants.status.hired")}</SelectItem>
-                        <SelectItem value="rejected">{t("applicants.status.rejected")}</SelectItem>
-                    </SelectContent>
-                </Select>
+                {/* All Candidates Section */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <h2 className="text-lg font-semibold">{t("applicants.allCandidates")}</h2>
+                        <Badge variant="outline" className="text-xs">
+                            {otherApplicants.length} {t("applicants.candidates")}
+                        </Badge>
+                    </div>
 
-                {/* Min Score */}
-                <Input
-                    type="number"
-                    placeholder={t("applicants.minScore")}
-                    value={minScore}
-                    onChange={(e) => {
-                        setMinScore(e.target.value)
-                        setPage(1)
-                    }}
-                    className="w-full lg:w-[120px]"
-                    min="0"
-                    max="100"
-                />
-
-                {/* Refresh Button */}
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={fetchApplicants}
-                    disabled={loading}
-                >
-                    <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-                </Button>
-            </div>
-
-            {/* Applicants Table */}
-            <Card>
-                <CardContent className="p-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
                             <Spinner className="h-8 w-8 text-primary" />
                         </div>
-                    ) : applicants.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                            <Users className="h-12 w-12 mb-4 opacity-50" />
-                            <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
-                            <p className="text-sm">{t("applicants.tryAdjusting")}</p>
-                        </div>
+                    ) : filteredApplicants.length === 0 ? (
+                        <Card className="border-dashed">
+                            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                <Users className="h-12 w-12 mb-4 opacity-50" />
+                                <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
+                                <p className="text-sm">{t("applicants.tryAdjusting")}</p>
+                            </CardContent>
+                        </Card>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("applicants.candidate")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("applicants.job")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("applicants.score")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("common.status")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("applicants.experience")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("applicants.submitted")}</TableHead>
-                                    <TableHead className={isRTL ? "text-left" : "text-right"}>{t("common.actions")}</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {applicants.map((applicant) => (
-                                    <TableRow key={applicant.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm">
-                                                    {applicant.personalData?.name?.charAt(0)?.toUpperCase() ||
-                                                        applicant.personalData?.email?.charAt(0)?.toUpperCase() ||
-                                                        'A'}
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-medium">
-                                                            {applicant.personalData?.name?.trim() ||
-                                                                applicant.personalData?.email?.split('@')[0] ||
-                                                                'Unknown'}
-                                                        </p>
-                                                        {applicant.isSuspicious && (
-                                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                                        <Mail className="h-3 w-3" />
-                                                        <span className="truncate max-w-[150px]">{applicant.personalData?.email || 'N/A'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {applicant.jobId?.title || "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {applicant.aiScore !== undefined ? (
-                                                <div className="flex items-center gap-1">
-                                                    <Star className={cn("h-4 w-4", getScoreColor(applicant.aiScore))} />
-                                                    <span className={cn("font-medium", getScoreColor(applicant.aiScore))}>
-                                                        {applicant.aiScore}%
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className={cn("border-0", statusColors[applicant.status])}>
-                                                {t(`applicants.status.${applicant.status}`)}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {applicant.personalData?.yearsOfExperience !== undefined
-                                                ? `${applicant.personalData.yearsOfExperience} ${t("applicants.years")}`
-                                                : "-"}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {formatDate(applicant.submittedAt)}
-                                        </TableCell>
-                                        <TableCell className={isRTL ? "text-left" : "text-right"}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleViewApplicant(applicant)}
-                                                        className="cursor-pointer"
-                                                    >
-                                                        <Eye className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                        {t("common.view")}
-                                                    </DropdownMenuItem>
-                                                    {applicant.cvUrl && (
-                                                        <DropdownMenuItem
-                                                            onClick={() => window.open(applicant.cvUrl, "_blank")}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            <Download className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                            {t("applicants.downloadCV")}
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        onClick={() => applicant.personalData?.email && (window.location.href = `mailto:${applicant.personalData.email}`)}
-                                                        className="cursor-pointer"
-                                                    >
-                                                        <Mail className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                        {t("applicants.sendEmail")}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => applicant.personalData?.phone && (window.location.href = `tel:${applicant.personalData.phone}`)}
-                                                        className="cursor-pointer"
-                                                    >
-                                                        <Phone className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                        {t("applicants.call")}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {otherApplicants.map((applicant) => (
+                                <CandidateCard
+                                    key={applicant.id}
+                                    applicant={applicant}
+                                    evaluation={evaluations.get(applicant.id)}
+                                    onView={handleViewApplicant}
+                                />
+                            ))}
+                        </div>
                     )}
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t">
-                            <p className="text-sm text-muted-foreground">
-                                {t("common.showing")} {applicants.length} {t("common.of")} {total}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                >
-                                    {t("common.previous")}
-                                </Button>
-                                <span className="text-sm text-muted-foreground">
-                                    {t("common.page")} {page} {t("common.of")} {totalPages}
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                >
-                                    {t("common.next")}
-                                </Button>
-                            </div>
+                        <div className="flex items-center justify-center gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                {t("common.previous")}
+                            </Button>
+                            <span className="text-sm text-muted-foreground px-4">
+                                {t("common.page")} {page} {t("common.of")} {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                            >
+                                {t("common.next")}
+                            </Button>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
+
+            {/* Filters Sidebar */}
+            <div className="w-full lg:w-72 shrink-0">
+                <Card className="sticky top-4">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Filter className="h-4 w-4" />
+                                {t("applicants.filters")}
+                            </CardTitle>
+                            {hasActiveFilters && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearAllFilters}
+                                    className="h-7 text-xs"
+                                >
+                                    {t("applicants.clearAll")}
+                                </Button>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Search in filters */}
+                        <div className="relative">
+                            <Search className={cn(
+                                "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
+                                isRTL ? "right-3" : "left-3"
+                            )} />
+                            <Input
+                                placeholder={t("applicants.searchCandidate")}
+                                value={searchTerm}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className={cn("h-9 text-sm", isRTL ? "pr-9" : "pl-9")}
+                            />
+                        </div>
+
+                        <Separator />
+
+                        <Accordion type="multiple" defaultValue={["status", "score", "experience", "skills"]} className="w-full">
+                            {/* Status Filter */}
+                            <AccordionItem value="status" className="border-0">
+                                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+                                    {t("applicants.applicationStatus")}
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3">
+                                    <div className="space-y-2">
+                                        {["new", "screening", "interviewing", "evaluated", "shortlisted", "rejected"].map((status) => (
+                                            <label
+                                                key={status}
+                                                className="flex items-center gap-2 text-sm cursor-pointer"
+                                            >
+                                                <Checkbox
+                                                    checked={statusFilters.has(status)}
+                                                    onCheckedChange={() => handleStatusToggle(status)}
+                                                />
+                                                <span>{t(`applicants.status.${status}`)}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+
+                            {/* Score Filter */}
+                            <AccordionItem value="score" className="border-0">
+                                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-primary" />
+                                        {t("applicants.matchScore")}
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-muted-foreground">{t("applicants.minScore")}</span>
+                                            <span className="font-medium text-primary">{minScore}%</span>
+                                        </div>
+                                        <Slider
+                                            value={[minScore]}
+                                            onValueChange={(value) => { setMinScore(value[0]); setPage(1); }}
+                                            max={100}
+                                            step={5}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                            <span>0%</span>
+                                            <span>50%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+
+                            {/* Experience Filter */}
+                            <AccordionItem value="experience" className="border-0">
+                                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+                                    {t("applicants.yearsOfExperience")}
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">{t("applicants.from")}</Label>
+                                            <Input
+                                                type="number"
+                                                value={experienceRange[0]}
+                                                onChange={(e) => setExperienceRange([parseInt(e.target.value) || 0, experienceRange[1]])}
+                                                className="h-8 text-sm mt-1"
+                                                min={0}
+                                                max={20}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">{t("applicants.to")}</Label>
+                                            <Input
+                                                type="number"
+                                                value={experienceRange[1]}
+                                                onChange={(e) => setExperienceRange([experienceRange[0], parseInt(e.target.value) || 20])}
+                                                className="h-8 text-sm mt-1"
+                                                min={0}
+                                                max={20}
+                                            />
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+
+                            {/* Skills Filter */}
+                            <AccordionItem value="skills" className="border-0">
+                                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
+                                    {t("applicants.skills")}
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        {SKILL_OPTIONS.map((skill) => (
+                                            <Badge
+                                                key={skill}
+                                                variant={selectedSkills.has(skill) ? "default" : "outline"}
+                                                className={cn(
+                                                    "cursor-pointer transition-colors",
+                                                    selectedSkills.has(skill) 
+                                                        ? "bg-primary" 
+                                                        : "hover:bg-muted"
+                                                )}
+                                                onClick={() => handleSkillToggle(skill)}
+                                            >
+                                                {skill}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+
+                        <Separator />
+
+                        {/* Clear Filters Button */}
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={clearAllFilters}
+                            disabled={!hasActiveFilters}
+                        >
+                            <X className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            {t("applicants.clearAllFilters")}
+                        </Button>
+
+                        {/* Refresh Button */}
+                        <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={fetchApplicants}
+                            disabled={loading}
+                        >
+                            <RefreshCw className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2", loading && "animate-spin")} />
+                            {t("common.refresh")}
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* View Dialog */}
             {selectedApplicant && (
@@ -467,6 +637,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     open={viewDialogOpen}
                     onOpenChange={setViewDialogOpen}
                     applicant={selectedApplicant}
+                    evaluation={evaluations.get(selectedApplicant.id)}
                     userRole={currentUserRole}
                     userId={userId}
                     onStatusChange={fetchApplicants}
