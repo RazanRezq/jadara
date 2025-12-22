@@ -10,13 +10,26 @@ import {
     BatchEvaluationInput,
     BatchEvaluationResult,
     VoiceAnalysisResult,
+    UrlExtractionResult,
 } from './types'
-import { transcribeAudio, analyzeVoiceResponse, batchTranscribeAudio } from './voiceTranscription'
+import { batchTranscribeAndAnalyzeAudio, TranscriptionWithAnalysis } from './voiceTranscription'
 import { parseResume, parsePortfolioProfile, mergeProfiles } from './resumeParser'
 import { scoreCandidate, generateRecommendation } from './scoringEngine'
+import { extractUrlsContent, formatExtractedContentForEvaluation, detectGitHubUrl } from './urlContentExtractor'
 
 // Progress callback type
 type ProgressCallback = (progress: EvaluationProgress) => void
+
+// Rate limiting configuration - delay between major Gemini API calls
+const STAGE_DELAY_MS = 2500 // 2.5 seconds between major stages to respect API rate limits
+
+/**
+ * Delay helper to respect API rate limits
+ */
+async function rateLimitDelay(stageName: string): Promise<void> {
+    console.log(`[Rate Limiter] Waiting ${STAGE_DELAY_MS}ms before ${stageName}...`)
+    await new Promise(resolve => setTimeout(resolve, STAGE_DELAY_MS))
+}
 
 /**
  * Main evaluation function - processes a candidate completely
@@ -65,56 +78,47 @@ export async function evaluateCandidate(
                 console.log(`   - Audio URL: ${v.audioUrl}`)
             })
 
-            console.log('🎯 [Evaluator] Starting batch transcription...')
-            const transcriptionResults = await batchTranscribeAudio(
+            console.log('🎯 [Evaluator] Starting batch transcription + analysis with Gemini 1.5 Flash...')
+            
+            // Use the new combined transcription + analysis approach
+            const transcriptionResults = await batchTranscribeAndAnalyzeAudio(
                 input.voiceResponses.map(v => ({
                     questionId: v.questionId,
                     audioUrl: v.audioUrl,
+                    questionText: v.questionText,
                 }))
             )
-            console.log('🎯 [Evaluator] Batch transcription completed. Results:', transcriptionResults.size)
+            console.log('🎯 [Evaluator] Batch transcription + analysis completed. Results:', transcriptionResults.size)
 
             for (const voiceResponse of input.voiceResponses) {
-                const transcription = transcriptionResults.get(voiceResponse.questionId)
+                const result = transcriptionResults.get(voiceResponse.questionId) as TranscriptionWithAnalysis | undefined
 
                 console.log(`🎯 [Evaluator] Processing result for question: ${voiceResponse.questionId}`)
-                console.log(`   - Transcription success: ${transcription?.success}`)
+                console.log(`   - Success: ${result?.success}`)
                 
-                if (transcription?.success) {
-                    console.log(`   ✅ Transcription successful`)
-                    console.log(`   - Raw transcript length: ${transcription.rawTranscript?.length || 0}`)
-                    console.log(`   - Clean transcript length: ${transcription.cleanTranscript?.length || 0}`)
+                if (result?.success) {
+                    console.log(`   ✅ Transcription + Analysis successful`)
+                    console.log(`   - Raw transcript length: ${result.rawTranscript?.length || 0}`)
+                    console.log(`   - Clean transcript length: ${result.cleanTranscript?.length || 0}`)
+                    console.log(`   - Analysis included: ${result.analysis?.success ? 'YES' : 'NO'}`)
                     
                     transcripts.push({
                         questionId: voiceResponse.questionId,
-                        rawTranscript: transcription.rawTranscript || '',
-                        cleanTranscript: transcription.cleanTranscript || '',
+                        rawTranscript: result.rawTranscript || '',
+                        cleanTranscript: result.cleanTranscript || '',
                     })
 
-                    console.log(`   - Running voice analysis...`)
-                    const analysis = await analyzeVoiceResponse(
-                        transcription.rawTranscript || '',
-                        transcription.cleanTranscript || '',
-                        voiceResponse.questionText,
-                        transcription.duration
-                    )
-
-                    if (analysis.success) {
-                        console.log(`   ✅ Voice analysis successful`)
-                    } else {
-                        console.log(`   ⚠️ Voice analysis failed: ${analysis.error}`)
-                    }
-
+                    // Analysis is already computed from Gemini in one go
                     voiceAnalysisResults.push({
                         questionId: voiceResponse.questionId,
                         questionText: voiceResponse.questionText,
                         questionWeight: voiceResponse.questionWeight,
-                        transcript: transcription.cleanTranscript || '',
-                        analysis: analysis.success ? analysis : undefined,
+                        transcript: result.cleanTranscript || '',
+                        analysis: result.analysis?.success ? result.analysis : undefined,
                     })
                 } else {
                     console.error(`   ❌ Transcription FAILED for question: ${voiceResponse.questionId}`)
-                    console.error(`   - Error: ${transcription?.error || 'Unknown error'}`)
+                    console.error(`   - Error: ${result?.error || 'Unknown error'}`)
                     console.error(`   - Audio URL was: ${voiceResponse.audioUrl}`)
                     
                     transcripts.push({
@@ -140,10 +144,15 @@ export async function evaluateCandidate(
             currentStep: `Transcribed ${transcripts.length} voice responses`,
         })
 
+        // Rate limit delay before resume parsing
+        if (input.voiceResponses.length > 0) {
+            await rateLimitDelay('resume parsing')
+        }
+
         // Stage 2: Parse resume
         onProgress?.({
             stage: 'parsing_resume',
-            progress: 40,
+            progress: 35,
             currentStep: 'Parsing resume and profiles...',
         })
 
@@ -171,9 +180,72 @@ export async function evaluateCandidate(
 
         onProgress?.({
             stage: 'parsing_resume',
-            progress: 55,
+            progress: 45,
             currentStep: parsedResume ? 'Resume parsed successfully' : 'Resume parsing complete',
         })
+
+        // Rate limit delay before URL extraction
+        if (input.cvUrl) {
+            await rateLimitDelay('URL extraction')
+        }
+
+        // Stage 2.5: Extract content from external URLs (LinkedIn, GitHub, Portfolio, Behance)
+        onProgress?.({
+            stage: 'parsing_resume',
+            progress: 48,
+            currentStep: 'Extracting content from online profiles...',
+        })
+
+        let urlExtractionResult: UrlExtractionResult | undefined = undefined
+
+        // Check for URLs to extract
+        const hasExternalUrls = input.personalData.linkedinUrl || 
+            input.personalData.portfolioUrl || 
+            input.personalData.behanceUrl
+
+        if (hasExternalUrls) {
+            console.log('[Evaluator] 🔗 Starting URL content extraction...')
+            console.log('[Evaluator] URLs to process:')
+            console.log(`   - LinkedIn: ${input.personalData.linkedinUrl || 'N/A'}`)
+            console.log(`   - Portfolio: ${input.personalData.portfolioUrl || 'N/A'}`)
+            console.log(`   - Behance: ${input.personalData.behanceUrl || 'N/A'}`)
+
+            // Detect GitHub URL from portfolio if provided
+            const githubUrl = detectGitHubUrl({
+                portfolioUrl: input.personalData.portfolioUrl,
+                linkedinUrl: input.personalData.linkedinUrl,
+            })
+
+            urlExtractionResult = await extractUrlsContent({
+                linkedinUrl: input.personalData.linkedinUrl,
+                githubUrl,
+                portfolioUrl: !githubUrl ? input.personalData.portfolioUrl : undefined, // Don't double-process if it's GitHub
+                behanceUrl: input.personalData.behanceUrl,
+            })
+
+            console.log('[Evaluator] 🔗 URL extraction complete:')
+            console.log(`   - Success: ${urlExtractionResult.success}`)
+            console.log(`   - URLs processed: ${urlExtractionResult.extractedUrls.length}`)
+            console.log(`   - Skills discovered: ${urlExtractionResult.allSkills.length}`)
+            console.log(`   - Projects found: ${urlExtractionResult.totalProjectsFound}`)
+
+            if (urlExtractionResult.errors.length > 0) {
+                console.log(`   - Errors: ${urlExtractionResult.errors.join(', ')}`)
+            }
+        } else {
+            console.log('[Evaluator] ℹ️ No external URLs provided for extraction')
+        }
+
+        onProgress?.({
+            stage: 'parsing_resume',
+            progress: 55,
+            currentStep: urlExtractionResult?.success 
+                ? `Extracted content from ${urlExtractionResult.extractedUrls.length} online profile(s)`
+                : 'Profile extraction complete',
+        })
+
+        // Rate limit delay before scoring
+        await rateLimitDelay('candidate scoring')
 
         // Stage 3: Score the candidate
         onProgress?.({
@@ -182,12 +254,18 @@ export async function evaluateCandidate(
             currentStep: 'Evaluating against job criteria...',
         })
 
+        // Format URL content for AI evaluation if available
+        const urlContentForEvaluation = urlExtractionResult 
+            ? formatExtractedContentForEvaluation(urlExtractionResult)
+            : undefined
+
         const scoringResult = await scoreCandidate(
             {
                 personalData: input.personalData,
                 parsedResume,
                 voiceAnalysis: voiceAnalysisResults,
                 textResponses: input.textResponses,
+                urlContent: urlContentForEvaluation,
             },
             input.jobCriteria
         )
@@ -201,6 +279,9 @@ export async function evaluateCandidate(
             progress: 80,
             currentStep: `Scored ${scoringResult.overallScore}%`,
         })
+
+        // Rate limit delay before recommendation generation
+        await rateLimitDelay('recommendation generation')
 
         // Stage 4: Generate recommendation
         onProgress?.({
@@ -256,6 +337,7 @@ export async function evaluateCandidate(
                 jobId: input.jobId,
                 overallScore: scoringResult.overallScore,
                 criteriaMatches: scoringResult.criteriaMatches,
+                // Bilingual content fields
                 strengths: scoringResult.strengths,
                 weaknesses: scoringResult.weaknesses,
                 redFlags: scoringResult.redFlags,
@@ -263,6 +345,7 @@ export async function evaluateCandidate(
                 recommendation: recommendationResult.recommendation,
                 recommendationReason: recommendationResult.reason,
                 suggestedQuestions: recommendationResult.suggestedQuestions,
+                // Sentiment scores
                 sentimentScore: avgSentiment,
                 confidenceScore: avgConfidence,
                 transcripts,

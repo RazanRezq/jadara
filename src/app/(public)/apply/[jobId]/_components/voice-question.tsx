@@ -102,6 +102,7 @@ export function VoiceQuestion({
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
     const [audioError, setAudioError] = useState<string | null>(null)
+    const [audioLoadAttempts, setAudioLoadAttempts] = useState(0)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
@@ -132,8 +133,38 @@ export function VoiceQuestion({
             setIsPlaying(false)
             setCurrentTime(0)
             setDuration(0)
+            setAudioError(null)
         }
     }, [stage])
+
+    // Validate audio URL when it changes
+    useEffect(() => {
+        if (audioUrl && (stage === "preview" || stage === "readonly")) {
+            const isBlob = audioUrl.startsWith('blob:')
+            const isHttp = audioUrl.startsWith('http')
+            const isValid = isBlob || isHttp
+
+            console.log('🎵 Audio URL loaded:', {
+                url: audioUrl,
+                stage,
+                isBlob,
+                isHttp,
+                isValid,
+            })
+
+            // Check if URL is valid (blob URL for preview or http URL for uploaded)
+            if (!isValid) {
+                console.error('❌ Invalid audio URL:', audioUrl)
+                setAudioError('Invalid audio URL format')
+                return
+            }
+
+            // Try to preload the audio
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.load()
+            }
+        }
+    }, [audioUrl, stage])
 
     // Request microphone permission
     const requestPermission = async () => {
@@ -478,32 +509,77 @@ export function VoiceQuestion({
     }
 
     const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
-        console.error('Audio element error:', e)
         const audio = e.currentTarget
         let errorMessage = 'Failed to load audio'
+        let errorDetails = ''
+
+        // Get all source elements to check which formats were tried
+        const sources = Array.from(audio.querySelectorAll('source')).map(s => ({
+            src: s.src,
+            type: s.type,
+        }))
+
+        console.error('Audio element error:', {
+            audioUrl: audio.src || audioUrl,
+            sources,
+            errorCode: audio.error?.code,
+            errorMessage: audio.error?.message,
+            networkState: audio.networkState,
+            readyState: audio.readyState,
+            canPlayType_webm: audio.canPlayType('audio/webm'),
+            canPlayType_ogg: audio.canPlayType('audio/ogg'),
+            canPlayType_mp4: audio.canPlayType('audio/mp4'),
+            canPlayType_mpeg: audio.canPlayType('audio/mpeg'),
+        })
 
         if (audio.error) {
             switch (audio.error.code) {
                 case MediaError.MEDIA_ERR_ABORTED:
                     errorMessage = 'Audio loading was aborted'
+                    errorDetails = 'The audio download was interrupted'
                     break
                 case MediaError.MEDIA_ERR_NETWORK:
                     errorMessage = 'Network error while loading audio'
+                    errorDetails = 'Check your internet connection and try again'
                     break
                 case MediaError.MEDIA_ERR_DECODE:
                     errorMessage = 'Audio file is corrupted or in an unsupported format'
+                    errorDetails = 'The audio file may be damaged'
                     break
                 case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
                     errorMessage = 'Audio format not supported by your browser'
+                    errorDetails = 'Try using a different browser (Chrome, Firefox, or Safari)'
                     break
                 default:
                     errorMessage = 'Unknown error loading audio'
+                    errorDetails = audio.error.message || 'Please try refreshing the page'
             }
+        }
+
+        // Log full error details for debugging
+        console.error('Audio error details:', {
+            message: errorMessage,
+            details: errorDetails,
+            url: audio.src,
+            error: audio.error,
+            attempts: audioLoadAttempts,
+        })
+
+        // Try to reload the audio once if it's a network error
+        if (audio.error?.code === MediaError.MEDIA_ERR_NETWORK && audioLoadAttempts < 1) {
+            console.log('🔄 Retrying audio load...')
+            setAudioLoadAttempts(prev => prev + 1)
+            setTimeout(() => {
+                if (audioPlayerRef.current) {
+                    audioPlayerRef.current.load()
+                }
+            }, 1000)
+            return
         }
 
         setAudioError(errorMessage)
         setIsPlaying(false)
-        toast.error(errorMessage)
+        toast.error(`${errorMessage}${errorDetails ? `: ${errorDetails}` : ''}`)
     }
 
     const handlePlayPause = async () => {
@@ -604,20 +680,47 @@ export function VoiceQuestion({
                         {/* Audio player */}
                         {audioUrl ? (
                             <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-                                <audio
-                                    ref={audioPlayerRef}
-                                    src={audioUrl}
-                                    onTimeUpdate={handleTimeUpdate}
-                                    onLoadedMetadata={handleLoadedMetadata}
-                                    onDurationChange={handleDurationChange}
-                                    onEnded={handleEnded}
-                                    onPlay={handlePlay}
-                                    onPause={handlePause}
-                                    onError={handleAudioError}
-                                    preload="metadata"
-                                    crossOrigin="anonymous"
-                                    className="hidden"
-                                />
+                                {audioUrl.startsWith('blob:') ? (
+                                    // For blob URLs, use direct src attribute
+                                    <audio
+                                        ref={audioPlayerRef}
+                                        src={audioUrl}
+                                        onTimeUpdate={handleTimeUpdate}
+                                        onLoadedMetadata={handleLoadedMetadata}
+                                        onDurationChange={handleDurationChange}
+                                        onEnded={handleEnded}
+                                        onPlay={handlePlay}
+                                        onPause={handlePause}
+                                        onError={handleAudioError}
+                                        onLoadStart={() => console.log('🎵 Readonly audio (blob) load started')}
+                                        onCanPlay={() => console.log('✅ Readonly audio (blob) can play')}
+                                        preload="metadata"
+                                        className="hidden"
+                                    />
+                                ) : (
+                                    // For HTTP URLs, use multiple sources for compatibility
+                                    <audio
+                                        ref={audioPlayerRef}
+                                        onTimeUpdate={handleTimeUpdate}
+                                        onLoadedMetadata={handleLoadedMetadata}
+                                        onDurationChange={handleDurationChange}
+                                        onEnded={handleEnded}
+                                        onPlay={handlePlay}
+                                        onPause={handlePause}
+                                        onError={handleAudioError}
+                                        onLoadStart={() => console.log('🎵 Readonly audio (http) load started:', audioUrl)}
+                                        onCanPlay={() => console.log('✅ Readonly audio (http) can play')}
+                                        onCanPlayThrough={() => console.log('✅ Readonly audio (http) can play through')}
+                                        preload="metadata"
+                                        className="hidden"
+                                    >
+                                        <source src={audioUrl} type="audio/webm" />
+                                        <source src={audioUrl} type="audio/ogg" />
+                                        <source src={audioUrl} type="audio/mp4" />
+                                        <source src={audioUrl} type="audio/mpeg" />
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                )}
                                 {audioError && (
                                     <div className="text-xs text-red-500 flex items-center gap-1 justify-center">
                                         <AlertTriangle className="h-3 w-3" />
@@ -829,20 +932,46 @@ export function VoiceQuestion({
 
                         {/* Audio player */}
                         <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-                            <audio
-                                ref={audioPlayerRef}
-                                src={audioUrl}
-                                onTimeUpdate={handleTimeUpdate}
-                                onLoadedMetadata={handleLoadedMetadata}
-                                onDurationChange={handleDurationChange}
-                                onEnded={handleEnded}
-                                onPlay={handlePlay}
-                                onPause={handlePause}
-                                onError={handleAudioError}
-                                preload="metadata"
-                                crossOrigin="anonymous"
-                                className="hidden"
-                            />
+                            {audioUrl?.startsWith('blob:') ? (
+                                // For blob URLs (preview), use direct src attribute
+                                <audio
+                                    ref={audioPlayerRef}
+                                    src={audioUrl}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onDurationChange={handleDurationChange}
+                                    onEnded={handleEnded}
+                                    onPlay={handlePlay}
+                                    onPause={handlePause}
+                                    onError={handleAudioError}
+                                    onLoadStart={() => console.log('🎵 Preview audio (blob) load started')}
+                                    onCanPlay={() => console.log('✅ Preview audio (blob) can play')}
+                                    preload="metadata"
+                                    className="hidden"
+                                />
+                            ) : (
+                                // For HTTP URLs (uploaded), use multiple sources for compatibility
+                                <audio
+                                    ref={audioPlayerRef}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onDurationChange={handleDurationChange}
+                                    onEnded={handleEnded}
+                                    onPlay={handlePlay}
+                                    onPause={handlePause}
+                                    onError={handleAudioError}
+                                    onLoadStart={() => console.log('🎵 Preview audio (http) load started:', audioUrl)}
+                                    onCanPlay={() => console.log('✅ Preview audio (http) can play')}
+                                    preload="metadata"
+                                    className="hidden"
+                                >
+                                    <source src={audioUrl || ''} type="audio/webm" />
+                                    <source src={audioUrl || ''} type="audio/ogg" />
+                                    <source src={audioUrl || ''} type="audio/mp4" />
+                                    <source src={audioUrl || ''} type="audio/mpeg" />
+                                    Your browser does not support the audio element.
+                                </audio>
+                            )}
                             {audioError && (
                                 <div className="text-xs text-red-500 flex items-center gap-1 justify-center">
                                     <AlertTriangle className="h-3 w-3" />

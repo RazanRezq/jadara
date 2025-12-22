@@ -6,12 +6,15 @@
 // Types
 export * from './types'
 
-// Voice Transcription Service
+// Voice Transcription Service (now powered by Google Gemini 1.5 Flash)
 export {
     transcribeAudio,
+    transcribeAndAnalyzeAudio,
     analyzeVoiceResponse,
     batchTranscribeAudio,
+    batchTranscribeAndAnalyzeAudio,
 } from './voiceTranscription'
+export type { TranscriptionWithAnalysis } from './voiceTranscription'
 
 // Resume Parser Service
 export {
@@ -29,6 +32,13 @@ export {
     calculateTotalExperience,
     matchSkills,
 } from './scoringEngine'
+
+// URL Content Extractor
+export {
+    extractUrlsContent,
+    formatExtractedContentForEvaluation,
+    detectGitHubUrl,
+} from './urlContentExtractor'
 
 // Main Evaluator
 export {

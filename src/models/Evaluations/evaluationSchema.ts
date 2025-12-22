@@ -2,11 +2,24 @@ import mongoose, { Document, Model, Schema } from 'mongoose'
 
 export type RecommendationType = 'hire' | 'hold' | 'reject' | 'pending'
 
+// Bilingual content types for evaluation
+export interface IBilingualText {
+    en: string
+    ar: string
+}
+
+export interface IBilingualTextArray {
+    en: string[]
+    ar: string[]
+}
+
 export interface ICriteriaMatch {
     criteriaName: string
     matched: boolean
     score: number // 0-100
-    reason: string
+    weight: number // 1-10 importance
+    reason: IBilingualText // Bilingual reason
+    evidence?: IBilingualTextArray // Supporting evidence (bilingual)
 }
 
 export interface IEvaluation extends Document {
@@ -16,16 +29,16 @@ export interface IEvaluation extends Document {
     // AI Scores
     overallScore: number // 0-100
     criteriaMatches: ICriteriaMatch[]
-    // Analysis
-    strengths: string[]
-    weaknesses: string[]
-    redFlags: string[]
-    summary: string
-    // Recommendation
+    // Analysis (bilingual)
+    strengths: IBilingualTextArray
+    weaknesses: IBilingualTextArray
+    redFlags: IBilingualTextArray
+    summary: IBilingualText
+    // Recommendation (bilingual)
     recommendation: RecommendationType
-    recommendationReason: string
-    // Interview preparation
-    suggestedQuestions: string[] // AI-generated follow-up questions
+    recommendationReason: IBilingualText
+    // Interview preparation (bilingual)
+    suggestedQuestions: IBilingualTextArray // AI-generated follow-up questions
     // Sentiment analysis (from voice)
     sentimentScore?: number // -1 to 1
     confidenceScore?: number // 0-100
@@ -41,6 +54,24 @@ export interface IEvaluation extends Document {
     createdAt: Date
     updatedAt: Date
 }
+
+// Sub-schema for bilingual text
+const bilingualTextSchema = new Schema<IBilingualText>(
+    {
+        en: { type: String, default: '' },
+        ar: { type: String, default: '' },
+    },
+    { _id: false }
+)
+
+// Sub-schema for bilingual text array
+const bilingualTextArraySchema = new Schema<IBilingualTextArray>(
+    {
+        en: { type: [String], default: [] },
+        ar: { type: [String], default: [] },
+    },
+    { _id: false }
+)
 
 const criteriaMatchSchema = new Schema<ICriteriaMatch>(
     {
@@ -58,9 +89,19 @@ const criteriaMatchSchema = new Schema<ICriteriaMatch>(
             max: 100,
             required: true,
         },
+        weight: {
+            type: Number,
+            min: 1,
+            max: 10,
+            default: 5,
+        },
         reason: {
-            type: String,
+            type: bilingualTextSchema,
             required: true,
+        },
+        evidence: {
+            type: bilingualTextArraySchema,
+            default: () => ({ en: [], ar: [] }),
         },
     },
     { _id: false }
@@ -92,22 +133,22 @@ const evaluationSchema = new Schema<IEvaluation>(
             type: [criteriaMatchSchema],
             default: [],
         },
-        // Analysis
+        // Analysis (bilingual)
         strengths: {
-            type: [String],
-            default: [],
+            type: bilingualTextArraySchema,
+            default: () => ({ en: [], ar: [] }),
         },
         weaknesses: {
-            type: [String],
-            default: [],
+            type: bilingualTextArraySchema,
+            default: () => ({ en: [], ar: [] }),
         },
         redFlags: {
-            type: [String],
-            default: [],
+            type: bilingualTextArraySchema,
+            default: () => ({ en: [], ar: [] }),
         },
         summary: {
-            type: String,
-            default: '',
+            type: bilingualTextSchema,
+            default: () => ({ en: '', ar: '' }),
         },
         // Recommendation
         recommendation: {
@@ -116,13 +157,13 @@ const evaluationSchema = new Schema<IEvaluation>(
             default: 'pending',
         },
         recommendationReason: {
-            type: String,
-            default: '',
+            type: bilingualTextSchema,
+            default: () => ({ en: '', ar: '' }),
         },
-        // Interview prep
+        // Interview prep (bilingual)
         suggestedQuestions: {
-            type: [String],
-            default: [],
+            type: bilingualTextArraySchema,
+            default: () => ({ en: [], ar: [] }),
         },
         // Sentiment
         sentimentScore: {
@@ -170,6 +211,12 @@ const evaluationSchema = new Schema<IEvaluation>(
 // Index for queries
 evaluationSchema.index({ jobId: 1, overallScore: -1 })
 evaluationSchema.index({ jobId: 1, recommendation: 1 })
+
+// In development, delete cached model to allow schema changes
+// This is necessary because Next.js hot-reloading caches Mongoose models
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.Evaluation
+}
 
 const Evaluation: Model<IEvaluation> =
     mongoose.models.Evaluation || mongoose.model<IEvaluation>('Evaluation', evaluationSchema)

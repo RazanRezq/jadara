@@ -3,6 +3,17 @@
  * Central type definitions for the evaluation pipeline
  */
 
+// Bilingual Content Types
+export interface BilingualText {
+    en: string
+    ar: string
+}
+
+export interface BilingualTextArray {
+    en: string[]
+    ar: string[]
+}
+
 // Voice Transcription Types
 export interface TranscriptionResult {
     success: boolean
@@ -92,19 +103,19 @@ export interface CriteriaMatch {
     matched: boolean
     score: number               // 0-100
     weight: number              // 1-10 importance
-    reason: string              // Explanation of why matched/not matched
-    evidence?: string[]         // Supporting evidence from candidate data
+    reason: BilingualText       // Explanation of why matched/not matched (bilingual)
+    evidence?: BilingualTextArray // Supporting evidence from candidate data (bilingual)
 }
 
 export interface ScoringResult {
     success: boolean
     overallScore: number        // 0-100 weighted average
     criteriaMatches: CriteriaMatch[]
-    strengths: string[]
-    weaknesses: string[]
-    redFlags: string[]          // Hidden from reviewers
-    summary: string             // AI-generated summary
-    whySection: string          // "Matched X% because..."
+    strengths: BilingualTextArray       // Bilingual strengths
+    weaknesses: BilingualTextArray      // Bilingual weaknesses
+    redFlags: BilingualTextArray        // Bilingual red flags (hidden from reviewers)
+    summary: BilingualText              // Bilingual AI-generated summary
+    whySection: BilingualText           // Bilingual "Matched X% because..."
     error?: string
 }
 
@@ -112,9 +123,9 @@ export interface RecommendationResult {
     success: boolean
     recommendation: 'hire' | 'hold' | 'reject' | 'pending'
     confidence: number          // 0-100 how confident in recommendation
-    reason: string              // Explanation
-    suggestedQuestions: string[] // Follow-up interview questions
-    nextBestAction: string      // What to do next
+    reason: BilingualText       // Bilingual explanation
+    suggestedQuestions: BilingualTextArray // Bilingual follow-up interview questions
+    nextBestAction: BilingualText      // Bilingual what to do next
     error?: string
 }
 
@@ -183,15 +194,15 @@ export interface CandidateEvaluationResult {
         // Scores
         overallScore: number
         criteriaMatches: CriteriaMatch[]
-        // Analysis
-        strengths: string[]
-        weaknesses: string[]
-        redFlags: string[]
-        summary: string
-        // Recommendation
+        // Analysis (bilingual)
+        strengths: BilingualTextArray
+        weaknesses: BilingualTextArray
+        redFlags: BilingualTextArray
+        summary: BilingualText
+        // Recommendation (bilingual)
         recommendation: 'hire' | 'hold' | 'reject' | 'pending'
-        recommendationReason: string
-        suggestedQuestions: string[]
+        recommendationReason: BilingualText
+        suggestedQuestions: BilingualTextArray
         // Sentiment
         sentimentScore?: number
         confidenceScore?: number
@@ -216,6 +227,41 @@ export interface BudgetCheckResult {
     budgetMax?: number
     difference?: number         // How much over/under budget
     redFlag?: string            // Message if over budget
+}
+
+// URL Content Extraction Types
+export interface ExtractedUrlContent {
+    url: string
+    type: 'linkedin' | 'github' | 'portfolio' | 'behance' | 'other'
+    success: boolean
+    content?: {
+        summary: string
+        highlights: string[]
+        skills: string[]
+        projects: ProjectInfo[]
+        experience: string[]
+        rawText?: string
+    }
+    error?: string
+    fetchedAt: Date
+}
+
+export interface ProjectInfo {
+    name: string
+    description: string
+    technologies: string[]
+    url?: string
+    stars?: number
+    forks?: number
+}
+
+export interface UrlExtractionResult {
+    success: boolean
+    extractedUrls: ExtractedUrlContent[]
+    combinedSummary: string
+    totalProjectsFound: number
+    allSkills: string[]
+    errors: string[]
 }
 
 // Processing status for long-running evaluations

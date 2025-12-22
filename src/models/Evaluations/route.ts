@@ -5,11 +5,24 @@ import Evaluation from './evaluationSchema'
 import Applicant from '../Applicants/applicantSchema'
 import mongoose from 'mongoose'
 
+// Bilingual content schemas
+const bilingualTextSchema = z.object({
+    en: z.string().default(''),
+    ar: z.string().default(''),
+})
+
+const bilingualTextArraySchema = z.object({
+    en: z.array(z.string()).default([]),
+    ar: z.array(z.string()).default([]),
+})
+
 const criteriaMatchSchema = z.object({
     criteriaName: z.string(),
     matched: z.boolean(),
     score: z.number().min(0).max(100),
-    reason: z.string(),
+    weight: z.number().min(1).max(10).optional().default(5),
+    reason: bilingualTextSchema,
+    evidence: bilingualTextArraySchema.optional().default({ en: [], ar: [] }),
 })
 
 const createEvaluationSchema = z.object({
@@ -17,13 +30,13 @@ const createEvaluationSchema = z.object({
     jobId: z.string().min(1, 'Job ID is required'),
     overallScore: z.number().min(0).max(100).default(0),
     criteriaMatches: z.array(criteriaMatchSchema).optional().default([]),
-    strengths: z.array(z.string()).optional().default([]),
-    weaknesses: z.array(z.string()).optional().default([]),
-    redFlags: z.array(z.string()).optional().default([]),
-    summary: z.string().optional().default(''),
+    strengths: bilingualTextArraySchema.optional().default({ en: [], ar: [] }),
+    weaknesses: bilingualTextArraySchema.optional().default({ en: [], ar: [] }),
+    redFlags: bilingualTextArraySchema.optional().default({ en: [], ar: [] }),
+    summary: bilingualTextSchema.optional().default({ en: '', ar: '' }),
     recommendation: z.enum(['hire', 'hold', 'reject', 'pending']).default('pending'),
-    recommendationReason: z.string().optional().default(''),
-    suggestedQuestions: z.array(z.string()).optional().default([]),
+    recommendationReason: bilingualTextSchema.optional().default({ en: '', ar: '' }),
+    suggestedQuestions: bilingualTextArraySchema.optional().default({ en: [], ar: [] }),
     sentimentScore: z.number().min(-1).max(1).optional(),
     confidenceScore: z.number().min(0).max(100).optional(),
 })
@@ -31,13 +44,13 @@ const createEvaluationSchema = z.object({
 const updateEvaluationSchema = z.object({
     overallScore: z.number().min(0).max(100).optional(),
     criteriaMatches: z.array(criteriaMatchSchema).optional(),
-    strengths: z.array(z.string()).optional(),
-    weaknesses: z.array(z.string()).optional(),
-    redFlags: z.array(z.string()).optional(),
-    summary: z.string().optional(),
+    strengths: bilingualTextArraySchema.optional(),
+    weaknesses: bilingualTextArraySchema.optional(),
+    redFlags: bilingualTextArraySchema.optional(),
+    summary: bilingualTextSchema.optional(),
     recommendation: z.enum(['hire', 'hold', 'reject', 'pending']).optional(),
-    recommendationReason: z.string().optional(),
-    suggestedQuestions: z.array(z.string()).optional(),
+    recommendationReason: bilingualTextSchema.optional(),
+    suggestedQuestions: bilingualTextArraySchema.optional(),
     sentimentScore: z.number().min(-1).max(1).optional(),
     confidenceScore: z.number().min(0).max(100).optional(),
     manualRecommendation: z.enum(['hire', 'hold', 'reject', 'pending']).optional(),
@@ -143,13 +156,12 @@ app.get('/by-applicant/:applicantId', async (c) => {
             .populate('reviewedBy', 'name')
 
         if (!evaluation) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Evaluation not found',
-                },
-                404
-            )
+            // Return success: true but with null evaluation to avoid treating as error
+            return c.json({
+                success: true,
+                evaluation: null,
+                message: 'No evaluation found for this applicant',
+            })
         }
 
         const isReviewer = userRole === 'reviewer'
@@ -179,6 +191,87 @@ app.get('/by-applicant/:applicantId', async (c) => {
                 reviewedAt: evaluation.reviewedAt,
                 createdAt: evaluation.createdAt,
             },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Batch get evaluations for multiple applicants (reduces API calls)
+app.post('/batch-by-applicants', async (c) => {
+    try {
+        await dbConnect()
+        const body = await c.req.json()
+        const applicantIds = body.applicantIds as string[]
+        const userRole = c.req.query('role') || 'admin'
+
+        if (!Array.isArray(applicantIds) || applicantIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'applicantIds array is required',
+                },
+                400
+            )
+        }
+
+        // Limit to 100 applicants per request
+        if (applicantIds.length > 100) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Maximum 100 applicant IDs per request',
+                },
+                400
+            )
+        }
+
+        const evaluations = await Evaluation.find({
+            applicantId: { $in: applicantIds },
+        }).populate('reviewedBy', 'name')
+
+        const isReviewer = userRole === 'reviewer'
+
+        // Create a map for quick lookup
+        const evaluationMap: Record<string, any> = {}
+        evaluations.forEach((e) => {
+            evaluationMap[e.applicantId.toString()] = {
+                id: e._id.toString(),
+                applicantId: e.applicantId.toString(),
+                jobId: e.jobId.toString(),
+                overallScore: e.overallScore,
+                criteriaMatches: e.criteriaMatches,
+                strengths: e.strengths,
+                weaknesses: e.weaknesses,
+                redFlags: isReviewer ? [] : e.redFlags,
+                summary: e.summary,
+                recommendation: e.recommendation,
+                recommendationReason: e.recommendationReason,
+                suggestedQuestions: e.suggestedQuestions,
+                sentimentScore: e.sentimentScore,
+                confidenceScore: e.confidenceScore,
+                isProcessed: e.isProcessed,
+                processedAt: e.processedAt,
+                manualRecommendation: e.manualRecommendation,
+                manualNotes: e.manualNotes,
+                reviewedBy: e.reviewedBy,
+                reviewedAt: e.reviewedAt,
+                createdAt: e.createdAt,
+            }
+        })
+
+        return c.json({
+            success: true,
+            evaluations: evaluationMap,
+            found: evaluations.length,
+            requested: applicantIds.length,
         })
     } catch (error) {
         return c.json(

@@ -1,136 +1,225 @@
 /**
  * SmartRecruit AI - Voice Transcription Service
- * Uses OpenAI Whisper API for Speech-to-Text with Arabic/English support
- * Provides dual output: raw transcript and cleaned transcript
+ * Uses Google Gemini 1.5 Flash for Speech-to-Text with Arabic/English support
+ * Provides transcription AND analysis in a single API call
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import axios from 'axios'
+import { GoogleGenerativeAI, Part } from '@google/generative-ai'
 import { TranscriptionResult, VoiceAnalysisResult } from './types'
 
-// Initialize Gemini for cleaning and analysis (Whisper for transcription)
-const GEMINI_MODEL = 'gemini-2.5-flash-lite'
+// Gemini 2.5 Flash for audio processing
+const GEMINI_MODEL = 'gemini-2.5-flash'
 
-interface WhisperResponse {
-    text: string
-    language?: string
-    duration?: number
-    segments?: Array<{
-        text: string
-        start: number
-        end: number
-    }>
+/**
+ * Combined result type for transcription + analysis in one go
+ */
+export interface TranscriptionWithAnalysis extends TranscriptionResult {
+    analysis?: VoiceAnalysisResult
 }
 
 /**
- * Transcribe audio using OpenAI Whisper API
- * Supports Arabic and English
+ * Download audio file using axios for better stability
  */
-export async function transcribeAudio(audioUrl: string): Promise<TranscriptionResult> {
+async function downloadAudioFile(audioUrl: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
     try {
-        const openaiKey = process.env.OPENAI_API_KEY
+        console.log('🎤 [Audio Download] Downloading audio from:', audioUrl)
         
-        if (!openaiKey) {
-            console.error('❌ [Transcription] CRITICAL ERROR: OPENAI_API_KEY not found in environment variables')
-            console.error('❌ [Transcription] Please add OPENAI_API_KEY to your .env.local file')
+        const response = await axios.get(audioUrl, {
+            responseType: 'arraybuffer',
+            timeout: 60000, // 60 second timeout
+            headers: {
+                'Accept': 'audio/*,*/*',
+            },
+        })
+
+        console.log('🎤 [Audio Download] Response status:', response.status)
+        console.log('🎤 [Audio Download] Content-Type:', response.headers['content-type'])
+        console.log('🎤 [Audio Download] Content-Length:', response.headers['content-length'])
+
+        const buffer = Buffer.from(response.data)
+        
+        if (buffer.length === 0) {
+            console.error('❌ [Audio Download] Downloaded file is empty')
+            return null
+        }
+
+        // Determine MIME type from content-type header or URL
+        let mimeType = response.headers['content-type'] || 'audio/webm'
+        
+        // Clean up mime type (remove charset and other parameters)
+        if (mimeType.includes(';')) {
+            mimeType = mimeType.split(';')[0].trim()
+        }
+
+        // Map common audio types
+        if (audioUrl.endsWith('.webm') || mimeType.includes('webm')) {
+            mimeType = 'audio/webm'
+        } else if (audioUrl.endsWith('.mp3') || mimeType.includes('mp3')) {
+            mimeType = 'audio/mp3'
+        } else if (audioUrl.endsWith('.wav') || mimeType.includes('wav')) {
+            mimeType = 'audio/wav'
+        } else if (audioUrl.endsWith('.m4a') || mimeType.includes('m4a')) {
+            mimeType = 'audio/mp4'
+        } else if (audioUrl.endsWith('.ogg') || mimeType.includes('ogg')) {
+            mimeType = 'audio/ogg'
+        }
+
+        console.log('🎤 [Audio Download] Successfully downloaded', buffer.length, 'bytes')
+        console.log('🎤 [Audio Download] Using MIME type:', mimeType)
+
+        return { buffer, mimeType }
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            console.error('❌ [Audio Download] Axios error:', error.message)
+            console.error('❌ [Audio Download] Status:', error.response?.status)
+            console.error('❌ [Audio Download] URL:', audioUrl)
+        } else {
+            console.error('❌ [Audio Download] Error:', error)
+        }
+        return null
+    }
+}
+
+/**
+ * Transcribe AND analyze audio using Google Gemini 1.5 Flash
+ * Performs both operations in a single API call for efficiency
+ */
+export async function transcribeAndAnalyzeAudio(
+    audioUrl: string,
+    questionText: string
+): Promise<TranscriptionWithAnalysis> {
+    try {
+        const googleKey = process.env.GOOGLE_API_KEY
+        
+        if (!googleKey) {
+            console.error('❌ [Transcription] CRITICAL ERROR: GOOGLE_API_KEY not found in environment variables')
             return {
                 success: false,
-                error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment.',
+                error: 'Google API key not configured. Please add GOOGLE_API_KEY to your environment.',
             }
         }
 
         console.log('🎤 [Transcription] ============================================')
         console.log('🎤 [Transcription] Starting transcription for audio URL:', audioUrl)
-        console.log('🎤 [Transcription] OpenAI API Key present:', openaiKey ? 'YES (length: ' + openaiKey.length + ')' : 'NO')
-        console.log('🎤 [Transcription] Test accessibility with: curl -I "' + audioUrl + '"')
+        console.log('🎤 [Transcription] Question context:', questionText.substring(0, 100))
 
-        // Fetch the audio file
-        console.log('🎤 [Transcription] Step 1: Fetching audio file from URL...')
-        const audioResponse = await fetch(audioUrl)
-        console.log('🎤 [Transcription] Audio fetch response status:', audioResponse.status, audioResponse.statusText)
-        console.log('🎤 [Transcription] Audio fetch response headers:', Object.fromEntries(audioResponse.headers.entries()))
+        // Step 1: Download audio file using axios
+        console.log('🎤 [Transcription] Step 1: Downloading audio file with axios...')
+        const audioData = await downloadAudioFile(audioUrl)
         
-        if (!audioResponse.ok) {
-            console.error('❌ [Transcription] Failed to fetch audio file')
-            console.error('❌ [Transcription] Status:', audioResponse.status, audioResponse.statusText)
-            console.error('❌ [Transcription] URL was:', audioUrl)
+        if (!audioData) {
             return {
                 success: false,
-                error: `Failed to fetch audio file: ${audioResponse.status} ${audioResponse.statusText}`,
+                error: 'Failed to download audio file from URL',
             }
         }
 
-        const audioBlob = await audioResponse.blob()
-        console.log('🎤 [Transcription] Step 2: Audio blob created, size:', audioBlob.size, 'bytes, type:', audioBlob.type)
+        console.log('🎤 [Transcription] Step 2: Preparing audio for Gemini...')
         
-        if (audioBlob.size === 0) {
-            console.error('❌ [Transcription] Audio blob is empty (0 bytes)!')
-            return {
-                success: false,
-                error: 'Audio file is empty',
-            }
-        }
-        
-        // Create form data for Whisper API
-        console.log('🎤 [Transcription] Step 3: Creating FormData for Whisper API...')
-        const formData = new FormData()
-        formData.append('file', audioBlob, 'audio.webm')
-        formData.append('model', 'whisper-1')
-        formData.append('response_format', 'verbose_json')
-        // Don't specify language - let Whisper auto-detect for Arabic/English support
+        // Convert to base64 for Gemini
+        const base64Audio = audioData.buffer.toString('base64')
+        console.log('🎤 [Transcription] Base64 audio length:', base64Audio.length)
 
-        // Call OpenAI Whisper API
-        console.log('🎤 [Transcription] Step 4: Calling OpenAI Whisper API...')
-        console.log('🎤 [Transcription] API Endpoint: https://api.openai.com/v1/audio/transcriptions')
-        const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${openaiKey}`,
+        // Initialize Gemini
+        const genAI = new GoogleGenerativeAI(googleKey)
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
+
+        // Prepare the audio part for Gemini
+        const audioPart: Part = {
+            inlineData: {
+                mimeType: audioData.mimeType,
+                data: base64Audio,
             },
-            body: formData,
-        })
-
-        console.log('🎤 [Transcription] Whisper API response status:', whisperResponse.status, whisperResponse.statusText)
-        
-        if (!whisperResponse.ok) {
-            const errorText = await whisperResponse.text()
-            console.error('❌ [Transcription] Whisper API error response:', errorText)
-            console.error('❌ [Transcription] Status code:', whisperResponse.status)
-            console.error('❌ [Transcription] Status text:', whisperResponse.statusText)
-            return {
-                success: false,
-                error: `Whisper API error: ${whisperResponse.status} - ${errorText}`,
-            }
         }
 
-        console.log('🎤 [Transcription] Step 5: Parsing Whisper API response...')
-        const whisperResult: WhisperResponse = await whisperResponse.json()
-        const rawTranscript = whisperResult.text
+        // Combined prompt for transcription + analysis in one go
+        const prompt = `You are an expert audio transcription and analysis AI. Listen to this audio recording carefully.
 
-        console.log('✅ [Transcription] SUCCESS! Transcription completed')
-        console.log('✅ [Transcription] Raw transcript length:', rawTranscript.length, 'characters')
-        console.log('✅ [Transcription] Detected language:', whisperResult.language)
-        console.log('✅ [Transcription] Duration:', whisperResult.duration, 'seconds')
-        console.log('✅ [Transcription] First 100 chars:', rawTranscript.substring(0, 100))
+**CONTEXT:**
+This is a candidate's voice response to an interview question.
+Question asked: "${questionText}"
 
-        // Clean the transcript using Gemini
-        console.log('🎤 [Transcription] Step 6: Cleaning transcript with Gemini...')
-        const cleanedText = await cleanTranscriptText(rawTranscript, whisperResult.language || 'auto')
-        console.log('✅ [Transcription] Cleaned transcript length:', cleanedText.length, 'characters')
+**TASK:**
+1. Transcribe the audio EXACTLY as spoken (including any filler words like "um", "uh", "يعني", etc.)
+2. Create a cleaned version of the transcript (remove fillers, fix minor grammar issues)
+3. Analyze the response for sentiment, confidence, and relevance
+
+**IMPORTANT:**
+- The audio may be in Arabic, English, or a mix of both - transcribe in the original language(s)
+- Do NOT translate - keep the transcription in the original language
+- Be accurate with the transcription
+
+**RESPOND WITH ONLY THIS JSON (no other text):**
+{
+    "rawTranscript": "<exact transcription including filler words>",
+    "cleanTranscript": "<cleaned version without fillers, corrected grammar>",
+    "language": "<detected language: 'ar' for Arabic, 'en' for English, 'mixed' for both>",
+    "analysis": {
+        "sentiment": {
+            "score": <number from -1 to 1, where -1 is very negative, 0 is neutral, 1 is very positive>,
+            "label": "<negative|neutral|positive>"
+        },
+        "confidence": {
+            "score": <number from 0 to 100, how confident the speaker sounds>,
+            "indicators": ["<list of confidence/hesitation indicators observed>"]
+        },
+        "relevance": {
+            "score": <number from 0 to 100, how relevant the answer is to the question>,
+            "reasoning": "<brief explanation>"
+        },
+        "fluency": {
+            "score": <number from 0 to 100>,
+            "fillerWordCount": <approximate count of filler words>,
+            "observations": "<brief note on speech clarity and pace>"
+        },
+        "keyPhrases": ["<list of 3-5 important phrases from the response>"]
+    }
+}`
+
+        console.log('🎤 [Transcription] Step 3: Calling Gemini 2.5 Flash Lite API...')
+        
+        const result = await model.generateContent([prompt, audioPart])
+        let responseText = result.response.text().trim()
+        
+        console.log('🎤 [Transcription] Gemini response received, length:', responseText.length)
+
+        // Clean JSON response
+        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        
+        // Parse the JSON response
+        const geminiResult = JSON.parse(responseText)
+
+        console.log('✅ [Transcription] SUCCESS! Transcription and analysis completed')
+        console.log('✅ [Transcription] Raw transcript length:', geminiResult.rawTranscript?.length || 0)
+        console.log('✅ [Transcription] Clean transcript length:', geminiResult.cleanTranscript?.length || 0)
+        console.log('✅ [Transcription] Detected language:', geminiResult.language)
+        console.log('✅ [Transcription] Sentiment:', geminiResult.analysis?.sentiment?.label)
+        console.log('✅ [Transcription] Confidence score:', geminiResult.analysis?.confidence?.score)
         console.log('🎤 [Transcription] ============================================')
 
         return {
             success: true,
-            rawTranscript,
-            cleanTranscript: cleanedText,
-            confidence: 0.95, // Whisper doesn't provide confidence, using high default
-            language: whisperResult.language,
-            duration: whisperResult.duration,
+            rawTranscript: geminiResult.rawTranscript || '',
+            cleanTranscript: geminiResult.cleanTranscript || '',
+            confidence: 0.95, // High confidence with Gemini
+            language: geminiResult.language || 'en',
+            analysis: {
+                success: true,
+                sentiment: geminiResult.analysis?.sentiment,
+                confidence: geminiResult.analysis?.confidence,
+                fluency: {
+                    score: geminiResult.analysis?.fluency?.score || 75,
+                    fillerWordCount: geminiResult.analysis?.fluency?.fillerWordCount || 0,
+                },
+                keyPhrases: geminiResult.analysis?.keyPhrases || [],
+            },
         }
     } catch (error) {
         console.error('❌ [Transcription] EXCEPTION CAUGHT:', error)
         console.error('❌ [Transcription] Error name:', error instanceof Error ? error.name : 'Unknown')
         console.error('❌ [Transcription] Error message:', error instanceof Error ? error.message : 'Unknown')
-        console.error('❌ [Transcription] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+        
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown transcription error',
@@ -139,56 +228,41 @@ export async function transcribeAudio(audioUrl: string): Promise<TranscriptionRe
 }
 
 /**
- * Clean transcript by removing filler words and correcting grammar
+ * Legacy transcribeAudio function - now uses Gemini
+ * Kept for backward compatibility with existing code
  */
-async function cleanTranscriptText(rawText: string, language: string): Promise<string> {
-    try {
-        const googleKey = process.env.GOOGLE_API_KEY
-        
-        if (!googleKey) {
-            console.warn('[Transcription] GOOGLE_API_KEY not found, returning raw transcript')
-            return rawText
-        }
-
-        const genAI = new GoogleGenerativeAI(googleKey)
-        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
-
-        const isArabic = language === 'ar' || /[\u0600-\u06FF]/.test(rawText)
-
-        const prompt = `You are a transcript editor. Clean the following transcript by:
-1. Removing filler words (umm, ahh, uhh, uh, um, like, you know, يعني, آه, إيه, امممم)
-2. Correcting minor grammar issues
-3. Fixing sentence structure while preserving the speaker's meaning
-4. Keeping the same language (${isArabic ? 'Arabic' : 'English'})
-5. DO NOT add any new content or change the meaning
-6. DO NOT translate - keep in the original language
-7. Keep it natural and conversational, just cleaner
-
-Original transcript:
-${rawText}
-
-Cleaned transcript (output ONLY the cleaned text, no explanations):`
-
-        const result = await model.generateContent(prompt)
-        const cleanedText = result.response.text().trim()
-
-        console.log('[Transcription] Cleaned transcript generated')
-        return cleanedText || rawText
-    } catch (error) {
-        console.error('[Transcription] Error cleaning transcript:', error)
-        return rawText // Return raw if cleaning fails
+export async function transcribeAudio(audioUrl: string): Promise<TranscriptionResult> {
+    // Use the new combined function with a generic question context
+    const result = await transcribeAndAnalyzeAudio(audioUrl, 'Interview question response')
+    
+    // Return just the transcription part
+    return {
+        success: result.success,
+        rawTranscript: result.rawTranscript,
+        cleanTranscript: result.cleanTranscript,
+        confidence: result.confidence,
+        language: result.language,
+        error: result.error,
     }
 }
 
 /**
- * Analyze voice response for sentiment and confidence
+ * Legacy analyzeVoiceResponse function - now extracts from combined result
+ * Kept for backward compatibility but can be called directly with pre-computed analysis
  */
 export async function analyzeVoiceResponse(
     rawTranscript: string,
     cleanTranscript: string,
     questionText: string,
-    audioDuration?: number
+    audioDuration?: number,
+    precomputedAnalysis?: VoiceAnalysisResult
 ): Promise<VoiceAnalysisResult> {
+    // If we have precomputed analysis from transcribeAndAnalyzeAudio, use it
+    if (precomputedAnalysis && precomputedAnalysis.success) {
+        return precomputedAnalysis
+    }
+
+    // Otherwise, analyze the transcript text with Gemini
     try {
         const googleKey = process.env.GOOGLE_API_KEY
         
@@ -273,22 +347,23 @@ Respond ONLY with the JSON, no additional text.`
 }
 
 /**
- * Batch transcribe multiple audio files
+ * Batch transcribe and analyze multiple audio files
+ * Uses the combined Gemini approach for efficiency
  */
-export async function batchTranscribeAudio(
-    audioUrls: Array<{ questionId: string; audioUrl: string }>
-): Promise<Map<string, TranscriptionResult>> {
+export async function batchTranscribeAndAnalyzeAudio(
+    audioInputs: Array<{ questionId: string; audioUrl: string; questionText: string }>
+): Promise<Map<string, TranscriptionWithAnalysis>> {
     console.log('🔄 [Batch Transcription] ============================================')
-    console.log('🔄 [Batch Transcription] Starting batch transcription for', audioUrls.length, 'audio files')
+    console.log('🔄 [Batch Transcription] Starting batch transcription for', audioInputs.length, 'audio files')
     
-    const results = new Map<string, TranscriptionResult>()
+    const results = new Map<string, TranscriptionWithAnalysis>()
     
     // Process in parallel with concurrency limit
     const CONCURRENCY_LIMIT = 3
     const chunks = []
     
-    for (let i = 0; i < audioUrls.length; i += CONCURRENCY_LIMIT) {
-        chunks.push(audioUrls.slice(i, i + CONCURRENCY_LIMIT))
+    for (let i = 0; i < audioInputs.length; i += CONCURRENCY_LIMIT) {
+        chunks.push(audioInputs.slice(i, i + CONCURRENCY_LIMIT))
     }
 
     console.log('🔄 [Batch Transcription] Processing in', chunks.length, 'chunks with concurrency limit:', CONCURRENCY_LIMIT)
@@ -298,9 +373,9 @@ export async function batchTranscribeAudio(
         console.log(`🔄 [Batch Transcription] Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} files)`)
         
         const chunkResults = await Promise.all(
-            chunk.map(async ({ questionId, audioUrl }) => {
+            chunk.map(async ({ questionId, audioUrl, questionText }) => {
                 console.log(`🔄 [Batch Transcription] Transcribing question: ${questionId}`)
-                const result = await transcribeAudio(audioUrl)
+                const result = await transcribeAndAnalyzeAudio(audioUrl, questionText)
                 console.log(`🔄 [Batch Transcription] Question ${questionId} result: ${result.success ? '✅ SUCCESS' : '❌ FAILED'}`)
                 if (!result.success) {
                     console.error(`🔄 [Batch Transcription] Error for ${questionId}: ${result.error}`)
@@ -324,9 +399,42 @@ export async function batchTranscribeAudio(
     return results
 }
 
-export default {
-    transcribeAudio,
-    analyzeVoiceResponse,
-    batchTranscribeAudio,
+/**
+ * Legacy batch function - kept for backward compatibility
+ * Wraps the new batch function
+ */
+export async function batchTranscribeAudio(
+    audioUrls: Array<{ questionId: string; audioUrl: string }>
+): Promise<Map<string, TranscriptionResult>> {
+    // Convert to new format with empty question text
+    const inputs = audioUrls.map(a => ({
+        questionId: a.questionId,
+        audioUrl: a.audioUrl,
+        questionText: 'Interview question response',
+    }))
+    
+    const results = await batchTranscribeAndAnalyzeAudio(inputs)
+    
+    // Convert back to TranscriptionResult (strip analysis)
+    const transcriptionResults = new Map<string, TranscriptionResult>()
+    results.forEach((result, questionId) => {
+        transcriptionResults.set(questionId, {
+            success: result.success,
+            rawTranscript: result.rawTranscript,
+            cleanTranscript: result.cleanTranscript,
+            confidence: result.confidence,
+            language: result.language,
+            error: result.error,
+        })
+    })
+    
+    return transcriptionResults
 }
 
+export default {
+    transcribeAudio,
+    transcribeAndAnalyzeAudio,
+    analyzeVoiceResponse,
+    batchTranscribeAudio,
+    batchTranscribeAndAnalyzeAudio,
+}

@@ -228,54 +228,46 @@ app.post('/process', async (c) => {
             )
         }
 
-        // Save evaluation to database
+        // Save evaluation to database (with bilingual content)
         const existingEval = await Evaluation.findOne({ applicantId })
+
+        const evaluationData = {
+            overallScore: result.evaluation.overallScore,
+            criteriaMatches: result.evaluation.criteriaMatches,
+            // Bilingual fields
+            strengths: result.evaluation.strengths,
+            weaknesses: result.evaluation.weaknesses,
+            redFlags: result.evaluation.redFlags,
+            summary: result.evaluation.summary,
+            recommendation: result.evaluation.recommendation,
+            recommendationReason: result.evaluation.recommendationReason,
+            suggestedQuestions: result.evaluation.suggestedQuestions,
+            // Sentiment scores
+            sentimentScore: result.evaluation.sentimentScore,
+            confidenceScore: result.evaluation.confidenceScore,
+            isProcessed: true,
+            processedAt: new Date(),
+        }
 
         if (existingEval) {
             // Update existing evaluation
-            Object.assign(existingEval, {
-                overallScore: result.evaluation.overallScore,
-                criteriaMatches: result.evaluation.criteriaMatches,
-                strengths: result.evaluation.strengths,
-                weaknesses: result.evaluation.weaknesses,
-                redFlags: result.evaluation.redFlags,
-                summary: result.evaluation.summary,
-                recommendation: result.evaluation.recommendation,
-                recommendationReason: result.evaluation.recommendationReason,
-                suggestedQuestions: result.evaluation.suggestedQuestions,
-                sentimentScore: result.evaluation.sentimentScore,
-                confidenceScore: result.evaluation.confidenceScore,
-                isProcessed: true,
-                processedAt: new Date(),
-            })
+            Object.assign(existingEval, evaluationData)
             await existingEval.save()
         } else {
             // Create new evaluation
             await Evaluation.create({
                 applicantId,
                 jobId,
-                overallScore: result.evaluation.overallScore,
-                criteriaMatches: result.evaluation.criteriaMatches,
-                strengths: result.evaluation.strengths,
-                weaknesses: result.evaluation.weaknesses,
-                redFlags: result.evaluation.redFlags,
-                summary: result.evaluation.summary,
-                recommendation: result.evaluation.recommendation,
-                recommendationReason: result.evaluation.recommendationReason,
-                suggestedQuestions: result.evaluation.suggestedQuestions,
-                sentimentScore: result.evaluation.sentimentScore,
-                confidenceScore: result.evaluation.confidenceScore,
-                isProcessed: true,
-                processedAt: new Date(),
+                ...evaluationData,
             })
         }
 
-        // Update applicant with evaluation results
+        // Update applicant with evaluation results (use English as default for legacy fields)
         await Applicant.findByIdAndUpdate(applicantId, {
             status: 'evaluated',
             aiScore: result.evaluation.overallScore,
-            aiSummary: result.evaluation.summary,
-            aiRedFlags: result.evaluation.redFlags,
+            aiSummary: result.evaluation.summary.en, // Use English for legacy field
+            aiRedFlags: result.evaluation.redFlags.en, // Use English for legacy field
             cvParsedData: result.evaluation.parsedResume,
         })
 
@@ -526,12 +518,13 @@ app.post('/re-evaluate/:applicantId', async (c) => {
             )
         }
 
-        // Update evaluation
+        // Update evaluation with bilingual content
         await Evaluation.findOneAndUpdate(
             { applicantId },
             {
                 overallScore: result.evaluation.overallScore,
                 criteriaMatches: result.evaluation.criteriaMatches,
+                // Bilingual fields
                 strengths: result.evaluation.strengths,
                 weaknesses: result.evaluation.weaknesses,
                 redFlags: result.evaluation.redFlags,
@@ -547,11 +540,11 @@ app.post('/re-evaluate/:applicantId', async (c) => {
             { upsert: true }
         )
 
-        // Update applicant
+        // Update applicant (use English for legacy fields)
         await Applicant.findByIdAndUpdate(applicantId, {
             aiScore: result.evaluation.overallScore,
-            aiSummary: result.evaluation.summary,
-            aiRedFlags: result.evaluation.redFlags,
+            aiSummary: result.evaluation.summary.en,
+            aiRedFlags: result.evaluation.redFlags.en,
         })
 
         return c.json({

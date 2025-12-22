@@ -290,12 +290,12 @@ export async function submitApplication(
                         processedAt: new Date(),
                     })
 
-                    // Update applicant with AI results
+                    // Update applicant with AI results (use English for legacy fields)
                     await Applicant.findByIdAndUpdate(applicantId, {
                         status: 'evaluated',
                         aiScore: result.evaluation.overallScore,
-                        aiSummary: result.evaluation.summary,
-                        aiRedFlags: result.evaluation.redFlags,
+                        aiSummary: result.evaluation.summary.en,
+                        aiRedFlags: result.evaluation.redFlags.en,
                         cvParsedData: result.evaluation.parsedResume,
                     })
 

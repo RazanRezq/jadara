@@ -12,6 +12,8 @@ import {
     CandidateEvaluationInput,
     ParsedResume,
     VoiceAnalysisResult,
+    BilingualText,
+    BilingualTextArray,
 } from './types'
 
 const GEMINI_MODEL = 'gemini-2.5-flash-lite'
@@ -31,6 +33,7 @@ interface CandidateData {
         questionText: string
         answer: string
     }>
+    urlContent?: string // Formatted content extracted from LinkedIn, GitHub, Portfolio, etc.
 }
 
 /**
@@ -48,11 +51,11 @@ export async function scoreCandidate(
                 success: false,
                 overallScore: 0,
                 criteriaMatches: [],
-                strengths: [],
-                weaknesses: [],
-                redFlags: [],
-                summary: '',
-                whySection: '',
+                strengths: { en: [], ar: [] },
+                weaknesses: { en: [], ar: [] },
+                redFlags: { en: [], ar: [] },
+                summary: { en: '', ar: '' },
+                whySection: { en: '', ar: '' },
                 error: 'GOOGLE_API_KEY not configured',
             }
         }
@@ -89,9 +92,9 @@ ${criteriaList}
 ${candidateProfile}
 
 **TASK:**
-Evaluate this candidate against each criterion and provide a comprehensive assessment.
+Analyze the candidate's input. Provide the evaluation report in TWO languages: English (under "en") and Arabic (under "ar"). Ensure the Arabic translation is professional and accurate.
 
-**Return JSON with this EXACT structure:**
+**Return JSON with this EXACT structure (BILINGUAL OUTPUT):**
 {
     "criteriaMatches": [
         {
@@ -99,24 +102,52 @@ Evaluate this candidate against each criterion and provide a comprehensive asses
             "matched": <true|false>,
             "score": <0-100>,
             "weight": <1-10, importance level>,
-            "reason": "<detailed explanation of score>",
-            "evidence": ["<supporting evidence from candidate data>"]
+            "reason": {
+                "en": "<BULLET POINT - max 15 words>",
+                "ar": "<BULLET POINT - max 15 words>"
+            },
+            "evidence": {
+                "en": ["<specific fact - max 15 words>"],
+                "ar": ["<specific fact - max 15 words>"]
+            }
         }
     ],
-    "strengths": [
-        "<strength 1 with specific evidence>",
-        "<strength 2 with specific evidence>"
-    ],
-    "weaknesses": [
-        "<weakness 1 with specific evidence>",
-        "<weakness 2 with specific evidence>"
-    ],
-    "redFlags": [
-        "<any concerning patterns or issues>",
-        "<hidden from reviewers - include salary concerns, gaps, inconsistencies>"
-    ],
-    "summary": "<2-3 sentence overall assessment>",
-    "whySection": "Matched X% because: <detailed reasoning with specific evidence>"
+    "strengths": {
+        "en": [
+            "<strength bullet - max 15 words>",
+            "<strength bullet - max 15 words>"
+        ],
+        "ar": [
+            "<strength bullet - max 15 words>",
+            "<strength bullet - max 15 words>"
+        ]
+    },
+    "weaknesses": {
+        "en": [
+            "<weakness bullet - max 15 words>",
+            "<weakness bullet - max 15 words>"
+        ],
+        "ar": [
+            "<weakness bullet - max 15 words>",
+            "<weakness bullet - max 15 words>"
+        ]
+    },
+    "redFlags": {
+        "en": [
+            "<concern bullet - max 15 words>"
+        ],
+        "ar": [
+            "<concern bullet - max 15 words>"
+        ]
+    },
+    "summary": {
+        "en": "<ONE bullet point summarizing fit - max 15 words>",
+        "ar": "<ONE bullet point summarizing fit - max 15 words>"
+    },
+    "whySection": {
+        "en": "Matched X% because: <1-2 bullet points - max 15 words each>",
+        "ar": "نسبة التطابق X% لأن: <1-2 bullet points - max 15 words each>"
+    }
 }
 
 **SCORING GUIDELINES:**
@@ -127,12 +158,22 @@ Evaluate this candidate against each criterion and provide a comprehensive asses
 - 50-59: Partial match, missing some requirements
 - Below 50: Poor match, significant gaps
 
-**Important:**
-- Be specific with evidence from the candidate data
-- Consider voice response quality if available
-- Include salary expectation in red flags if relevant
-- Consider cultural fit based on responses
-- Evaluate communication skills from voice transcripts
+**CRITICAL FORMATTING RULES:**
+- BULLET POINTS ONLY. NO PARAGRAPHS ALLOWED.
+- Maximum 15 words per bullet point. No exceptions.
+- Be direct and analytical. No filler phrases or conversational language.
+- Use concrete facts and numbers. Avoid fluffy descriptors.
+- Example GOOD: "5 years React experience matches requirement"
+- Example BAD: "The candidate demonstrates a strong understanding of React through their extensive experience"
+- **CAREFULLY ANALYZE EXTERNAL PROFILES** (LinkedIn, GitHub, Portfolio, Behance) for:
+  - Actual projects and their technical complexity
+  - Skills demonstrated through real work (not just listed)
+  - GitHub contributions, stars, and code quality indicators
+  - Portfolio quality and professional presentation
+  - Consistency between resume claims and online presence
+- Cross-reference skills claimed in resume with evidence from online profiles
+- Ensure Arabic translations are professional, formal, and culturally appropriate
+- Each array field must have the same number of items in both languages
 
 Return ONLY valid JSON.`
 
@@ -142,31 +183,51 @@ Return ONLY valid JSON.`
         
         const evaluation = JSON.parse(responseText)
 
-        // Add budget red flag if applicable
+        // Add budget red flag if applicable (bilingual)
         if (budgetCheck.redFlag) {
-            evaluation.redFlags = evaluation.redFlags || []
-            evaluation.redFlags.push(budgetCheck.redFlag)
+            evaluation.redFlags = evaluation.redFlags || { en: [], ar: [] }
+            evaluation.redFlags.en = evaluation.redFlags.en || []
+            evaluation.redFlags.ar = evaluation.redFlags.ar || []
+            evaluation.redFlags.en.push(budgetCheck.redFlag)
+            // Arabic translation of budget red flag
+            const arabicBudgetFlag = budgetCheck.redFlag
+                .replace('Salary expectation', 'توقعات الراتب')
+                .replace('exceeds budget', 'تتجاوز الميزانية')
+                .replace('max', 'الحد الأقصى')
+                .replace('by', 'بمبلغ')
+            evaluation.redFlags.ar.push(arabicBudgetFlag)
         }
 
         // Calculate weighted overall score
         const criteriaMatches = normalizeCriteriaMatches(evaluation.criteriaMatches || [])
         const overallScore = calculateWeightedScore(criteriaMatches)
 
+        // Normalize bilingual fields
+        const strengths: BilingualTextArray = normalizeBilingualTextArray(evaluation.strengths)
+        const weaknesses: BilingualTextArray = normalizeBilingualTextArray(evaluation.weaknesses)
+        const redFlags: BilingualTextArray = normalizeBilingualTextArray(evaluation.redFlags)
+        const summary: BilingualText = normalizeBilingualText(evaluation.summary, '')
+        const whySection: BilingualText = normalizeBilingualText(
+            evaluation.whySection, 
+            `Scored ${overallScore}% based on evaluation criteria.`
+        )
+
         console.log('[Scoring Engine] Evaluation complete:')
         console.log('  - Overall Score:', overallScore)
         console.log('  - Criteria Evaluated:', criteriaMatches.length)
-        console.log('  - Strengths:', evaluation.strengths?.length || 0)
-        console.log('  - Red Flags:', evaluation.redFlags?.length || 0)
+        console.log('  - Strengths (EN):', strengths.en?.length || 0)
+        console.log('  - Strengths (AR):', strengths.ar?.length || 0)
+        console.log('  - Red Flags (EN):', redFlags.en?.length || 0)
 
         return {
             success: true,
             overallScore,
             criteriaMatches,
-            strengths: evaluation.strengths || [],
-            weaknesses: evaluation.weaknesses || [],
-            redFlags: evaluation.redFlags || [],
-            summary: evaluation.summary || '',
-            whySection: evaluation.whySection || `Scored ${overallScore}% based on evaluation criteria.`,
+            strengths,
+            weaknesses,
+            redFlags,
+            summary,
+            whySection,
         }
     } catch (error) {
         console.error('[Scoring Engine] Error:', error)
@@ -174,11 +235,11 @@ Return ONLY valid JSON.`
             success: false,
             overallScore: 0,
             criteriaMatches: [],
-            strengths: [],
-            weaknesses: [],
-            redFlags: [],
-            summary: '',
-            whySection: '',
+            strengths: { en: [], ar: [] },
+            weaknesses: { en: [], ar: [] },
+            redFlags: { en: [], ar: [] },
+            summary: { en: '', ar: '' },
+            whySection: { en: '', ar: '' },
             error: error instanceof Error ? error.message : 'Unknown scoring error',
         }
     }
@@ -200,9 +261,9 @@ export async function generateRecommendation(
                 success: false,
                 recommendation: 'pending',
                 confidence: 0,
-                reason: '',
-                suggestedQuestions: [],
-                nextBestAction: '',
+                reason: { en: '', ar: '' },
+                suggestedQuestions: { en: [], ar: [] },
+                nextBestAction: { en: '', ar: '' },
                 error: 'GOOGLE_API_KEY not configured',
             }
         }
@@ -216,58 +277,85 @@ export async function generateRecommendation(
                 success: true,
                 recommendation: 'reject',
                 confidence: 95,
-                reason: `Score of ${scoringResult.overallScore}% is below the auto-reject threshold of ${jobCriteria.autoRejectThreshold}%.`,
-                suggestedQuestions: [],
-                nextBestAction: 'Send rejection notification',
+                reason: {
+                    en: `Score of ${scoringResult.overallScore}% is below the auto-reject threshold of ${jobCriteria.autoRejectThreshold}%.`,
+                    ar: `الدرجة ${scoringResult.overallScore}% أقل من حد الرفض التلقائي ${jobCriteria.autoRejectThreshold}%.`,
+                },
+                suggestedQuestions: { en: [], ar: [] },
+                nextBestAction: {
+                    en: 'Send rejection notification',
+                    ar: 'إرسال إشعار الرفض',
+                },
             }
         }
 
-        const prompt = `Based on this candidate evaluation, provide a hiring recommendation.
+        const prompt = `Based on this candidate evaluation, provide a hiring recommendation in TWO languages: English and Arabic.
 
 **Candidate:** ${candidateName}
 **Overall Score:** ${scoringResult.overallScore}%
 **Job:** ${jobCriteria.title}
 
-**Evaluation Summary:**
-${scoringResult.summary}
+**Evaluation Summary (English):**
+${scoringResult.summary.en}
 
-**Strengths:**
-${scoringResult.strengths.map(s => `- ${s}`).join('\n')}
+**Strengths (English):**
+${scoringResult.strengths.en.map(s => `- ${s}`).join('\n')}
 
-**Weaknesses:**
-${scoringResult.weaknesses.map(w => `- ${w}`).join('\n')}
+**Weaknesses (English):**
+${scoringResult.weaknesses.en.map(w => `- ${w}`).join('\n')}
 
-**Red Flags:**
-${scoringResult.redFlags.length > 0 ? scoringResult.redFlags.map(r => `- ${r}`).join('\n') : '- None identified'}
+**Red Flags (English):**
+${scoringResult.redFlags.en.length > 0 ? scoringResult.redFlags.en.map(r => `- ${r}`).join('\n') : '- None identified'}
 
-**Why Section:**
-${scoringResult.whySection}
+**Why Section (English):**
+${scoringResult.whySection.en}
 
 **TASK:**
-Provide a recommendation with:
+Provide a recommendation with BILINGUAL output (English and Arabic):
 1. Clear hire/hold/reject decision
 2. Confidence level in the decision
-3. Detailed reasoning
-4. 3-5 follow-up interview questions to address gaps/concerns
-5. Recommended next action
+3. Concise reasoning in bullet points (bilingual)
+4. 3-5 follow-up interview questions to address gaps/concerns (bilingual)
+5. Recommended next action (bilingual)
 
-**Return JSON:**
+**Return JSON with BILINGUAL structure:**
 {
     "recommendation": "<hire|hold|reject>",
     "confidence": <0-100, how confident in this recommendation>,
-    "reason": "<detailed explanation of the recommendation>",
-    "suggestedQuestions": [
-        "<interview question 1 to address specific gap>",
-        "<interview question 2>",
-        "<interview question 3>"
-    ],
-    "nextBestAction": "<specific recommended action, e.g., 'Schedule technical interview', 'Request portfolio review'>"
+    "reason": {
+        "en": "<1-2 bullet points - max 15 words each>",
+        "ar": "<1-2 bullet points - max 15 words each>"
+    },
+    "suggestedQuestions": {
+        "en": [
+            "<concise interview question 1>",
+            "<concise interview question 2>",
+            "<concise interview question 3>"
+        ],
+        "ar": [
+            "<concise interview question 1>",
+            "<concise interview question 2>",
+            "<concise interview question 3>"
+        ]
+    },
+    "nextBestAction": {
+        "en": "<action bullet - max 15 words>",
+        "ar": "<action bullet - max 15 words>"
+    }
 }
 
 **Decision Guidelines:**
 - HIRE (Score > 80%, no major red flags): Strong candidate, proceed to next stage
 - HOLD (Score 60-80% OR has concerns): Needs more evaluation, has potential
 - REJECT (Score < 60% OR critical red flags): Not suitable for the role
+
+**CRITICAL FORMATTING RULES:**
+- BULLET POINTS ONLY. NO PARAGRAPHS ALLOWED.
+- Maximum 15 words per bullet point. No exceptions.
+- Be direct and analytical. No filler phrases or conversational language.
+- Use concrete facts and numbers. Avoid fluffy descriptors.
+- Ensure Arabic translations are professional, formal, and culturally appropriate
+- Each array in suggestedQuestions must have the same number of items in both languages
 
 Return ONLY valid JSON.`
 
@@ -284,9 +372,9 @@ Return ONLY valid JSON.`
             success: true,
             recommendation: normalizeRecommendation(recommendation.recommendation),
             confidence: recommendation.confidence || 70,
-            reason: recommendation.reason || '',
-            suggestedQuestions: recommendation.suggestedQuestions || [],
-            nextBestAction: recommendation.nextBestAction || 'Review candidate profile',
+            reason: normalizeBilingualText(recommendation.reason, ''),
+            suggestedQuestions: normalizeBilingualTextArray(recommendation.suggestedQuestions),
+            nextBestAction: normalizeBilingualText(recommendation.nextBestAction, 'Review candidate profile'),
         }
     } catch (error) {
         console.error('[Scoring Engine] Recommendation error:', error)
@@ -294,9 +382,9 @@ Return ONLY valid JSON.`
             success: false,
             recommendation: 'pending',
             confidence: 0,
-            reason: '',
-            suggestedQuestions: [],
-            nextBestAction: '',
+            reason: { en: '', ar: '' },
+            suggestedQuestions: { en: [], ar: [] },
+            nextBestAction: { en: '', ar: '' },
             error: error instanceof Error ? error.message : 'Unknown error',
         }
     }
@@ -399,7 +487,7 @@ export function matchSkills(
 
 // Helper functions
 function buildCandidateProfile(candidateData: CandidateData): string {
-    const { personalData, parsedResume, voiceAnalysis, textResponses } = candidateData
+    const { personalData, parsedResume, voiceAnalysis, textResponses, urlContent } = candidateData
     
     let profile = `
 ## Basic Information
@@ -462,6 +550,13 @@ ${textResponses.map(t => `
 `
     }
 
+    // Add extracted URL content (LinkedIn, GitHub, Portfolio, Behance)
+    if (urlContent) {
+        profile += `
+${urlContent}
+`
+    }
+
     return profile
 }
 
@@ -488,6 +583,57 @@ ${jobCriteria.criteria.map(c => `
     return criteria
 }
 
+/**
+ * Normalize bilingual text, handling both object and string formats
+ */
+function normalizeBilingualText(value: unknown, defaultValue: string = ''): BilingualText {
+    if (!value) {
+        return { en: defaultValue, ar: defaultValue }
+    }
+    
+    if (typeof value === 'string') {
+        // Legacy single string format - use same value for both languages
+        return { en: value, ar: value }
+    }
+    
+    if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>
+        return {
+            en: typeof obj.en === 'string' ? obj.en : defaultValue,
+            ar: typeof obj.ar === 'string' ? obj.ar : defaultValue,
+        }
+    }
+    
+    return { en: defaultValue, ar: defaultValue }
+}
+
+/**
+ * Normalize bilingual text array, handling both object and array formats
+ */
+function normalizeBilingualTextArray(value: unknown): BilingualTextArray {
+    if (!value) {
+        return { en: [], ar: [] }
+    }
+    
+    if (Array.isArray(value)) {
+        // Legacy array format - use same values for both languages
+        return {
+            en: value.map(String),
+            ar: value.map(String),
+        }
+    }
+    
+    if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>
+        return {
+            en: Array.isArray(obj.en) ? obj.en.map(String) : [],
+            ar: Array.isArray(obj.ar) ? obj.ar.map(String) : [],
+        }
+    }
+    
+    return { en: [], ar: [] }
+}
+
 function normalizeCriteriaMatches(matches: unknown[]): CriteriaMatch[] {
     return matches.map((m: unknown) => {
         const match = m as Record<string, unknown>
@@ -496,8 +642,8 @@ function normalizeCriteriaMatches(matches: unknown[]): CriteriaMatch[] {
             matched: Boolean(match.matched),
             score: Math.max(0, Math.min(100, Number(match.score) || 0)),
             weight: Math.max(1, Math.min(10, Number(match.weight) || 5)),
-            reason: String(match.reason || ''),
-            evidence: Array.isArray(match.evidence) ? match.evidence.map(String) : [],
+            reason: normalizeBilingualText(match.reason, ''),
+            evidence: normalizeBilingualTextArray(match.evidence),
         }
     }).filter(m => m.criteriaName)
 }

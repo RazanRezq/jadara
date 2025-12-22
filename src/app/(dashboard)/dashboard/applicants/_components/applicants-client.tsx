@@ -79,22 +79,34 @@ export interface Applicant {
     createdAt: string
 }
 
+// Bilingual content types
+export interface BilingualText {
+    en: string
+    ar: string
+}
+
+export interface BilingualTextArray {
+    en: string[]
+    ar: string[]
+}
+
 export interface EvaluationData {
     id: string
     applicantId: string
     overallScore: number
     recommendation: 'hire' | 'hold' | 'reject' | 'pending'
-    strengths: string[]
-    weaknesses: string[]
-    redFlags: string[]
-    summary: string
-    recommendationReason: string
-    suggestedQuestions: string[]
+    // Bilingual content fields
+    strengths: BilingualTextArray
+    weaknesses: BilingualTextArray
+    redFlags: BilingualTextArray
+    summary: BilingualText
+    recommendationReason: BilingualText
+    suggestedQuestions: BilingualTextArray
     criteriaMatches: Array<{
         criteriaName: string
         matched: boolean
         score: number
-        reason: string
+        reason: BilingualText
     }>
     sentimentScore?: number
     confidenceScore?: number
@@ -213,7 +225,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     // Fetch evaluation data for applicants
     const fetchEvaluations = async (applicantIds: string[]) => {
         const newEvaluations = new Map<string, EvaluationData>()
-        
+
         // Fetch evaluations in parallel (batch of 5)
         const batchSize = 5
         for (let i = 0; i < applicantIds.length; i += batchSize) {
@@ -231,7 +243,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             })
             await Promise.all(promises)
         }
-        
+
         setEvaluations(newEvaluations)
     }
 
@@ -296,17 +308,17 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         // Experience filter
         const exp = applicant.personalData?.yearsOfExperience ?? 0
         if (exp < experienceRange[0] || exp > experienceRange[1]) return false
-        
+
         // Skills filter (check tags)
         if (selectedSkills.size > 0) {
-            const hasSkill = applicant.tags?.some(tag => 
-                Array.from(selectedSkills).some(skill => 
+            const hasSkill = applicant.tags?.some(tag =>
+                Array.from(selectedSkills).some(skill =>
                     tag.toLowerCase().includes(skill.toLowerCase())
                 )
             )
             if (!hasSkill) return false
         }
-        
+
         return true
     })
 
@@ -314,7 +326,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const recommendedApplicants = filteredApplicants.filter(a => (a.aiScore || 0) >= 75)
     const otherApplicants = filteredApplicants.filter(a => (a.aiScore || 0) < 75)
 
-    const hasActiveFilters = searchTerm || statusFilters.size > 0 || jobFilter !== "all" || 
+    const hasActiveFilters = searchTerm || statusFilters.size > 0 || jobFilter !== "all" ||
         minScore > 0 || selectedSkills.size > 0 || experienceRange[0] > 0 || experienceRange[1] < 20
 
     return (
@@ -375,7 +387,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                 {recommendedApplicants.length} {t("applicants.candidates")}
                             </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                             {recommendedApplicants.slice(0, 6).map((applicant) => (
                                 <CandidateCard
@@ -590,8 +602,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                                 variant={selectedSkills.has(skill) ? "default" : "outline"}
                                                 className={cn(
                                                     "cursor-pointer transition-colors",
-                                                    selectedSkills.has(skill) 
-                                                        ? "bg-primary" 
+                                                    selectedSkills.has(skill)
+                                                        ? "bg-primary"
                                                         : "hover:bg-muted"
                                                 )}
                                                 onClick={() => handleSkillToggle(skill)}

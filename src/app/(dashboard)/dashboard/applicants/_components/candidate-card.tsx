@@ -19,15 +19,15 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { Applicant } from "./applicants-client"
+import type { Applicant, BilingualTextArray } from "./applicants-client"
 
 interface CandidateCardProps {
     applicant: Applicant
     evaluation?: {
         overallScore: number
         recommendation: 'hire' | 'hold' | 'reject' | 'pending'
-        strengths: string[]
-        weaknesses: string[]
+        strengths: BilingualTextArray | string[]
+        weaknesses: BilingualTextArray | string[]
         criteriaMatches: Array<{
             criteriaName: string
             matched: boolean
@@ -39,12 +39,19 @@ interface CandidateCardProps {
 }
 
 export function CandidateCard({ applicant, evaluation, onView, isRecommended }: CandidateCardProps) {
-    const { t, isRTL } = useTranslate()
+    const { t, isRTL, locale } = useTranslate()
+
+    // Helper to get bilingual array based on current locale
+    const getLocalizedArray = (arr: BilingualTextArray | string[] | undefined): string[] => {
+        if (!arr) return []
+        if (Array.isArray(arr)) return arr // Legacy format
+        return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
+    }
 
     const score = evaluation?.overallScore ?? applicant.aiScore
-    const strengths = evaluation?.strengths ?? []
-    const weaknesses = evaluation?.weaknesses ?? []
-    
+    const strengths = getLocalizedArray(evaluation?.strengths)
+    const weaknesses = getLocalizedArray(evaluation?.weaknesses)
+
     // Calculate missing skills from criteria matches
     const missingSkills = evaluation?.criteriaMatches
         ?.filter(c => !c.matched)
@@ -79,7 +86,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
     }
 
     return (
-        <Card 
+        <Card
             className={cn(
                 "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/30",
                 isRecommended && "ring-2 ring-primary/20 bg-primary/[0.02]"
@@ -91,15 +98,15 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                 <div className="flex items-start justify-between mb-3">
                     {/* AI Recommended Badge */}
                     {isRecommended && (
-                        <Badge 
-                            variant="secondary" 
+                        <Badge
+                            variant="secondary"
                             className="bg-primary/10 text-primary border-0 gap-1"
                         >
                             <Sparkles className="h-3 w-3" />
                             {t("applicants.aiRecommended")}
                         </Badge>
                     )}
-                    
+
                     {/* Score Badge */}
                     <div className={cn(
                         "flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold",
@@ -114,9 +121,9 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                     {/* More menu */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                                 <MoreHorizontal className="h-4 w-4" />
@@ -152,7 +159,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                         {/* Online indicator */}
                         <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-background" />
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-base truncate">
@@ -181,9 +188,9 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                 {/* Skills/Tags */}
                 <div className="flex flex-wrap gap-1.5 mb-4">
                     {applicant.tags?.slice(0, 4).map((tag, index) => (
-                        <Badge 
-                            key={index} 
-                            variant="secondary" 
+                        <Badge
+                            key={index}
+                            variant="secondary"
                             className="text-xs bg-muted/80"
                         >
                             {tag}
@@ -205,7 +212,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                             <span>{strengths.length} {t("applicants.strengths")}</span>
                         </div>
                     )}
-                    
+
                     {/* Missing Skills */}
                     {missingSkills.length > 0 && (
                         <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">

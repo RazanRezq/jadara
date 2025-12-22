@@ -49,7 +49,7 @@ import {
     CalendarPlus,
     MessageSquare,
 } from "lucide-react"
-import type { Applicant, ApplicantStatus, EvaluationData } from "./applicants-client"
+import type { Applicant, ApplicantStatus, EvaluationData, BilingualText, BilingualTextArray } from "./applicants-client"
 
 interface VoiceResponse {
     questionId: string
@@ -89,11 +89,25 @@ export function ViewApplicantDialog({
     userId,
     onStatusChange,
 }: ViewApplicantDialogProps) {
-    const { t, isRTL } = useTranslate()
+    const { t, isRTL, locale } = useTranslate()
     const [updating, setUpdating] = useState(false)
     const [currentStatus, setCurrentStatus] = useState<ApplicantStatus>(applicant.status)
     const [voiceResponses, setVoiceResponses] = useState<VoiceResponse[]>([])
     const [loadingResponses, setLoadingResponses] = useState(false)
+
+    // Helper to get bilingual text based on current locale
+    const getLocalizedText = (text: BilingualText | string | undefined): string => {
+        if (!text) return ''
+        if (typeof text === 'string') return text // Legacy format
+        return locale === 'ar' ? (text.ar || text.en) : (text.en || text.ar)
+    }
+
+    // Helper to get bilingual array based on current locale
+    const getLocalizedArray = (arr: BilingualTextArray | string[] | undefined): string[] => {
+        if (!arr) return []
+        if (Array.isArray(arr)) return arr // Legacy format
+        return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
+    }
 
     // Audio player states
     const [isPlaying, setIsPlaying] = useState(false)
@@ -281,7 +295,7 @@ export function ViewApplicantDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto p-0">
                 {/* Header */}
                 <DialogHeader className="p-6 pb-4 border-b bg-muted/30">
                     <div className="flex items-center justify-between">
@@ -584,140 +598,238 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* AI Evaluation Tab */}
-                    <TabsContent value="evaluation" className="p-6 space-y-6 mt-0">
+                    <TabsContent value="evaluation" className="p-6 space-y-8 mt-0">
                         {/* Strengths & Weaknesses */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Strengths */}
-                            <Card className="bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-base flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                                        <CheckCircle className="h-4 w-4" />
+                            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-950/10 border-2 border-emerald-300 dark:border-emerald-800 shadow-sm hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-emerald-700 dark:text-emerald-400">
+                                        <div className="p-1.5 bg-emerald-500 dark:bg-emerald-600 rounded-md">
+                                            <CheckCircle className="h-5 w-5 text-white" />
+                                        </div>
                                         {t("applicants.strengths")}
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-2">
-                                    {(evaluation?.strengths || []).length > 0 ? (
-                                        evaluation?.strengths.map((strength, index) => (
-                                            <Badge
-                                                key={`strength-${index}`}
-                                                variant="secondary"
-                                                className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 mr-2 mb-2"
-                                            >
-                                                • {strength}
-                                            </Badge>
-                                        ))
+                                <CardContent className="space-y-3 pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {getLocalizedArray(evaluation?.strengths).length > 0 ? (
+                                        <div className="space-y-3">
+                                            {getLocalizedArray(evaluation?.strengths).map((strength, index) => (
+                                                <div
+                                                    key={`strength-${index}`}
+                                                    className={cn(
+                                                        "group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all",
+                                                        locale === 'ar' && 'flex-row-reverse'
+                                                    )}
+                                                >
+                                                    <div className="mt-0.5 shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                    </div>
+                                                    <p className={cn(
+                                                        "text-sm leading-relaxed text-emerald-900 dark:text-emerald-100 whitespace-pre-line flex-1",
+                                                        locale === 'ar' && 'text-right'
+                                                    )}>
+                                                        {strength}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground">{t("applicants.noStrengths")}</p>
+                                        <p className="text-sm text-muted-foreground py-4 text-center">{t("applicants.noStrengths")}</p>
                                     )}
                                 </CardContent>
                             </Card>
 
                             {/* Weaknesses */}
-                            <Card className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                                        <AlertTriangle className="h-4 w-4" />
+                            <Card className="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-950/10 border-2 border-red-300 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-red-700 dark:text-red-400">
+                                        <div className="p-1.5 bg-red-500 dark:bg-red-600 rounded-md">
+                                            <AlertTriangle className="h-5 w-5 text-white" />
+                                        </div>
                                         {t("applicants.weaknesses")}
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-2">
-                                    {(evaluation?.weaknesses || []).length > 0 ? (
-                                        evaluation?.weaknesses.map((weakness, index) => (
-                                            <Badge
-                                                key={`weakness-${index}`}
-                                                variant="secondary"
-                                                className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 mr-2 mb-2"
-                                            >
-                                                • {weakness}
-                                            </Badge>
-                                        ))
+                                <CardContent className="space-y-3 pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {getLocalizedArray(evaluation?.weaknesses).length > 0 ? (
+                                        <div className="space-y-3">
+                                            {getLocalizedArray(evaluation?.weaknesses).map((weakness, index) => (
+                                                <div
+                                                    key={`weakness-${index}`}
+                                                    className={cn(
+                                                        "group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 hover:border-red-400 dark:hover:border-red-600 transition-all",
+                                                        locale === 'ar' && 'flex-row-reverse'
+                                                    )}
+                                                >
+                                                    <div className="mt-0.5 shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    </div>
+                                                    <p className={cn(
+                                                        "text-sm leading-relaxed text-red-900 dark:text-red-100 whitespace-pre-line flex-1",
+                                                        locale === 'ar' && 'text-right'
+                                                    )}>
+                                                        {weakness}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground">{t("applicants.noWeaknesses")}</p>
+                                        <p className="text-sm text-muted-foreground py-4 text-center">{t("applicants.noWeaknesses")}</p>
                                     )}
                                 </CardContent>
                             </Card>
                         </div>
 
                         {/* Missing Requirements */}
-                        <Card className="bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base flex items-center gap-2 text-red-700 dark:text-red-400">
-                                    <XCircle className="h-4 w-4" />
+                        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-950/10 border-2 border-amber-300 dark:border-amber-800 shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-amber-700 dark:text-amber-400">
+                                    <div className="p-1.5 bg-amber-500 dark:bg-amber-600 rounded-md">
+                                        <XCircle className="h-5 w-5 text-white" />
+                                    </div>
                                     {t("applicants.missingRequirements")}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
                                 {evaluation?.criteriaMatches?.filter(c => !c.matched).length ? (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         {evaluation.criteriaMatches
                                             .filter(c => !c.matched)
                                             .map((criteria, index) => (
-                                                <div key={index} className="text-sm">
-                                                    • {criteria.criteriaName}: {criteria.reason}
+                                                <div
+                                                    key={index}
+                                                    className={cn(
+                                                        "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50",
+                                                        locale === 'ar' && 'flex-row-reverse'
+                                                    )}
+                                                >
+                                                    <div className="mt-0.5 shrink-0">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                    </div>
+                                                    <div className={cn("flex-1 space-y-1", locale === 'ar' && 'text-right')}>
+                                                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                                                            {criteria.criteriaName}
+                                                        </p>
+                                                        <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed whitespace-pre-line">
+                                                            {getLocalizedText(criteria.reason)}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             ))
                                         }
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-lg">
-                                        <CheckCircle className="h-5 w-5" />
-                                        <span>{t("applicants.noMissingRequirements")}</span>
+                                    <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 rounded-lg">
+                                        <CheckCircle className="h-6 w-6 shrink-0" />
+                                        <span className="text-sm font-medium">{t("applicants.noMissingRequirements")}</span>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
                         {/* AI Recommendation */}
-                        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-primary" />
+                        <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-2 border-primary/30 dark:border-primary/20 shadow-md">
+                            <CardHeader className="pb-4 border-b bg-primary/5">
+                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
+                                    <div className="p-1.5 bg-primary rounded-md">
+                                        <Sparkles className="h-5 w-5 text-white" />
+                                    </div>
                                     {t("applicants.aiRecommendation")}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <p className="text-sm leading-relaxed">
-                                    {evaluation?.summary || applicant.aiSummary || t("applicants.noAIRecommendation")}
-                                </p>
-
-                                {evaluation?.recommendationReason && (
-                                    <p className="text-sm text-muted-foreground mt-3">
-                                        {evaluation.recommendationReason}
+                            <CardContent className="space-y-6 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                {/* Main Summary */}
+                                <div className="p-4 bg-white dark:bg-primary/5 rounded-lg border border-primary/20">
+                                    <p className={cn(
+                                        "text-base leading-relaxed text-foreground whitespace-pre-line",
+                                        locale === 'ar' && 'text-right'
+                                    )}>
+                                        {getLocalizedText(evaluation?.summary) || applicant.aiSummary || t("applicants.noAIRecommendation")}
                                     </p>
+                                </div>
+
+                                {/* Recommendation Reason */}
+                                {getLocalizedText(evaluation?.recommendationReason) && (
+                                    <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                                        <p className={cn(
+                                            "text-sm leading-relaxed text-muted-foreground whitespace-pre-line",
+                                            locale === 'ar' && 'text-right'
+                                        )}>
+                                            {getLocalizedText(evaluation?.recommendationReason)}
+                                        </p>
+                                    </div>
                                 )}
 
                                 {/* Suggested Interview Questions */}
-                                {evaluation?.suggestedQuestions && evaluation.suggestedQuestions.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t">
-                                        <p className="text-sm font-medium mb-2">{t("applicants.suggestedQuestions")}</p>
-                                        <ul className="space-y-1">
-                                            {evaluation.suggestedQuestions.map((q, i) => (
-                                                <li key={i} className="text-sm text-muted-foreground">• {q}</li>
+                                {getLocalizedArray(evaluation?.suggestedQuestions).length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-px flex-1 bg-border" />
+                                            <p className="text-sm font-semibold text-primary uppercase tracking-wide">
+                                                {t("applicants.suggestedQuestions")}
+                                            </p>
+                                            <div className="h-px flex-1 bg-border" />
+                                        </div>
+                                        <div className="space-y-3">
+                                            {getLocalizedArray(evaluation?.suggestedQuestions).map((q, i) => (
+                                                <div
+                                                    key={i}
+                                                    className={cn(
+                                                        "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-primary/5 border border-primary/20 hover:border-primary/40 transition-colors",
+                                                        locale === 'ar' && 'flex-row-reverse'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold shrink-0">
+                                                        {i + 1}
+                                                    </div>
+                                                    <p className={cn(
+                                                        "text-sm leading-relaxed text-foreground whitespace-pre-line flex-1",
+                                                        locale === 'ar' && 'text-right'
+                                                    )}>
+                                                        {q}
+                                                    </p>
+                                                </div>
                                             ))}
-                                        </ul>
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
                         {/* Red Flags - Hidden from reviewers */}
-                        {!isReviewer && ((evaluation?.redFlags || applicant.aiRedFlags)?.length ?? 0) > 0 && (
-                            <Card className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-base flex items-center gap-2 text-red-600 dark:text-red-400">
-                                        <AlertTriangle className="h-4 w-4" />
+                        {!isReviewer && (getLocalizedArray(evaluation?.redFlags).length > 0 || (applicant.aiRedFlags?.length ?? 0) > 0) && (
+                            <Card className="bg-gradient-to-br from-red-50 to-red-100/60 dark:from-red-950/40 dark:to-red-950/20 border-2 border-red-300 dark:border-red-700 shadow-md">
+                                <CardHeader className="pb-4 border-b border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-red-600 dark:text-red-400">
+                                        <div className="p-1.5 bg-red-500 dark:bg-red-600 rounded-md animate-pulse">
+                                            <AlertTriangle className="h-5 w-5 text-white" />
+                                        </div>
                                         {t("applicants.redFlags")}
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent>
-                                    <ul className="space-y-2">
-                                        {(evaluation?.redFlags || applicant.aiRedFlags || []).map((flag, index) => (
-                                            <li key={index} className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
-                                                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                <CardContent className="space-y-3 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {(getLocalizedArray(evaluation?.redFlags).length > 0
+                                        ? getLocalizedArray(evaluation?.redFlags)
+                                        : (applicant.aiRedFlags || [])
+                                    ).map((flag, index) => (
+                                        <div
+                                            key={index}
+                                            className={cn(
+                                                "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-red-950/30 border-l-4 border-red-500 dark:border-red-600 shadow-sm",
+                                                locale === 'ar' && 'flex-row-reverse border-l-0 border-r-4'
+                                            )}
+                                        >
+                                            <div className="mt-0.5 shrink-0">
+                                                <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                            </div>
+                                            <p className={cn(
+                                                "text-sm leading-relaxed text-red-900 dark:text-red-200 whitespace-pre-line flex-1 font-medium",
+                                                locale === 'ar' && 'text-right'
+                                            )}>
                                                 {flag}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                            </p>
+                                        </div>
+                                    ))}
                                 </CardContent>
                             </Card>
                         )}
