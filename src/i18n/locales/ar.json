@@ -343,7 +343,20 @@
             "aiRecommendations": "توصيات الذكاء الاصطناعي",
             "vsLastMonth": "مقارنة بالشهر الماضي",
             "newApplicants": "جديد"
-        }
+        },
+        "voiceAnalysis": "تحليل الصوت",
+        "sentiment": "المشاعر",
+        "confidence": "الثقة",
+        "fluency": "الطلاقة",
+        "question": "السؤال",
+        "socialProfiles": "الملفات الاجتماعية",
+        "topHighlights": "أبرز النقاط",
+        "writtenResponses": "الإجابات المكتوبة",
+        "totalResponses": "إجمالي الإجابات",
+        "overallQuality": "الجودة الإجمالية",
+        "hrRequirements": "متطلبات الموارد البشرية",
+        "screeningQuestions": "أسئلة الفرز",
+        "languageProficiency": "إتقان اللغة"
     },
     "roles": {
         "superadmin": "مدير عام",

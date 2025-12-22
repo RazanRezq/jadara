@@ -34,6 +34,7 @@ interface CandidateData {
         answer: string
     }>
     urlContent?: string // Formatted content extracted from LinkedIn, GitHub, Portfolio, etc.
+    additionalNotes?: string // Candidate's freeform notes
 }
 
 /**
@@ -73,7 +74,7 @@ export async function scoreCandidate(
         )
 
         // Build comprehensive candidate profile for evaluation
-        const candidateProfile = buildCandidateProfile(candidateData)
+        const candidateProfile = buildCandidateProfile(candidateData, jobCriteria)
         
         // Build criteria list for evaluation
         const criteriaList = buildCriteriaList(jobCriteria)
@@ -91,8 +92,15 @@ ${criteriaList}
 **CANDIDATE PROFILE:**
 ${candidateProfile}
 
+**CRITICAL EVALUATION RULES:**
+1. 🚨 **KNOCKOUT QUESTIONS:** If any screening question marked as "[KNOCKOUT QUESTION]" was answered "NO", this is a CRITICAL RED FLAG. Add to redFlags immediately.
+2. 🌐 **LANGUAGE REQUIREMENTS:** Compare candidate's language proficiency against required levels. Flag any gaps in redFlags.
+3. 💰 **SALARY ALIGNMENT:** If salary expectation is far outside budget range, note in weaknesses.
+4. 📝 **ADDITIONAL NOTES:** Consider any context provided by the candidate in their notes.
+5. 📊 **EXPERIENCE GAP:** Compare years of experience against minimum required.
+
 **TASK:**
-Analyze the candidate's input. Provide the evaluation report in TWO languages: English (under "en") and Arabic (under "ar"). Ensure the Arabic translation is professional and accurate.
+Analyze the candidate comprehensively against ALL criteria, including screening questions, language requirements, and experience. Provide the evaluation report in TWO languages: English (under "en") and Arabic (under "ar"). Ensure the Arabic translation is professional and accurate.
 
 **Return JSON with this EXACT structure (BILINGUAL OUTPUT):**
 {
@@ -486,7 +494,22 @@ export function matchSkills(
 }
 
 // Helper functions
-function buildCandidateProfile(candidateData: CandidateData): string {
+/**
+ * Compare candidate's language level against required level
+ */
+function compareLevels(candidateLevel?: string, requiredLevel?: string): string {
+    const levels = ['beginner', 'intermediate', 'advanced', 'native']
+    const candIdx = levels.indexOf(candidateLevel?.toLowerCase() || '')
+    const reqIdx = levels.indexOf(requiredLevel?.toLowerCase() || '')
+    
+    if (candIdx === -1) return '❌ [NOT PROVIDED]'
+    if (reqIdx === -1) return '❓'
+    if (candIdx >= reqIdx) return '✅ [MEETS REQUIREMENT]'
+    const gap = reqIdx - candIdx
+    return `❌ [GAP: ${gap} level${gap > 1 ? 's' : ''} below]`
+}
+
+function buildCandidateProfile(candidateData: CandidateData, jobCriteria: CandidateEvaluationInput['jobCriteria']): string {
     const { personalData, parsedResume, voiceAnalysis, textResponses, urlContent } = candidateData
     
     let profile = `
@@ -495,10 +518,47 @@ function buildCandidateProfile(candidateData: CandidateData): string {
 - Email: ${personalData.email}
 - Phone: ${personalData.phone}
 - Age: ${personalData.age || 'Not provided'}
-- Years of Experience (Self-reported): ${personalData.yearsOfExperience || 'Not provided'}
+- Years of Experience (Self-reported): ${personalData.yearsOfExperience || 'Not provided'} ${jobCriteria.minExperience ? `[Required: ${jobCriteria.minExperience}+ years]` : ''}
+- Salary Expectation: ${personalData.salaryExpectation ? `${personalData.salaryExpectation}` : 'Not provided'} ${jobCriteria.salaryMin && jobCriteria.salaryMax ? `[Budget: ${jobCriteria.salaryMin}-${jobCriteria.salaryMax}]` : ''}
 ${personalData.linkedinUrl ? `- LinkedIn: ${personalData.linkedinUrl}` : ''}
 ${personalData.behanceUrl ? `- Behance: ${personalData.behanceUrl}` : ''}
 ${personalData.portfolioUrl ? `- Portfolio: ${personalData.portfolioUrl}` : ''}
+`
+
+    // ADD SCREENING QUESTIONS SECTION (CRITICAL FOR HR)
+    if (personalData.screeningAnswers && jobCriteria.screeningQuestions && jobCriteria.screeningQuestions.length > 0) {
+        profile += `
+## 🚨 SCREENING QUESTIONS (HR-CRITICAL)
+`
+        for (const sq of jobCriteria.screeningQuestions) {
+            const answer = personalData.screeningAnswers[sq.question]
+            const answerText = answer === true ? '✅ YES' : answer === false ? '❌ NO' : '⚠️ Not answered'
+            const knockoutWarning = sq.disqualify ? ' **[KNOCKOUT QUESTION - NO = AUTO-REJECT]**' : ''
+            profile += `- **Q:** ${sq.question}\n  **A:** ${answerText}${knockoutWarning}\n`
+        }
+    }
+
+    // ADD LANGUAGE PROFICIENCY COMPARISON
+    if (jobCriteria.languages && jobCriteria.languages.length > 0) {
+        profile += `
+## 🌐 LANGUAGE REQUIREMENTS
+`
+        for (const reqLang of jobCriteria.languages) {
+            const candidateLevel = personalData.languageProficiency?.[reqLang.language]
+            const levelComparison = compareLevels(candidateLevel, reqLang.level)
+            profile += `- **${reqLang.language}:** Required=${reqLang.level.toUpperCase()}, Candidate=${candidateLevel?.toUpperCase() || 'NOT PROVIDED'} ${levelComparison}\n`
+        }
+    }
+
+    // ADD ADDITIONAL NOTES FROM CANDIDATE
+    if (candidateData.additionalNotes) {
+        profile += `
+## 📝 CANDIDATE'S ADDITIONAL NOTES
+${candidateData.additionalNotes}
+`
+    }
+
+    profile += `
 `
 
     if (parsedResume) {

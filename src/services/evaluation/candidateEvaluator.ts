@@ -32,6 +32,18 @@ async function rateLimitDelay(stageName: string): Promise<void> {
 }
 
 /**
+ * Check if candidate's language level meets the required level
+ */
+function meetsLanguageRequirement(candidateLevel: string, requiredLevel: string): boolean {
+    const levels = ['beginner', 'intermediate', 'advanced', 'native']
+    const candIdx = levels.indexOf(candidateLevel.toLowerCase())
+    const reqIdx = levels.indexOf(requiredLevel.toLowerCase())
+    
+    if (candIdx === -1 || reqIdx === -1) return false
+    return candIdx >= reqIdx
+}
+
+/**
  * Main evaluation function - processes a candidate completely
  */
 export async function evaluateCandidate(
@@ -259,6 +271,42 @@ export async function evaluateCandidate(
             ? formatExtractedContentForEvaluation(urlExtractionResult)
             : undefined
 
+        // Pre-evaluation checks for critical HR requirements
+        const preEvaluationRedFlags: { en: string[], ar: string[] } = { en: [], ar: [] }
+
+        // Check knockout questions
+        if (input.personalData.screeningAnswers && input.jobCriteria.screeningQuestions) {
+            for (const sq of input.jobCriteria.screeningQuestions) {
+                if (sq.disqualify && input.personalData.screeningAnswers[sq.question] === false) {
+                    preEvaluationRedFlags.en.push(`Failed knockout question: ${sq.question}`)
+                    preEvaluationRedFlags.ar.push(`فشل في سؤال الإقصاء: ${sq.question}`)
+                }
+            }
+        }
+
+        // Check language requirements
+        if (input.personalData.languageProficiency && input.jobCriteria.languages) {
+            for (const reqLang of input.jobCriteria.languages) {
+                const candidateLevel = input.personalData.languageProficiency[reqLang.language]
+                if (!candidateLevel) {
+                    preEvaluationRedFlags.en.push(`Missing required language: ${reqLang.language} (${reqLang.level} required)`)
+                    preEvaluationRedFlags.ar.push(`لغة مطلوبة مفقودة: ${reqLang.language} (المطلوب: ${reqLang.level})`)
+                } else if (!meetsLanguageRequirement(candidateLevel, reqLang.level)) {
+                    preEvaluationRedFlags.en.push(`Language gap: ${reqLang.language} - Has ${candidateLevel}, requires ${reqLang.level}`)
+                    preEvaluationRedFlags.ar.push(`فجوة لغوية: ${reqLang.language} - لديه ${candidateLevel}، المطلوب ${reqLang.level}`)
+                }
+            }
+        }
+
+        // Check experience requirement
+        if (input.jobCriteria.minExperience && input.personalData.yearsOfExperience !== undefined) {
+            if (input.personalData.yearsOfExperience < input.jobCriteria.minExperience) {
+                const gap = input.jobCriteria.minExperience - input.personalData.yearsOfExperience
+                preEvaluationRedFlags.en.push(`Experience gap: ${gap} year${gap > 1 ? 's' : ''} below minimum (Has ${input.personalData.yearsOfExperience}, requires ${input.jobCriteria.minExperience})`)
+                preEvaluationRedFlags.ar.push(`فجوة خبرة: ${gap} سنة أقل من الحد الأدنى (لديه ${input.personalData.yearsOfExperience}، المطلوب ${input.jobCriteria.minExperience})`)
+            }
+        }
+
         const scoringResult = await scoreCandidate(
             {
                 personalData: input.personalData,
@@ -266,12 +314,19 @@ export async function evaluateCandidate(
                 voiceAnalysis: voiceAnalysisResults,
                 textResponses: input.textResponses,
                 urlContent: urlContentForEvaluation,
+                additionalNotes: input.additionalNotes,
             },
             input.jobCriteria
         )
 
         if (!scoringResult.success) {
             throw new Error(scoringResult.error || 'Scoring failed')
+        }
+
+        // Merge pre-evaluation red flags with AI-generated ones
+        if (preEvaluationRedFlags.en.length > 0 || preEvaluationRedFlags.ar.length > 0) {
+            scoringResult.redFlags.en = [...preEvaluationRedFlags.en, ...(scoringResult.redFlags.en || [])]
+            scoringResult.redFlags.ar = [...preEvaluationRedFlags.ar, ...(scoringResult.redFlags.ar || [])]
         }
 
         onProgress?.({
@@ -328,6 +383,110 @@ export async function evaluateCandidate(
             currentStep: 'Evaluation complete!',
         })
 
+        // Build detailed voice analysis for frontend
+        const voiceAnalysisDetails: import('./types').DetailedVoiceAnalysis[] = voiceAnalysisResults.map(v => ({
+            questionId: v.questionId,
+            questionText: v.questionText,
+            questionWeight: v.questionWeight,
+            rawTranscript: transcripts.find(t => t.questionId === v.questionId)?.rawTranscript || '',
+            cleanTranscript: transcripts.find(t => t.questionId === v.questionId)?.cleanTranscript || '',
+            sentiment: v.analysis?.sentiment,
+            confidence: v.analysis?.confidence,
+            fluency: v.analysis?.fluency,
+            keyPhrases: v.analysis?.keyPhrases,
+        }))
+
+        // Build social profile insights from URL extraction
+        let socialProfileInsights: import('./types').SocialProfileInsights | undefined = undefined
+        
+        if (urlExtractionResult?.success && urlExtractionResult.extractedUrls) {
+            // Convert extractedUrls array into a structured object
+            const linkedinData = urlExtractionResult.extractedUrls.find(u => u.type === 'linkedin')
+            const githubData = urlExtractionResult.extractedUrls.find(u => u.type === 'github')
+            const portfolioData = urlExtractionResult.extractedUrls.find(u => u.type === 'portfolio')
+            
+            socialProfileInsights = {
+                linkedin: linkedinData?.success && linkedinData.content ? {
+                    headline: linkedinData.content.summary?.split('\n')[0] || '',
+                    summary: linkedinData.content.summary || '',
+                    skills: linkedinData.content.skills || [],
+                    experience: linkedinData.content.experience?.map(exp => ({
+                        title: exp,
+                        company: '',
+                        duration: ''
+                    })) || [],
+                    highlights: linkedinData.content.highlights || [],
+                } : undefined,
+                github: githubData?.success && githubData.content ? {
+                    repositories: githubData.content.projects?.length || 0,
+                    stars: githubData.content.projects?.reduce((sum, p) => sum + (p.stars || 0), 0) || 0,
+                    languages: Array.from(new Set(githubData.content.projects?.flatMap(p => p.technologies) || [])),
+                    topProjects: githubData.content.projects?.slice(0, 5).map(p => ({
+                        name: p.name,
+                        description: p.description,
+                        stars: p.stars || 0
+                    })) || [],
+                    highlights: githubData.content.highlights || [],
+                } : undefined,
+                portfolio: portfolioData?.success && portfolioData.content ? {
+                    projects: portfolioData.content.projects || [],
+                    skills: portfolioData.content.skills || [],
+                    highlights: portfolioData.content.highlights || [],
+                } : undefined,
+                overallHighlights: [
+                    ...(linkedinData?.content?.highlights || []),
+                    ...(githubData?.content?.highlights || []),
+                    ...(portfolioData?.content?.highlights || []),
+                ].slice(0, 10), // Top 10 overall highlights
+            }
+        }
+
+        // Build text response analysis
+        let textResponseAnalysis: import('./types').TextResponseAnalysis | undefined = undefined
+        
+        if (input.textResponses && input.textResponses.length > 0) {
+            const responses = input.textResponses.map(r => {
+                const wordCount = r.answer.split(/\s+/).length
+                let quality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
+                
+                if (wordCount < 20) quality = 'poor'
+                else if (wordCount < 50) quality = 'average'
+                else if (wordCount < 100) quality = 'good'
+                else quality = 'excellent'
+                
+                return {
+                    questionId: r.questionId,
+                    questionText: r.questionText,
+                    answer: r.answer,
+                    wordCount,
+                    quality,
+                }
+            })
+            
+            const qualityScores = responses.map(r => {
+                const scores = { poor: 1, average: 2, good: 3, excellent: 4 }
+                return scores[r.quality]
+            })
+            const avgQuality = qualityScores.reduce((a, b) => a + b, 0) / qualityScores.length
+            
+            let overallQuality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
+            if (avgQuality < 1.5) overallQuality = 'poor'
+            else if (avgQuality < 2.5) overallQuality = 'average'
+            else if (avgQuality < 3.5) overallQuality = 'good'
+            else overallQuality = 'excellent'
+            
+            textResponseAnalysis = {
+                totalResponses: responses.length,
+                responses,
+                overallQuality,
+                insights: [
+                    `${responses.length} written responses provided`,
+                    `Average word count: ${Math.round(responses.reduce((a, b) => a + b.wordCount, 0) / responses.length)}`,
+                    `Overall quality: ${overallQuality}`,
+                ],
+            }
+        }
+
         const processingTime = Date.now() - startTime
 
         return {
@@ -350,6 +509,11 @@ export async function evaluateCandidate(
                 confidenceScore: avgConfidence,
                 transcripts,
                 parsedResume,
+                
+                // *** NEW: Pass through detailed analysis ***
+                voiceAnalysisDetails: voiceAnalysisDetails.length > 0 ? voiceAnalysisDetails : undefined,
+                socialProfileInsights,
+                textResponseAnalysis,
             },
             processingTime,
         }

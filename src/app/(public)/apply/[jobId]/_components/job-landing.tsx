@@ -156,10 +156,10 @@ const getPersonalDataSchema = (
             : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
         screeningAnswers: job.screeningQuestions && job.screeningQuestions.length > 0
             ? z.object(screeningSchema)
-            : z.record(z.boolean()).optional(),
+            : z.record(z.string(), z.boolean()).optional(),
         languageProficiency: job.languages && job.languages.length > 0
             ? z.object(languageSchema)
-            : z.record(z.string()).optional(),
+            : z.record(z.string(), z.string()).optional(),
     })
 }
 
@@ -688,8 +688,8 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                                         {getLocalizedLanguageName(lang.language, locale)}
                                                                     </FormLabel>
                                                                     <FormControl>
-                                                                        <Select 
-                                                                            onValueChange={field.onChange} 
+                                                                        <Select
+                                                                            onValueChange={field.onChange}
                                                                             value={field.value}
                                                                             dir={isRTL ? "rtl" : "ltr"}
                                                                         >

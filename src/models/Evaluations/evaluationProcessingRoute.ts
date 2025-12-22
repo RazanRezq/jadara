@@ -105,6 +105,11 @@ async function buildCandidateData(
                 weight: c.weight,
                 required: c.required,
             })),
+            // HR screening questions for knockout logic
+            screeningQuestions: job.screeningQuestions?.map(sq => ({
+                question: sq.question,
+                disqualify: sq.disqualify,
+            })),
             salaryMin: job.salaryMin,
             salaryMax: job.salaryMax,
             autoRejectThreshold: job.autoRejectThreshold || 35,
@@ -123,10 +128,18 @@ async function buildCandidateData(
                 linkedinUrl: applicant.personalData.linkedinUrl,
                 behanceUrl: applicant.personalData.behanceUrl,
                 portfolioUrl: applicant.personalData.portfolioUrl,
+                // HR-critical screening data
+                screeningAnswers: applicant.personalData.screeningAnswers 
+                    ? Object.fromEntries(applicant.personalData.screeningAnswers)
+                    : undefined,
+                languageProficiency: applicant.personalData.languageProficiency
+                    ? Object.fromEntries(applicant.personalData.languageProficiency)
+                    : undefined,
             },
             voiceResponses,
             textResponses,
             cvUrl: applicant.cvUrl,
+            additionalNotes: applicant.notes || undefined,
             jobCriteria,
         }
     } catch (error) {

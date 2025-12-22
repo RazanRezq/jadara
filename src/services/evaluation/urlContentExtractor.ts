@@ -378,17 +378,6 @@ async function extractLinkedInContent(linkedinUrl: string): Promise<ExtractedUrl
             return result
         }
 
-        // Extract LinkedIn profile ID from URL
-        // Example: https://www.linkedin.com/in/williamhgates -> williamhgates
-        const profileIdMatch = linkedinUrl.match(/linkedin\.com\/in\/([^\/\?]+)/)
-        if (!profileIdMatch || !profileIdMatch[1]) {
-            result.error = 'Could not extract LinkedIn profile ID from URL'
-            return result
-        }
-
-        const profileId = profileIdMatch[1]
-        console.log('[LinkedIn Extractor] Extracted profile ID:', profileId)
-
         // Check if ScrapingDog API key is configured
         if (!SCRAPINGDOG_API_KEY) {
             console.warn('[LinkedIn Extractor] SCRAPINGDOG_API_KEY not configured, using fallback')
@@ -404,19 +393,17 @@ async function extractLinkedInContent(linkedinUrl: string): Promise<ExtractedUrl
             return result
         }
 
-        console.log('[LinkedIn Extractor] Calling ScrapingDog API...')
+        console.log('[LinkedIn Extractor] Calling ScrapingDog API with full URL...')
 
         // Call ScrapingDog API for LinkedIn profile scraping
+        // Note: Pass the FULL URL as 'id' parameter (not just the username)
         const response = await axios.get(SCRAPINGDOG_API_URL, {
             params: {
                 api_key: SCRAPINGDOG_API_KEY,
-                id: profileId,
                 type: 'profile',
-                premium: 'true',
-                webhook: 'false',
-                fresh: 'false'
+                id: linkedinUrl  // Pass full URL, not extracted username
             },
-            timeout: 120000 // 2 minute timeout
+            timeout: 30000  // 30 second timeout to prevent hanging
         })
 
         if (response.status !== 200) {

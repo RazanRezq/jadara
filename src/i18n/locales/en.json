@@ -343,7 +343,20 @@
             "aiRecommendations": "AI Recommendations",
             "vsLastMonth": "vs last month",
             "newApplicants": "new applicants"
-        }
+        },
+        "voiceAnalysis": "Voice Analysis",
+        "sentiment": "Sentiment",
+        "confidence": "Confidence",
+        "fluency": "Fluency",
+        "question": "Question",
+        "socialProfiles": "Social Profiles",
+        "topHighlights": "Top Highlights",
+        "writtenResponses": "Written Responses",
+        "totalResponses": "Total Responses",
+        "overallQuality": "Overall Quality",
+        "hrRequirements": "HR Requirements",
+        "screeningQuestions": "Screening Questions",
+        "languageProficiency": "Language Proficiency"
     },
     "roles": {
         "superadmin": "Super Admin",

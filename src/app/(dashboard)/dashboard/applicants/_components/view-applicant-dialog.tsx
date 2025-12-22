@@ -33,21 +33,23 @@ import {
     Calendar,
     Briefcase,
     DollarSign,
-    Linkedin,
+    Mic,
     Globe,
-    AlertTriangle,
+    Linkedin,
     Star,
     CheckCircle,
+    FileText,
+    AlertTriangle,
     XCircle,
     Clock,
-    FileText,
     Sparkles,
-    Mic,
     Play,
     Pause,
     Volume2,
     CalendarPlus,
     MessageSquare,
+    ShieldAlert,
+    Languages,
 } from "lucide-react"
 import type { Applicant, ApplicantStatus, EvaluationData, BilingualText, BilingualTextArray } from "./applicants-client"
 
@@ -795,6 +797,376 @@ export function ViewApplicantDialog({
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Voice Analysis Details */}
+                        {evaluation?.voiceAnalysisDetails && evaluation.voiceAnalysisDetails.length > 0 && (
+                            <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-950/10 border-2 border-purple-300 dark:border-purple-800 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-purple-200 dark:border-purple-800">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-purple-700 dark:text-purple-400">
+                                        <div className="p-1.5 bg-purple-500 dark:bg-purple-600 rounded-md">
+                                            <Mic className="h-5 w-5 text-white" />
+                                        </div>
+                                        {t("applicants.voiceAnalysis")}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {/* Overall Metrics */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {evaluation.sentimentScore !== undefined && (
+                                            <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
+                                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
+                                                    {t("applicants.sentiment")}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className={cn(
+                                                        "text-2xl font-bold",
+                                                        evaluation.sentimentScore > 0.3 ? "text-emerald-600" :
+                                                            evaluation.sentimentScore < -0.3 ? "text-red-600" :
+                                                                "text-amber-600"
+                                                    )}>
+                                                        {evaluation.sentimentScore > 0.3 ? "😊" :
+                                                            evaluation.sentimentScore < -0.3 ? "😞" : "😐"}
+                                                    </div>
+                                                    <span className="text-sm">
+                                                        {(evaluation.sentimentScore * 100).toFixed(0)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {evaluation.confidenceScore !== undefined && (
+                                            <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
+                                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
+                                                    {t("applicants.confidence")}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Progress value={evaluation.confidenceScore} className="flex-1" />
+                                                    <span className="text-sm font-semibold">
+                                                        {evaluation.confidenceScore.toFixed(0)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Per-Question Details */}
+                                    <div className="space-y-3">
+                                        {evaluation.voiceAnalysisDetails.map((detail, idx) => (
+                                            <div
+                                                key={detail.questionId}
+                                                className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200"
+                                            >
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                                                        {t("applicants.question")} {idx + 1}
+                                                    </p>
+                                                    {detail.fluency && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {t("applicants.fluency")}: {detail.fluency.score}%
+                                                        </Badge>
+                                                    )}
+                                                </div>
+
+                                                {detail.keyPhrases && detail.keyPhrases.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {detail.keyPhrases.slice(0, 5).map((phrase, i) => (
+                                                            <Badge
+                                                                key={i}
+                                                                variant="secondary"
+                                                                className="bg-purple-100 text-purple-700 dark:bg-purple-900/50"
+                                                            >
+                                                                {phrase}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Social Profile Insights */}
+                        {evaluation?.socialProfileInsights && (
+                            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-950/30 dark:to-cyan-950/10 border-2 border-cyan-300 dark:border-cyan-800 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-cyan-200 dark:border-cyan-800">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-cyan-700 dark:text-cyan-400">
+                                        <div className="p-1.5 bg-cyan-500 dark:bg-cyan-600 rounded-md">
+                                            <Globe className="h-5 w-5 text-white" />
+                                        </div>
+                                        {t("applicants.socialProfiles")}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {/* LinkedIn */}
+                                    {evaluation.socialProfileInsights.linkedin && (
+                                        <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Linkedin className="h-5 w-5 text-[#0077B5]" />
+                                                <p className="font-semibold text-cyan-900 dark:text-cyan-100">
+                                                    LinkedIn
+                                                </p>
+                                            </div>
+                                            {evaluation.socialProfileInsights.linkedin.highlights.length > 0 && (
+                                                <ul className="space-y-2">
+                                                    {evaluation.socialProfileInsights.linkedin.highlights.slice(0, 5).map((highlight, i) => (
+                                                        <li key={i} className={cn(
+                                                            "text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2",
+                                                            locale === 'ar' && 'text-right flex-row-reverse'
+                                                        )}>
+                                                            <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+                                                            <span>{highlight}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* GitHub */}
+                                    {evaluation.socialProfileInsights.github && (
+                                        <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Star className="h-5 w-5 text-amber-500" />
+                                                <p className="font-semibold text-cyan-900 dark:text-cyan-100">
+                                                    GitHub
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
+                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Repos</p>
+                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.repositories}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
+                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Stars</p>
+                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.stars}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
+                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Languages</p>
+                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.languages.length}</p>
+                                                </div>
+                                            </div>
+                                            {evaluation.socialProfileInsights.github.highlights.length > 0 && (
+                                                <ul className="space-y-2">
+                                                    {evaluation.socialProfileInsights.github.highlights.slice(0, 3).map((highlight, i) => (
+                                                        <li key={i} className={cn(
+                                                            "text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2",
+                                                            locale === 'ar' && 'text-right flex-row-reverse'
+                                                        )}>
+                                                            <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+                                                            <span>{highlight}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Overall Highlights */}
+                                    {evaluation.socialProfileInsights.overallHighlights.length > 0 && (
+                                        <div className="p-4 bg-gradient-to-r from-cyan-100 to-purple-100 dark:from-cyan-900/20 dark:to-purple-900/20 rounded-lg border border-cyan-300">
+                                            <p className="font-semibold text-cyan-900 dark:text-cyan-100 mb-3">
+                                                {t("applicants.topHighlights")}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {evaluation.socialProfileInsights.overallHighlights.slice(0, 8).map((highlight, i) => (
+                                                    <Badge
+                                                        key={i}
+                                                        variant="secondary"
+                                                        className="bg-white dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200"
+                                                    >
+                                                        ✨ {highlight}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Text Response Analysis */}
+                        {evaluation?.textResponseAnalysis && (
+                            <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/30 dark:to-indigo-950/10 border-2 border-indigo-300 dark:border-indigo-800 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-indigo-200 dark:border-indigo-800">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
+                                        <div className="p-1.5 bg-indigo-500 dark:bg-indigo-600 rounded-md">
+                                            <FileText className="h-5 w-5 text-white" />
+                                        </div>
+                                        {t("applicants.writtenResponses")}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {/* Summary */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
+                                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
+                                                {t("applicants.totalResponses")}
+                                            </p>
+                                            <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
+                                                {evaluation.textResponseAnalysis.totalResponses}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
+                                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
+                                                {t("applicants.overallQuality")}
+                                            </p>
+                                            <Badge className={cn(
+                                                "text-sm",
+                                                evaluation.textResponseAnalysis.overallQuality === 'excellent' ? 'bg-emerald-500' :
+                                                    evaluation.textResponseAnalysis.overallQuality === 'good' ? 'bg-cyan-500' :
+                                                        evaluation.textResponseAnalysis.overallQuality === 'average' ? 'bg-amber-500' :
+                                                            'bg-red-500'
+                                            )}>
+                                                {evaluation.textResponseAnalysis.overallQuality.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                    </div>
+
+                                    {/* Individual Responses */}
+                                    <div className="space-y-3">
+                                        {evaluation.textResponseAnalysis.responses.map((response) => (
+                                            <div
+                                                key={response.questionId}
+                                                className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200"
+                                            >
+                                                <div className={cn(
+                                                    "flex items-start justify-between mb-2",
+                                                    locale === 'ar' && 'flex-row-reverse'
+                                                )}>
+                                                    <p className={cn(
+                                                        "text-sm font-medium text-indigo-900 dark:text-indigo-100",
+                                                        locale === 'ar' && 'text-right'
+                                                    )}>
+                                                        {response.questionText}
+                                                    </p>
+                                                    <Badge variant="outline" className="text-xs shrink-0 ml-2">
+                                                        {response.wordCount} words
+                                                    </Badge>
+                                                </div>
+                                                <p className={cn(
+                                                    "text-sm text-indigo-700 dark:text-indigo-300 line-clamp-3 whitespace-pre-line",
+                                                    locale === 'ar' && 'text-right'
+                                                )}>
+                                                    {response.answer}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* HR Requirements: Screening Questions & Language Proficiency */}
+                        {(applicant.personalData.screeningAnswers || applicant.personalData.languageProficiency) && (
+                            <Card className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-950/10 border-2 border-orange-300 dark:border-orange-800 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-orange-200 dark:border-orange-800">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-orange-700 dark:text-orange-400">
+                                        <div className="p-1.5 bg-orange-500 dark:bg-orange-600 rounded-md">
+                                            <ShieldAlert className="h-5 w-5 text-white" />
+                                        </div>
+                                        {t("applicants.hrRequirements")}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {/* Screening Questions */}
+                                    {applicant.personalData.screeningAnswers && Object.keys(applicant.personalData.screeningAnswers).length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <ShieldAlert className="h-4 w-4 text-orange-600" />
+                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                    {t("applicants.screeningQuestions")}
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {Object.entries(applicant.personalData.screeningAnswers).map(([question, answer], idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={cn(
+                                                            "p-3 rounded-lg border flex items-start gap-3",
+                                                            answer
+                                                                ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                                                                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
+                                                            locale === 'ar' && 'flex-row-reverse'
+                                                        )}
+                                                    >
+                                                        {answer ? (
+                                                            <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
+                                                        ) : (
+                                                            <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                                                        )}
+                                                        <div className="flex-1">
+                                                            <p className={cn(
+                                                                "text-sm font-medium",
+                                                                locale === 'ar' && 'text-right'
+                                                            )}>
+                                                                {question}
+                                                            </p>
+                                                            <p className={cn(
+                                                                "text-xs mt-1",
+                                                                answer ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
+                                                                locale === 'ar' && 'text-right'
+                                                            )}>
+                                                                {answer ? t("common.yes") : t("common.no")}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Language Proficiency */}
+                                    {applicant.personalData.languageProficiency && Object.keys(applicant.personalData.languageProficiency).length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Languages className="h-4 w-4 text-orange-600" />
+                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                    {t("applicants.languageProficiency")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {Object.entries(applicant.personalData.languageProficiency).map(([language, level], idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200"
+                                                    >
+                                                        <p className={cn(
+                                                            "text-xs text-orange-600 dark:text-orange-400 font-medium mb-1",
+                                                            locale === 'ar' && 'text-right'
+                                                        )}>
+                                                            {language}
+                                                        </p>
+                                                        <Badge className="bg-orange-500 text-white text-xs">
+                                                            {(level as string).toUpperCase()}
+                                                        </Badge>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Additional Notes */}
+                                    {applicant.notes && applicant.notes.trim() !== '' && (
+                                        <div className="space-y-2 pt-2 border-t border-orange-200">
+                                            <div className="flex items-center gap-2">
+                                                <MessageSquare className="h-4 w-4 text-orange-600" />
+                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                    {t("apply.additionalNotes")}
+                                                </p>
+                                            </div>
+                                            <p className={cn(
+                                                "text-sm text-orange-800 dark:text-orange-200 whitespace-pre-line p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200",
+                                                locale === 'ar' && 'text-right'
+                                            )}>
+                                                {applicant.notes}
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Red Flags - Hidden from reviewers */}
                         {!isReviewer && (getLocalizedArray(evaluation?.redFlags).length > 0 || (applicant.aiRedFlags?.length ?? 0) > 0) && (

@@ -44,6 +44,79 @@ export interface VoiceAnalysisResult {
     error?: string
 }
 
+// Detailed Voice Analysis for Frontend Display
+export interface DetailedVoiceAnalysis {
+    questionId: string
+    questionText: string
+    questionWeight: number
+    rawTranscript: string
+    cleanTranscript: string
+    sentiment?: {
+        score: number
+        label: 'negative' | 'neutral' | 'positive'
+    }
+    confidence?: {
+        score: number
+        indicators: string[]
+    }
+    fluency?: {
+        score: number
+        wordsPerMinute?: number
+        fillerWordCount?: number
+    }
+    keyPhrases?: string[]
+}
+
+// Social Profile Insights for Frontend Display
+export interface SocialProfileInsights {
+    linkedin?: {
+        headline?: string
+        summary?: string
+        skills: string[]
+        experience: Array<{
+            title: string
+            company: string
+            duration?: string
+        }>
+        highlights: string[]
+    }
+    github?: {
+        repositories: number
+        stars: number
+        languages: string[]
+        topProjects: Array<{
+            name: string
+            description: string
+            stars: number
+        }>
+        highlights: string[]
+    }
+    portfolio?: {
+        projects: Array<{
+            name: string
+            description: string
+            technologies: string[]
+        }>
+        skills: string[]
+        highlights: string[]
+    }
+    overallHighlights: string[]
+}
+
+// Text Response Analysis for Frontend Display
+export interface TextResponseAnalysis {
+    totalResponses: number
+    responses: Array<{
+        questionId: string
+        questionText: string
+        answer: string
+        wordCount: number
+        quality: 'poor' | 'average' | 'good' | 'excellent'
+    }>
+    overallQuality: 'poor' | 'average' | 'good' | 'excellent'
+    insights: string[]
+}
+
 // Resume Parser Types
 export interface ParsedResume {
     success: boolean
@@ -144,6 +217,9 @@ export interface CandidateEvaluationInput {
         linkedinUrl?: string
         behanceUrl?: string
         portfolioUrl?: string
+        // HR-critical fields for evaluation
+        screeningAnswers?: Record<string, boolean>  // Knockout questions
+        languageProficiency?: Record<string, string> // Language levels
     }
     // Voice responses
     voiceResponses: Array<{
@@ -160,6 +236,8 @@ export interface CandidateEvaluationInput {
     }>
     // Files
     cvUrl?: string
+    // Additional candidate notes
+    additionalNotes?: string  // Freeform candidate notes (max 500 chars)
     // Job criteria (from job document)
     jobCriteria: {
         title: string
@@ -179,6 +257,11 @@ export interface CandidateEvaluationInput {
             description: string
             weight: number
             required: boolean
+        }>
+        // HR screening questions (for knockout logic)
+        screeningQuestions?: Array<{
+            question: string
+            disqualify: boolean  // If true and answer is false → critical red flag
         }>
         salaryMin?: number
         salaryMax?: number
@@ -214,6 +297,11 @@ export interface CandidateEvaluationResult {
         }>
         // Parsed resume
         parsedResume?: ParsedResume['profile']
+        
+        // *** NEW: Detailed analysis data for frontend display ***
+        voiceAnalysisDetails?: DetailedVoiceAnalysis[]
+        socialProfileInsights?: SocialProfileInsights
+        textResponseAnalysis?: TextResponseAnalysis
     }
     error?: string
     processingTime?: number     // in milliseconds

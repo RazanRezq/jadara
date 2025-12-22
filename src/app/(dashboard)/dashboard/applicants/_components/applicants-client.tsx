@@ -65,6 +65,8 @@ export interface Applicant {
         linkedinUrl?: string
         behanceUrl?: string
         portfolioUrl?: string
+        screeningAnswers?: Record<string, boolean>
+        languageProficiency?: Record<string, string>
     }
     cvUrl?: string
     status: ApplicantStatus
@@ -110,6 +112,74 @@ export interface EvaluationData {
     }>
     sentimentScore?: number
     confidenceScore?: number
+    // New detailed analysis fields
+    voiceAnalysisDetails?: Array<{
+        questionId: string
+        questionText: string
+        questionWeight: number
+        rawTranscript: string
+        cleanTranscript: string
+        sentiment?: {
+            score: number
+            label: 'negative' | 'neutral' | 'positive'
+        }
+        confidence?: {
+            score: number
+            indicators: string[]
+        }
+        fluency?: {
+            score: number
+            wordsPerMinute?: number
+            fillerWordCount?: number
+        }
+        keyPhrases?: string[]
+    }>
+    socialProfileInsights?: {
+        linkedin?: {
+            headline?: string
+            summary?: string
+            skills: string[]
+            experience: Array<{
+                title: string
+                company: string
+                duration?: string
+            }>
+            highlights: string[]
+        }
+        github?: {
+            repositories: number
+            stars: number
+            languages: string[]
+            topProjects: Array<{
+                name: string
+                description: string
+                stars: number
+            }>
+            highlights: string[]
+        }
+        portfolio?: {
+            projects: Array<{
+                name: string
+                description: string
+                technologies: string[]
+            }>
+            skills: string[]
+            highlights: string[]
+        }
+        overallHighlights: string[]
+    }
+    textResponseAnalysis?: {
+        totalResponses: number
+        responses: Array<{
+            questionId: string
+            questionText: string
+            answer: string
+            wordCount: number
+            quality: 'poor' | 'average' | 'good' | 'excellent'
+        }>
+        overallQuality: 'poor' | 'average' | 'good' | 'excellent'
+        insights: string[]
+    }
 }
 
 interface ApplicantsClientProps {
