@@ -190,6 +190,10 @@ app.get('/by-applicant/:applicantId', async (c) => {
                 reviewedBy: evaluation.reviewedBy,
                 reviewedAt: evaluation.reviewedAt,
                 createdAt: evaluation.createdAt,
+                // New detailed analysis fields
+                voiceAnalysisDetails: evaluation.voiceAnalysisDetails,
+                socialProfileInsights: evaluation.socialProfileInsights,
+                textResponseAnalysis: evaluation.textResponseAnalysis,
             },
         })
     } catch (error) {
