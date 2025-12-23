@@ -356,7 +356,17 @@
         "overallQuality": "Overall Quality",
         "hrRequirements": "HR Requirements",
         "screeningQuestions": "Screening Questions",
-        "languageProficiency": "Language Proficiency"
+        "languageProficiency": "Language Proficiency",
+        "aiTransparency": "AI Transparency & Decision Analysis",
+        "aiTransparencyDesc": "Understand what the AI analyzed and why it made each decision",
+        "screeningAnalysis": "Screening Questions Analysis",
+        "voiceResponsesAnalysis": "Voice Responses Analysis",
+        "textResponsesAnalysis": "Text Responses Analysis",
+        "additionalNotesAnalysis": "Additional Notes Analysis",
+        "externalProfilesAnalysis": "External Profiles Analysis",
+        "languageRequirementsAnalysis": "Language Requirements Analysis",
+        "experienceAnalysis": "Experience Analysis",
+        "criteriaScoring": "Criteria-by-Criteria Scoring Breakdown"
     },
     "roles": {
         "superadmin": "Super Admin",

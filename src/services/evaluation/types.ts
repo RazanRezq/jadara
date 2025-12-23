@@ -109,12 +109,104 @@ export interface TextResponseAnalysis {
     responses: Array<{
         questionId: string
         questionText: string
+        questionWeight: number // Weight of this question (1-10)
         answer: string
         wordCount: number
         quality: 'poor' | 'average' | 'good' | 'excellent'
     }>
     overallQuality: 'poor' | 'average' | 'good' | 'excellent'
     insights: string[]
+}
+
+// AI Analysis Breakdown - Shows WHAT the AI analyzed and WHY it made decisions
+export interface AIAnalysisBreakdown {
+    // What screening questions were considered
+    screeningQuestionsAnalysis?: {
+        totalQuestions: number
+        knockoutQuestions: number
+        failedKnockouts: Array<{
+            question: string
+            answer: boolean
+            impact: string // e.g., "Critical - Auto-reject trigger"
+        }>
+        passedQuestions: string[]
+        aiReasoning: BilingualText // Why screening answers affected the score
+    }
+    // What voice responses were analyzed
+    voiceResponsesAnalysis?: {
+        totalResponses: number
+        totalWeight: number // Sum of all voice question weights
+        responses: Array<{
+            questionText: string
+            weight: number
+            transcriptLength: number
+            sentiment: string // e.g., "positive", "neutral"
+            confidence: number // 0-100
+            aiReasoning: BilingualText // Why this response affected the score
+        }>
+        overallImpact: BilingualText // How voice responses influenced final score
+    }
+    // What text responses were analyzed
+    textResponsesAnalysis?: {
+        totalResponses: number
+        totalWeight: number // Sum of all text question weights
+        responses: Array<{
+            questionText: string
+            weight: number
+            wordCount: number
+            quality: string
+            aiReasoning: BilingualText // Why this response affected the score
+        }>
+        overallImpact: BilingualText // How text responses influenced final score
+    }
+    // What additional notes were considered
+    additionalNotesAnalysis?: {
+        notesProvided: boolean
+        notesLength: number
+        aiReasoning: BilingualText // How notes influenced the evaluation
+        keyPointsExtracted: string[] // Important points the AI noticed
+    }
+    // What external profiles were analyzed
+    externalProfilesAnalysis?: {
+        linkedinAnalyzed: boolean
+        githubAnalyzed: boolean
+        portfolioAnalyzed: boolean
+        skillsDiscovered: number
+        projectsFound: number
+        aiReasoning: BilingualText // How external profiles influenced the score
+    }
+    // How language requirements were evaluated
+    languageRequirementsAnalysis?: {
+        totalLanguages: number
+        meetsAllRequirements: boolean
+        gaps: Array<{
+            language: string
+            required: string
+            candidate: string
+            gapLevel: number // How many levels below
+        }>
+        aiReasoning: BilingualText // How language gaps affected the score
+    }
+    // How experience requirement was evaluated
+    experienceAnalysis?: {
+        selfReported: number
+        required: number
+        meetsRequirement: boolean
+        gap?: number
+        aiReasoning: BilingualText // How experience affected the score
+    }
+    // Overall scoring breakdown
+    scoringBreakdown?: {
+        criteriaWeights: Array<{
+            criteriaName: string
+            weight: number // 1-10
+            score: number // 0-100
+            contribution: number // (weight * score) for weighted average
+            aiReasoning: BilingualText // Why this score was given
+        }>
+        totalWeightedScore: number
+        aiSummary: BilingualText // Overall explanation of the score
+    }
 }
 
 // Resume Parser Types
@@ -189,6 +281,7 @@ export interface ScoringResult {
     redFlags: BilingualTextArray        // Bilingual red flags (hidden from reviewers)
     summary: BilingualText              // Bilingual AI-generated summary
     whySection: BilingualText           // Bilingual "Matched X% because..."
+    aiAnalysisBreakdown?: AIAnalysisBreakdown // NEW: Transparency of AI decisions
     error?: string
 }
 
@@ -232,6 +325,7 @@ export interface CandidateEvaluationInput {
     textResponses: Array<{
         questionId: string
         questionText: string
+        questionWeight: number // Weight of this question (1-10)
         answer: string
     }>
     // Files
@@ -297,13 +391,36 @@ export interface CandidateEvaluationResult {
         }>
         // Parsed resume
         parsedResume?: ParsedResume['profile']
-        
+
         // *** NEW: Detailed analysis data for frontend display ***
         voiceAnalysisDetails?: DetailedVoiceAnalysis[]
         socialProfileInsights?: SocialProfileInsights
         textResponseAnalysis?: TextResponseAnalysis
+
+        // *** NEW: AI Analysis Breakdown - Shows transparency of AI decisions ***
+        aiAnalysisBreakdown?: AIAnalysisBreakdown
+    }
+    // *** NEW: Partial evaluation support ***
+    partialEvaluation?: {
+        applicantId: string
+        jobId: string
+        // What was successfully collected before failure
+        transcripts?: Array<{
+            questionId: string
+            rawTranscript: string
+            cleanTranscript: string
+        }>
+        parsedResume?: ParsedResume['profile']
+        voiceAnalysisDetails?: DetailedVoiceAnalysis[]
+        socialProfileInsights?: SocialProfileInsights
+        textResponseAnalysis?: TextResponseAnalysis
+        // What failed and needs retry
+        failedStages: Array<'scoring' | 'recommendation'>
+        canRetry: boolean
     }
     error?: string
+    errorType?: 'quota_exceeded' | 'rate_limit' | 'api_error' | 'unknown'
+    retryAfter?: number         // seconds to wait before retry
     processingTime?: number     // in milliseconds
 }
 

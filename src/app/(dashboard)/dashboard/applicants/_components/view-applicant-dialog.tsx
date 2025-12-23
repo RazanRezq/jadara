@@ -50,6 +50,9 @@ import {
     MessageSquare,
     ShieldAlert,
     Languages,
+    Brain,
+    TrendingUp,
+    Target,
 } from "lucide-react"
 import type { Applicant, ApplicantStatus, EvaluationData, BilingualText, BilingualTextArray } from "./applicants-client"
 
@@ -111,13 +114,33 @@ export function ViewApplicantDialog({
         return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
     }
 
-    // Audio player states
-    const [isPlaying, setIsPlaying] = useState(false)
-    const [currentTime, setCurrentTime] = useState(0)
-    const [duration, setDuration] = useState(0)
+    // DEBUG: Log evaluation data
+    useEffect(() => {
+        if (evaluation) {
+            console.log('🔍 EVALUATION DEBUG:', {
+                applicantId: applicant.id,
+                applicantName: applicant.personalData.name,
+                hasVoiceAnalysis: !!evaluation.voiceAnalysisDetails,
+                voiceAnalysisLength: evaluation.voiceAnalysisDetails?.length,
+                voiceAnalysisData: evaluation.voiceAnalysisDetails,
+                hasSocialInsights: !!evaluation.socialProfileInsights,
+                socialInsightsData: evaluation.socialProfileInsights,
+                hasTextAnalysis: !!evaluation.textResponseAnalysis,
+                textAnalysisData: evaluation.textResponseAnalysis,
+                hasScreeningAnswers: !!applicant.personalData.screeningAnswers,
+                screeningAnswersData: applicant.personalData.screeningAnswers,
+                hasLanguageProficiency: !!applicant.personalData.languageProficiency,
+                languageProficiencyData: applicant.personalData.languageProficiency,
+                fullEvaluation: evaluation
+            })
+        }
+    }, [evaluation, applicant])
+
+    // Audio player states - track per response
+    const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null)
+    const [audioStates, setAudioStates] = useState<Record<string, { currentTime: number; duration: number; error: string | null }>>({})
     const [transcriptView, setTranscriptView] = useState<'clean' | 'raw'>('clean')
-    const [audioError, setAudioError] = useState<string | null>(null)
-    const audioRef = useRef<HTMLAudioElement | null>(null)
+    const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({})
 
     const isReviewer = userRole === "reviewer"
     const score = evaluation?.overallScore ?? applicant.aiScore
@@ -203,48 +226,83 @@ export function ViewApplicantDialog({
         return "bg-red-500"
     }
 
-    // Audio controls
-    const togglePlay = async () => {
-        if (audioRef.current) {
-            try {
-                if (isPlaying) {
-                    audioRef.current.pause()
-                    setIsPlaying(false)
-                } else {
-                    setAudioError(null)
-                    await audioRef.current.play()
-                    setIsPlaying(true)
+    // Audio controls - per response
+    const togglePlay = async (responseId: string) => {
+        const audioElement = audioRefs.current[responseId]
+        if (!audioElement) return
+
+        try {
+            // If another audio is playing, pause it first
+            if (currentlyPlayingId && currentlyPlayingId !== responseId) {
+                const otherAudio = audioRefs.current[currentlyPlayingId]
+                if (otherAudio) {
+                    otherAudio.pause()
                 }
-            } catch (error) {
-                console.error('Audio playback error:', error)
-                setAudioError('Failed to play audio. The file may be corrupted or in an unsupported format.')
-                setIsPlaying(false)
-                toast.error('Failed to play audio recording')
             }
+
+            if (currentlyPlayingId === responseId) {
+                // Currently playing this one, pause it
+                audioElement.pause()
+                setCurrentlyPlayingId(null)
+            } else {
+                // Start playing this one
+                setAudioStates(prev => ({
+                    ...prev,
+                    [responseId]: { ...prev[responseId], error: null }
+                }))
+                await audioElement.play()
+                setCurrentlyPlayingId(responseId)
+            }
+        } catch (error) {
+            console.error('Audio playback error:', error)
+            const errorMsg = 'Failed to play audio. The file may be corrupted or in an unsupported format.'
+            setAudioStates(prev => ({
+                ...prev,
+                [responseId]: { ...prev[responseId], error: errorMsg }
+            }))
+            setCurrentlyPlayingId(null)
+            toast.error('Failed to play audio recording')
         }
     }
 
-    const handleTimeUpdate = () => {
-        if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime)
+    const handleTimeUpdate = (responseId: string) => (e: React.SyntheticEvent<HTMLAudioElement>) => {
+        const audio = e.currentTarget
+        setAudioStates(prev => ({
+            ...prev,
+            [responseId]: { ...prev[responseId], currentTime: audio.currentTime }
+        }))
+    }
+
+    const handleLoadedMetadata = (responseId: string) => (e: React.SyntheticEvent<HTMLAudioElement>) => {
+        const audio = e.currentTarget
+        if (!isNaN(audio.duration) && isFinite(audio.duration)) {
+            setAudioStates(prev => ({
+                ...prev,
+                [responseId]: { ...prev[responseId], duration: audio.duration, error: null }
+            }))
         }
     }
 
-    const handleLoadedMetadata = () => {
-        if (audioRef.current && !isNaN(audioRef.current.duration)) {
-            setDuration(audioRef.current.duration)
-            setAudioError(null)
+    const handleSeek = (responseId: string) => (value: number[]) => {
+        const audioElement = audioRefs.current[responseId]
+        if (audioElement) {
+            audioElement.currentTime = value[0]
+            setAudioStates(prev => ({
+                ...prev,
+                [responseId]: { ...prev[responseId], currentTime: value[0] }
+            }))
         }
     }
 
-    const handleSeek = (value: number[]) => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = value[0]
-            setCurrentTime(value[0])
-        }
+    const handleAudioEnded = (responseId: string) => () => {
+        setCurrentlyPlayingId(null)
+        setAudioStates(prev => ({
+            ...prev,
+            [responseId]: { ...prev[responseId], currentTime: 0 }
+        }))
     }
 
-    const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+    const handleAudioError = (responseId: string) => (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
         const audio = e.currentTarget
         let errorMessage = 'Failed to load audio'
 
@@ -266,20 +324,21 @@ export function ViewApplicantDialog({
                     errorMessage = t("applicants.audioDecodeError") || 'Audio file is corrupted'
                     break
                 case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                    errorMessage = t("applicants.audioNotSupported") || 'Audio format not supported'
-                    break
+                    // Don't set error for format not supported - browser will try next source
+                    return
                 default:
                     errorMessage = t("applicants.audioError") || 'Unknown error loading audio'
             }
         }
 
-        setAudioError(errorMessage)
-        setIsPlaying(false)
-
-        // Only show toast for non-format errors (format errors are expected when trying multiple sources)
-        if (!audio.error || audio.error.code !== MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-            toast.error(errorMessage)
+        setAudioStates(prev => ({
+            ...prev,
+            [responseId]: { ...prev[responseId], error: errorMessage }
+        }))
+        if (currentlyPlayingId === responseId) {
+            setCurrentlyPlayingId(null)
         }
+        toast.error(errorMessage)
     }
 
     // Get avatar gradient
@@ -503,94 +562,106 @@ export function ViewApplicantDialog({
                     {/* Voice Response Tab */}
                     <TabsContent value="voice" className="p-6 space-y-6 mt-0">
                         {voiceResponses.length > 0 ? (
-                            voiceResponses.map((response, index) => (
-                                <Card key={`voice-${response.questionId}-${index}`} className="overflow-hidden">
-                                    <CardContent className="p-0">
-                                        {/* Audio Player */}
-                                        <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-4">
-                                            <div className="flex items-center gap-4">
-                                                <Button
-                                                    size="lg"
-                                                    className="h-14 w-14 rounded-full"
-                                                    onClick={togglePlay}
-                                                    disabled={!response.audioUrl || !!audioError}
-                                                >
-                                                    {isPlaying ? (
-                                                        <Pause className="h-6 w-6" />
-                                                    ) : (
-                                                        <Play className="h-6 w-6 ml-1" />
-                                                    )}
-                                                </Button>
+                            voiceResponses.map((response, index) => {
+                                const responseId = `${response.questionId}-${index}`
+                                const audioState = audioStates[responseId] || { currentTime: 0, duration: 0, error: null }
+                                const isThisPlaying = currentlyPlayingId === responseId
+                                const displayDuration = response.audioDuration || audioState.duration || 0
 
-                                                <div className="flex-1 space-y-2">
-                                                    <div className="flex items-center justify-between text-sm">
-                                                        <span>{t("applicants.playRecording")}</span>
-                                                        <span className="text-muted-foreground">
-                                                            {formatTime(currentTime)} / {formatTime(response.audioDuration || duration)}
-                                                        </span>
+                                return (
+                                    <Card key={`voice-${responseId}`} className="overflow-hidden">
+                                        <CardContent className="p-0">
+                                            {/* Audio Player */}
+                                            <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+                                                <div className="flex items-center gap-4">
+                                                    <Button
+                                                        size="lg"
+                                                        className="h-14 w-14 rounded-full"
+                                                        onClick={() => togglePlay(responseId)}
+                                                        disabled={!response.audioUrl || !!audioState.error}
+                                                    >
+                                                        {isThisPlaying ? (
+                                                            <Pause className="h-6 w-6" />
+                                                        ) : (
+                                                            <Play className="h-6 w-6 ml-1" />
+                                                        )}
+                                                    </Button>
+
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span>{t("applicants.playRecording")}</span>
+                                                            <span className="text-muted-foreground">
+                                                                {formatTime(audioState.currentTime)} / {formatTime(displayDuration)}
+                                                            </span>
+                                                        </div>
+                                                        <Slider
+                                                            value={[audioState.currentTime]}
+                                                            max={displayDuration || 100}
+                                                            step={0.1}
+                                                            onValueChange={handleSeek(responseId)}
+                                                            className="w-full"
+                                                        />
                                                     </div>
-                                                    <Slider
-                                                        value={[currentTime]}
-                                                        max={response.audioDuration || duration || 100}
-                                                        step={0.1}
-                                                        onValueChange={handleSeek}
-                                                        className="w-full"
-                                                    />
+
+                                                    <Volume2 className="h-5 w-5 text-muted-foreground" />
                                                 </div>
 
-                                                <Volume2 className="h-5 w-5 text-muted-foreground" />
+                                                {response.audioUrl && (
+                                                    <audio
+                                                        ref={(el) => { audioRefs.current[responseId] = el }}
+                                                        onTimeUpdate={handleTimeUpdate(responseId)}
+                                                        onLoadedMetadata={handleLoadedMetadata(responseId)}
+                                                        onEnded={handleAudioEnded(responseId)}
+                                                        onError={handleAudioError(responseId)}
+                                                        preload="metadata"
+                                                        className="hidden"
+                                                    >
+                                                        {/* Multiple sources for browser compatibility */}
+                                                        <source src={response.audioUrl} type="audio/webm" />
+                                                        <source src={response.audioUrl} type="audio/ogg" />
+                                                        <source src={response.audioUrl} type="audio/mp4" />
+                                                        <source src={response.audioUrl} type="audio/mpeg" />
+                                                    </audio>
+                                                )}
+
+                                                {audioState.error && (
+                                                    <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                                                        <AlertTriangle className="h-3 w-3" />
+                                                        {audioState.error}
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {response.audioUrl && (
-                                                <audio
-                                                    ref={audioRef}
-                                                    src={response.audioUrl}
-                                                    onTimeUpdate={handleTimeUpdate}
-                                                    onLoadedMetadata={handleLoadedMetadata}
-                                                    onEnded={() => setIsPlaying(false)}
-                                                    onError={handleAudioError}
-                                                    preload="metadata"
-                                                    crossOrigin="anonymous"
-                                                />
-                                            )}
-
-                                            {audioError && (
-                                                <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                                                    <AlertTriangle className="h-3 w-3" />
-                                                    {audioError}
+                                            {/* Transcript */}
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant={transcriptView === 'clean' ? 'default' : 'ghost'}
+                                                        size="sm"
+                                                        onClick={() => setTranscriptView('clean')}
+                                                    >
+                                                        {t("applicants.cleanText")}
+                                                    </Button>
+                                                    <Button
+                                                        variant={transcriptView === 'raw' ? 'default' : 'ghost'}
+                                                        size="sm"
+                                                        onClick={() => setTranscriptView('raw')}
+                                                    >
+                                                        {t("applicants.rawText")}
+                                                    </Button>
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        {/* Transcript */}
-                                        <div className="p-4 space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant={transcriptView === 'clean' ? 'default' : 'ghost'}
-                                                    size="sm"
-                                                    onClick={() => setTranscriptView('clean')}
-                                                >
-                                                    {t("applicants.cleanText")}
-                                                </Button>
-                                                <Button
-                                                    variant={transcriptView === 'raw' ? 'default' : 'ghost'}
-                                                    size="sm"
-                                                    onClick={() => setTranscriptView('raw')}
-                                                >
-                                                    {t("applicants.rawText")}
-                                                </Button>
+                                                <div className="p-4 bg-muted/50 rounded-lg text-sm leading-relaxed">
+                                                    {transcriptView === 'clean'
+                                                        ? (response.cleanTranscript || t("applicants.noTranscript"))
+                                                        : (response.rawTranscript || t("applicants.noTranscript"))
+                                                    }
+                                                </div>
                                             </div>
-
-                                            <div className="p-4 bg-muted/50 rounded-lg text-sm leading-relaxed">
-                                                {transcriptView === 'clean'
-                                                    ? (response.cleanTranscript || t("applicants.noTranscript"))
-                                                    : (response.rawTranscript || t("applicants.noTranscript"))
-                                                }
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })
                         ) : (
                             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                 <Mic className="h-12 w-12 mb-4 opacity-50" />
@@ -1054,6 +1125,371 @@ export function ViewApplicantDialog({
                                             </div>
                                         ))}
                                     </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* AI Analysis Breakdown - Transparency of AI Decisions */}
+                        {evaluation?.aiAnalysisBreakdown && (
+                            <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-950/10 border-2 border-violet-300 dark:border-violet-800 shadow-md">
+                                <CardHeader className="pb-4 border-b border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-violet-700 dark:text-violet-400">
+                                        <div className="p-1.5 bg-violet-500 dark:bg-violet-600 rounded-md">
+                                            <Brain className="h-5 w-5 text-white" />
+                                        </div>
+                                        {t("applicants.aiTransparency")}
+                                    </CardTitle>
+                                    <p className="text-sm text-violet-600 dark:text-violet-400 mt-2">
+                                        {t("applicants.aiTransparencyDesc")}
+                                    </p>
+                                </CardHeader>
+                                <CardContent className="space-y-6 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                    {/* 1. Screening Questions Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <ShieldAlert className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.screeningAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Questions</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Knockout</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.knockoutQuestions}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Failed</p>
+                                                    <p className="text-lg font-bold text-red-600">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length}</p>
+                                                </div>
+                                            </div>
+                                            {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length > 0 && (
+                                                <div className="space-y-2 mb-3">
+                                                    {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.map((ko, idx) => (
+                                                        <div key={idx} className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg flex items-start gap-2">
+                                                            <XCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-medium text-red-900 dark:text-red-100">{ko.question}</p>
+                                                                <p className="text-xs text-red-700 dark:text-red-300">{ko.impact}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.aiReasoning)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. Voice Responses Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Mic className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.voiceResponsesAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Weight</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalWeight}/10</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 mb-3">
+                                                {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.responses.map((resp, idx) => (
+                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{resp.questionText}</p>
+                                                            <Badge variant="outline" className="text-xs">Weight: {resp.weight}/10</Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-xs mb-2">
+                                                            <span className="text-violet-600">Sentiment: {resp.sentiment}</span>
+                                                            <span className="text-violet-600">Confidence: {resp.confidence}%</span>
+                                                            <span className="text-violet-600">Length: {resp.transcriptLength} chars</span>
+                                                        </div>
+                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
+                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                                {getLocalizedText(resp.aiReasoning)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
+                                                <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallImpact)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3. Text Responses Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.textResponsesAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <FileText className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.textResponsesAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Weight</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalWeight}/10</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 mb-3">
+                                                {evaluation.aiAnalysisBreakdown.textResponsesAnalysis.responses.map((resp, idx) => (
+                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{resp.questionText}</p>
+                                                            <Badge variant="outline" className="text-xs">Weight: {resp.weight}/10</Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-xs mb-2">
+                                                            <span className="text-violet-600">Quality: {resp.quality}</span>
+                                                            <span className="text-violet-600">Words: {resp.wordCount}</span>
+                                                        </div>
+                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
+                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                                {getLocalizedText(resp.aiReasoning)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
+                                                <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallImpact)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 4. Additional Notes Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <MessageSquare className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.additionalNotesAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Notes Provided</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? 'Yes' : 'No'}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Length</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesLength} chars</p>
+                                                </div>
+                                            </div>
+                                            {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.length > 0 && (
+                                                <div className="mb-3">
+                                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-2">Key Points Extracted:</p>
+                                                    <ul className="space-y-1">
+                                                        {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.map((point, idx) => (
+                                                            <li key={idx} className="text-sm text-violet-800 dark:text-violet-200 flex items-start gap-2">
+                                                                <CheckCircle className="h-4 w-4 text-violet-500 mt-0.5 shrink-0" />
+                                                                <span>{point}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.aiReasoning)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 5. External Profiles Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.externalProfilesAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Globe className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.externalProfilesAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-4 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">LinkedIn</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.linkedinAnalyzed ? '✓' : '✗'}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">GitHub</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.githubAnalyzed ? '✓' : '✗'}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Skills</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.skillsDiscovered}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Projects</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.projectsFound}</p>
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.aiReasoning)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 6. Language Requirements Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Languages className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.languageRequirementsAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Languages</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages}</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Meets All</p>
+                                                    <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'text-emerald-600' : 'text-red-600')}>
+                                                        {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'Yes' : 'No'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.gaps.length > 0 && (
+                                                <div className="space-y-2 mb-3">
+                                                    {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.gaps.map((gap, idx) => (
+                                                        <div key={idx} className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg">
+                                                            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{gap.language}</p>
+                                                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                                                                Has: {gap.candidate} | Needs: {gap.required} | Gap: {gap.gapLevel} level(s)
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.aiReasoning)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 7. Experience Analysis */}
+                                    {evaluation.aiAnalysisBreakdown.experienceAnalysis && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Briefcase className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.experienceAnalysis")}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Self-Reported</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} yrs</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Required</p>
+                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.required} yrs</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Meets?</p>
+                                                    <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'text-emerald-600' : 'text-red-600')}>
+                                                        {evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'Yes' : 'No'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {evaluation.aiAnalysisBreakdown.experienceAnalysis.gap && (
+                                                <div className="p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded text-center mb-3">
+                                                    <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                                                        Gap: {evaluation.aiAnalysisBreakdown.experienceAnalysis.gap} year(s) below minimum
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.experienceAnalysis.aiReasoning)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 8. Scoring Breakdown */}
+                                    {evaluation.aiAnalysisBreakdown.scoringBreakdown && (
+                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Target className="h-5 w-5 text-violet-600" />
+                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                    {t("applicants.criteriaScoring")}
+                                                </p>
+                                            </div>
+                                            <div className="space-y-3 mb-3">
+                                                {evaluation.aiAnalysisBreakdown.scoringBreakdown.criteriaWeights.map((cw, idx) => (
+                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{cw.criteriaName}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant="outline" className="text-xs">Weight: {cw.weight}/10</Badge>
+                                                                <Badge variant="outline" className="text-xs">Score: {cw.score}%</Badge>
+                                                            </div>
+                                                        </div>
+                                                        <Progress value={cw.score} className="h-2 mb-2" />
+                                                        <p className="text-xs text-violet-600 mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
+                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
+                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
+                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                                {getLocalizedText(cw.aiReasoning)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-4 bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 rounded-lg border border-violet-300">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <p className="font-bold text-violet-900 dark:text-violet-100">Final Weighted Score</p>
+                                                    <p className="text-2xl font-bold text-violet-600">{evaluation.aiAnalysisBreakdown.scoringBreakdown.totalWeightedScore.toFixed(1)}%</p>
+                                                </div>
+                                                <div className="p-3 bg-white dark:bg-violet-950/20 rounded">
+                                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Summary:</p>
+                                                    <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                        {getLocalizedText(evaluation.aiAnalysisBreakdown.scoringBreakdown.aiSummary)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}

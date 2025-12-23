@@ -211,6 +211,7 @@ export async function submitApplication(
                         textResponses.push({
                             questionId: `q_${response.questionIndex}`,
                             questionText,
+                            questionWeight, // Include weight
                             answer: response.answer,
                         })
                     }
@@ -272,6 +273,13 @@ export async function submitApplication(
                     evaluationResult.score = result.evaluation.overallScore
 
                     // Save evaluation to database
+                    console.log('[Submission] 🔍 Saving evaluation with detailed analysis:', {
+                        hasVoiceAnalysis: !!result.evaluation.voiceAnalysisDetails,
+                        voiceAnalysisLength: result.evaluation.voiceAnalysisDetails?.length,
+                        hasSocialInsights: !!result.evaluation.socialProfileInsights,
+                        hasTextAnalysis: !!result.evaluation.textResponseAnalysis,
+                    })
+                    
                     await Evaluation.create({
                         applicantId,
                         jobId: payload.jobId,
@@ -286,6 +294,12 @@ export async function submitApplication(
                         suggestedQuestions: result.evaluation.suggestedQuestions,
                         sentimentScore: result.evaluation.sentimentScore,
                         confidenceScore: result.evaluation.confidenceScore,
+                        // NEW: Detailed analysis sections
+                        voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+                        socialProfileInsights: result.evaluation.socialProfileInsights,
+                        textResponseAnalysis: result.evaluation.textResponseAnalysis,
+                        // NEW: AI Analysis Breakdown for transparency
+                        aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
                         isProcessed: true,
                         processedAt: new Date(),
                     })

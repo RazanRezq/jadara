@@ -120,3 +120,4 @@ To prevent similar issues in the future:
 **Status**: ✅ Resolved - Candidates page now accessible
 
 
+

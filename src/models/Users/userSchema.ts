@@ -78,6 +78,11 @@ userSchema.methods.comparePassword = async function (
     return bcrypt.compare(candidatePassword, this.password)
 }
 
+// Indexes for common queries
+userSchema.index({ email: 1, isActive: 1 }) // For login queries
+userSchema.index({ role: 1, isActive: 1 }) // For finding users by role
+userSchema.index({ isActive: 1, createdAt: -1 }) // For listing active users
+
 // Prevent model recompilation in development
 const User: Model<IUser> =
     mongoose.models.User || mongoose.model<IUser>('User', userSchema)

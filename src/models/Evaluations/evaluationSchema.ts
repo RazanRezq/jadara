@@ -22,6 +22,171 @@ export interface ICriteriaMatch {
     evidence?: IBilingualTextArray // Supporting evidence (bilingual)
 }
 
+// Voice analysis details (matches DetailedVoiceAnalysis from backend)
+export interface IVoiceAnalysisDetails {
+    questionId: string
+    questionText: string
+    questionWeight: number
+    rawTranscript: string
+    cleanTranscript: string
+    sentiment?: {
+        score: number
+        label: 'negative' | 'neutral' | 'positive'
+    }
+    confidence?: {
+        score: number
+        indicators: string[]
+    }
+    fluency?: {
+        score: number
+        wordsPerMinute?: number
+        fillerWordCount?: number
+    }
+    keyPhrases?: string[]
+}
+
+// Social profile insights (matches SocialProfileInsights from backend)
+export interface ISocialProfileInsights {
+    linkedin?: {
+        headline?: string
+        summary?: string
+        skills: string[]
+        experience: Array<{
+            title: string
+            company: string
+            duration?: string
+        }>
+        highlights: string[]
+    }
+    github?: {
+        repositories: number
+        stars: number
+        languages: string[]
+        topProjects: Array<{
+            name: string
+            description: string
+            stars: number
+        }>
+        highlights: string[]
+    }
+    portfolio?: {
+        projects: Array<{
+            name: string
+            description: string
+            technologies: string[]
+        }>
+        skills: string[]
+        highlights: string[]
+    }
+    behance?: {
+        projects: Array<{
+            name: string
+            description: string
+            views?: number
+        }>
+        highlights: string[]
+    }
+    overallHighlights: string[]
+}
+
+// Text response analysis (matches TextResponseAnalysis from backend)
+export interface ITextResponseAnalysis {
+    totalResponses: number
+    overallQuality: string // 'excellent', 'good', 'average', 'poor'
+    responses: Array<{
+        questionId: string
+        questionText: string
+        questionWeight: number
+        answer: string
+        wordCount: number
+        quality: string // 'excellent', 'good', 'average', 'poor'
+    }>
+    insights: string[]
+}
+
+// AI Analysis Breakdown - Shows transparency of AI decisions
+export interface IAIAnalysisBreakdown {
+    screeningQuestionsAnalysis?: {
+        totalQuestions: number
+        knockoutQuestions: number
+        failedKnockouts: Array<{
+            question: string
+            answer: boolean
+            impact: string
+        }>
+        passedQuestions: string[]
+        aiReasoning: IBilingualText
+    }
+    voiceResponsesAnalysis?: {
+        totalResponses: number
+        totalWeight: number
+        responses: Array<{
+            questionText: string
+            weight: number
+            transcriptLength: number
+            sentiment: string
+            confidence: number
+            aiReasoning: IBilingualText
+        }>
+        overallImpact: IBilingualText
+    }
+    textResponsesAnalysis?: {
+        totalResponses: number
+        totalWeight: number
+        responses: Array<{
+            questionText: string
+            weight: number
+            wordCount: number
+            quality: string
+            aiReasoning: IBilingualText
+        }>
+        overallImpact: IBilingualText
+    }
+    additionalNotesAnalysis?: {
+        notesProvided: boolean
+        notesLength: number
+        aiReasoning: IBilingualText
+        keyPointsExtracted: string[]
+    }
+    externalProfilesAnalysis?: {
+        linkedinAnalyzed: boolean
+        githubAnalyzed: boolean
+        portfolioAnalyzed: boolean
+        skillsDiscovered: number
+        projectsFound: number
+        aiReasoning: IBilingualText
+    }
+    languageRequirementsAnalysis?: {
+        totalLanguages: number
+        meetsAllRequirements: boolean
+        gaps: Array<{
+            language: string
+            required: string
+            candidate: string
+            gapLevel: number
+        }>
+        aiReasoning: IBilingualText
+    }
+    experienceAnalysis?: {
+        selfReported: number
+        required: number
+        meetsRequirement: boolean
+        gap?: number
+        aiReasoning: IBilingualText
+    }
+    scoringBreakdown?: {
+        criteriaWeights: Array<{
+            criteriaName: string
+            weight: number
+            score: number
+            contribution: number
+            aiReasoning: IBilingualText
+        }>
+        totalWeightedScore: number
+        aiSummary: IBilingualText
+    }
+}
+
 export interface IEvaluation extends Document {
     _id: mongoose.Types.ObjectId
     applicantId: mongoose.Types.ObjectId
@@ -42,6 +207,12 @@ export interface IEvaluation extends Document {
     // Sentiment analysis (from voice)
     sentimentScore?: number // -1 to 1
     confidenceScore?: number // 0-100
+    // Detailed analysis sections (arrays of analysis data)
+    voiceAnalysisDetails?: IVoiceAnalysisDetails[]
+    socialProfileInsights?: ISocialProfileInsights
+    textResponseAnalysis?: ITextResponseAnalysis
+    // AI Analysis Breakdown - Transparency of AI decisions
+    aiAnalysisBreakdown?: IAIAnalysisBreakdown
     // Processing status
     isProcessed: boolean
     processingError?: string
@@ -103,6 +274,311 @@ const criteriaMatchSchema = new Schema<ICriteriaMatch>(
             type: bilingualTextArraySchema,
             default: () => ({ en: [], ar: [] }),
         },
+    },
+    { _id: false }
+)
+
+// Voice analysis sub-schemas
+const sentimentSchema = new Schema(
+    {
+        score: Number,
+        label: {
+            type: String,
+            enum: ['negative', 'neutral', 'positive'],
+        },
+    },
+    { _id: false }
+)
+
+const confidenceSchema = new Schema(
+    {
+        score: Number,
+        indicators: [String],
+    },
+    { _id: false }
+)
+
+const fluencySchema = new Schema(
+    {
+        score: Number,
+        wordsPerMinute: Number,
+        fillerWordCount: Number,
+    },
+    { _id: false }
+)
+
+const voiceAnalysisDetailsSchema = new Schema<IVoiceAnalysisDetails>(
+    {
+        questionId: String,
+        questionText: String,
+        questionWeight: Number,
+        rawTranscript: String,
+        cleanTranscript: String,
+        sentiment: sentimentSchema,
+        confidence: confidenceSchema,
+        fluency: fluencySchema,
+        keyPhrases: [String],
+    },
+    { _id: false }
+)
+
+// Social profile insights sub-schemas
+const linkedInExperienceSchema = new Schema(
+    {
+        title: String,
+        company: String,
+        duration: String,
+    },
+    { _id: false }
+)
+
+const linkedInInsightsSchema = new Schema(
+    {
+        headline: String,
+        summary: String,
+        skills: [String],
+        experience: [linkedInExperienceSchema],
+        highlights: [String],
+    },
+    { _id: false }
+)
+
+const githubProjectSchema = new Schema(
+    {
+        name: String,
+        description: String,
+        stars: Number,
+    },
+    { _id: false }
+)
+
+const githubInsightsSchema = new Schema(
+    {
+        repositories: Number,
+        stars: Number,
+        languages: [String],
+        topProjects: [githubProjectSchema],
+        highlights: [String],
+    },
+    { _id: false }
+)
+
+const portfolioProjectSchema = new Schema(
+    {
+        name: String,
+        description: String,
+        technologies: [String],
+    },
+    { _id: false }
+)
+
+const portfolioInsightsSchema = new Schema(
+    {
+        projects: [portfolioProjectSchema],
+        skills: [String],
+        highlights: [String],
+    },
+    { _id: false }
+)
+
+const behanceProjectSchema = new Schema(
+    {
+        name: String,
+        description: String,
+        views: Number,
+    },
+    { _id: false }
+)
+
+const behanceInsightsSchema = new Schema(
+    {
+        projects: [behanceProjectSchema],
+        highlights: [String],
+    },
+    { _id: false }
+)
+
+const socialProfileInsightsSchema = new Schema<ISocialProfileInsights>(
+    {
+        linkedin: linkedInInsightsSchema,
+        github: githubInsightsSchema,
+        portfolio: portfolioInsightsSchema,
+        behance: behanceInsightsSchema,
+        overallHighlights: [String],
+    },
+    { _id: false }
+)
+
+// Text response analysis sub-schemas
+const textResponseDetailsSchema = new Schema(
+    {
+        questionId: String,
+        questionText: String,
+        questionWeight: Number,
+        answer: String,
+        wordCount: Number,
+        quality: String,
+    },
+    { _id: false }
+)
+
+const textResponseAnalysisSchema = new Schema<ITextResponseAnalysis>(
+    {
+        totalResponses: Number,
+        overallQuality: String,
+        responses: [textResponseDetailsSchema],
+        insights: [String],
+    },
+    { _id: false }
+)
+
+// AI Analysis Breakdown sub-schemas
+const failedKnockoutSchema = new Schema(
+    {
+        question: String,
+        answer: Boolean,
+        impact: String,
+    },
+    { _id: false }
+)
+
+const screeningQuestionsAnalysisSchema = new Schema(
+    {
+        totalQuestions: Number,
+        knockoutQuestions: Number,
+        failedKnockouts: [failedKnockoutSchema],
+        passedQuestions: [String],
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const voiceResponseBreakdownSchema = new Schema(
+    {
+        questionText: String,
+        weight: Number,
+        transcriptLength: Number,
+        sentiment: String,
+        confidence: Number,
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const voiceResponsesAnalysisSchema = new Schema(
+    {
+        totalResponses: Number,
+        totalWeight: Number,
+        responses: [voiceResponseBreakdownSchema],
+        overallImpact: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const textResponseBreakdownSchema = new Schema(
+    {
+        questionText: String,
+        weight: Number,
+        wordCount: Number,
+        quality: String,
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const textResponsesAnalysisSchema = new Schema(
+    {
+        totalResponses: Number,
+        totalWeight: Number,
+        responses: [textResponseBreakdownSchema],
+        overallImpact: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const additionalNotesAnalysisSchema = new Schema(
+    {
+        notesProvided: Boolean,
+        notesLength: Number,
+        aiReasoning: bilingualTextSchema,
+        keyPointsExtracted: [String],
+    },
+    { _id: false }
+)
+
+const externalProfilesAnalysisSchema = new Schema(
+    {
+        linkedinAnalyzed: Boolean,
+        githubAnalyzed: Boolean,
+        portfolioAnalyzed: Boolean,
+        skillsDiscovered: Number,
+        projectsFound: Number,
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const languageGapSchema = new Schema(
+    {
+        language: String,
+        required: String,
+        candidate: String,
+        gapLevel: Number,
+    },
+    { _id: false }
+)
+
+const languageRequirementsAnalysisSchema = new Schema(
+    {
+        totalLanguages: Number,
+        meetsAllRequirements: Boolean,
+        gaps: [languageGapSchema],
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const experienceAnalysisSchema = new Schema(
+    {
+        selfReported: Number,
+        required: Number,
+        meetsRequirement: Boolean,
+        gap: Number,
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const criteriaWeightBreakdownSchema = new Schema(
+    {
+        criteriaName: String,
+        weight: Number,
+        score: Number,
+        contribution: Number,
+        aiReasoning: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const scoringBreakdownSchema = new Schema(
+    {
+        criteriaWeights: [criteriaWeightBreakdownSchema],
+        totalWeightedScore: Number,
+        aiSummary: bilingualTextSchema,
+    },
+    { _id: false }
+)
+
+const aiAnalysisBreakdownSchema = new Schema<IAIAnalysisBreakdown>(
+    {
+        screeningQuestionsAnalysis: screeningQuestionsAnalysisSchema,
+        voiceResponsesAnalysis: voiceResponsesAnalysisSchema,
+        textResponsesAnalysis: textResponsesAnalysisSchema,
+        additionalNotesAnalysis: additionalNotesAnalysisSchema,
+        externalProfilesAnalysis: externalProfilesAnalysisSchema,
+        languageRequirementsAnalysis: languageRequirementsAnalysisSchema,
+        experienceAnalysis: experienceAnalysisSchema,
+        scoringBreakdown: scoringBreakdownSchema,
     },
     { _id: false }
 )
@@ -176,6 +652,20 @@ const evaluationSchema = new Schema<IEvaluation>(
             min: 0,
             max: 100,
         },
+        // Detailed analysis sections
+        voiceAnalysisDetails: {
+            type: [voiceAnalysisDetailsSchema],
+        },
+        socialProfileInsights: {
+            type: socialProfileInsightsSchema,
+        },
+        textResponseAnalysis: {
+            type: textResponseAnalysisSchema,
+        },
+        // AI Analysis Breakdown
+        aiAnalysisBreakdown: {
+            type: aiAnalysisBreakdownSchema,
+        },
         // Processing
         isProcessed: {
             type: Boolean,
@@ -208,9 +698,12 @@ const evaluationSchema = new Schema<IEvaluation>(
     }
 )
 
-// Index for queries
+// Indexes for queries - optimized for common access patterns
 evaluationSchema.index({ jobId: 1, overallScore: -1 })
 evaluationSchema.index({ jobId: 1, recommendation: 1 })
+evaluationSchema.index({ jobId: 1, recommendation: 1, overallScore: -1 }) // For filtered + sorted queries
+evaluationSchema.index({ isProcessed: 1, createdAt: -1 }) // For finding pending evaluations
+evaluationSchema.index({ processedAt: -1 }) // For date range queries
 
 // In development, delete cached model to allow schema changes
 // This is necessary because Next.js hot-reloading caches Mongoose models

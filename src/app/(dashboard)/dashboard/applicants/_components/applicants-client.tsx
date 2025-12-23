@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -173,12 +173,95 @@ export interface EvaluationData {
         responses: Array<{
             questionId: string
             questionText: string
+            questionWeight: number
             answer: string
             wordCount: number
             quality: 'poor' | 'average' | 'good' | 'excellent'
         }>
         overallQuality: 'poor' | 'average' | 'good' | 'excellent'
         insights: string[]
+    }
+    // AI Analysis Breakdown - Shows transparency of AI decisions
+    aiAnalysisBreakdown?: {
+        screeningQuestionsAnalysis?: {
+            totalQuestions: number
+            knockoutQuestions: number
+            failedKnockouts: Array<{
+                question: string
+                answer: boolean
+                impact: string
+            }>
+            passedQuestions: string[]
+            aiReasoning: BilingualText
+        }
+        voiceResponsesAnalysis?: {
+            totalResponses: number
+            totalWeight: number
+            responses: Array<{
+                questionText: string
+                weight: number
+                transcriptLength: number
+                sentiment: string
+                confidence: number
+                aiReasoning: BilingualText
+            }>
+            overallImpact: BilingualText
+        }
+        textResponsesAnalysis?: {
+            totalResponses: number
+            totalWeight: number
+            responses: Array<{
+                questionText: string
+                weight: number
+                wordCount: number
+                quality: string
+                aiReasoning: BilingualText
+            }>
+            overallImpact: BilingualText
+        }
+        additionalNotesAnalysis?: {
+            notesProvided: boolean
+            notesLength: number
+            aiReasoning: BilingualText
+            keyPointsExtracted: string[]
+        }
+        externalProfilesAnalysis?: {
+            linkedinAnalyzed: boolean
+            githubAnalyzed: boolean
+            portfolioAnalyzed: boolean
+            skillsDiscovered: number
+            projectsFound: number
+            aiReasoning: BilingualText
+        }
+        languageRequirementsAnalysis?: {
+            totalLanguages: number
+            meetsAllRequirements: boolean
+            gaps: Array<{
+                language: string
+                required: string
+                candidate: string
+                gapLevel: number
+            }>
+            aiReasoning: BilingualText
+        }
+        experienceAnalysis?: {
+            selfReported: number
+            required: number
+            meetsRequirement: boolean
+            gap?: number
+            aiReasoning: BilingualText
+        }
+        scoringBreakdown?: {
+            criteriaWeights: Array<{
+                criteriaName: string
+                weight: number
+                score: number
+                contribution: number
+                aiReasoning: BilingualText
+            }>
+            totalWeightedScore: number
+            aiSummary: BilingualText
+        }
     }
 }
 
@@ -229,8 +312,16 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
 
+    // Request deduplication refs
+    const isFetchingApplicants = useRef(false)
+    const isFetchingJobs = useRef(false)
+
     // Fetch jobs list
     const fetchJobs = useCallback(async () => {
+        // Skip if already fetching (prevents Strict Mode duplicates)
+        if (isFetchingJobs.current) return
+        isFetchingJobs.current = true
+
         try {
             const response = await fetch("/api/jobs/list?limit=100")
             const data = await response.json()
@@ -239,11 +330,48 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             }
         } catch (error) {
             console.error("Failed to fetch jobs:", error)
+        } finally {
+            isFetchingJobs.current = false
         }
     }, [])
 
+    // Fetch evaluation data for applicants using batch endpoint
+    const fetchEvaluations = useCallback(async (applicantIds: string[]) => {
+        if (applicantIds.length === 0) {
+            setEvaluations(new Map())
+            return
+        }
+
+        try {
+            // Use batch endpoint - single request instead of N requests
+            const response = await fetch(`/api/evaluations/batch-by-applicants?role=${currentUserRole}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ applicantIds })
+            })
+            const data = await response.json()
+
+            if (data.success && data.evaluations) {
+                // Convert object to Map
+                const evaluationsMap = new Map<string, EvaluationData>(
+                    Object.entries(data.evaluations)
+                )
+                setEvaluations(evaluationsMap)
+            } else {
+                setEvaluations(new Map())
+            }
+        } catch (error) {
+            console.error("Failed to fetch evaluations:", error)
+            setEvaluations(new Map())
+        }
+    }, [currentUserRole])
+
     // Fetch applicants with evaluations
     const fetchApplicants = useCallback(async () => {
+        // Skip if already fetching (prevents Strict Mode duplicates)
+        if (isFetchingApplicants.current) return
+        isFetchingApplicants.current = true
+
         setLoading(true)
         try {
             const params = new URLSearchParams({
@@ -288,34 +416,10 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             console.error("Failed to fetch applicants:", error)
             toast.error(t("common.error"))
         } finally {
+            isFetchingApplicants.current = false
             setLoading(false)
         }
-    }, [page, searchTerm, statusFilters, jobFilter, minScore, currentUserRole, t])
-
-    // Fetch evaluation data for applicants
-    const fetchEvaluations = async (applicantIds: string[]) => {
-        const newEvaluations = new Map<string, EvaluationData>()
-
-        // Fetch evaluations in parallel (batch of 5)
-        const batchSize = 5
-        for (let i = 0; i < applicantIds.length; i += batchSize) {
-            const batch = applicantIds.slice(i, i + batchSize)
-            const promises = batch.map(async (id) => {
-                try {
-                    const response = await fetch(`/api/evaluations/by-applicant/${id}?role=${currentUserRole}`)
-                    const data = await response.json()
-                    if (data.success && data.evaluation) {
-                        newEvaluations.set(id, data.evaluation)
-                    }
-                } catch (error) {
-                    // Silently fail for missing evaluations
-                }
-            })
-            await Promise.all(promises)
-        }
-
-        setEvaluations(newEvaluations)
-    }
+    }, [page, searchTerm, statusFilters, jobFilter, minScore, currentUserRole, t, fetchEvaluations])
 
     useEffect(() => {
         fetchJobs()

@@ -356,7 +356,17 @@
         "overallQuality": "الجودة الإجمالية",
         "hrRequirements": "متطلبات الموارد البشرية",
         "screeningQuestions": "أسئلة الفرز",
-        "languageProficiency": "إتقان اللغة"
+        "languageProficiency": "إتقان اللغة",
+        "aiTransparency": "شفافية الذكاء الاصطناعي وتحليل القرارات",
+        "aiTransparencyDesc": "افهم ما قام الذكاء الاصطناعي بتحليله ولماذا اتخذ كل قرار",
+        "screeningAnalysis": "تحليل أسئلة الفحص",
+        "voiceResponsesAnalysis": "تحليل الردود الصوتية",
+        "textResponsesAnalysis": "تحليل الردود النصية",
+        "additionalNotesAnalysis": "تحليل الملاحظات الإضافية",
+        "externalProfilesAnalysis": "تحليل الملفات الخارجية",
+        "languageRequirementsAnalysis": "تحليل متطلبات اللغة",
+        "experienceAnalysis": "تحليل الخبرة",
+        "criteriaScoring": "تفصيل التسجيل حسب المعايير"
     },
     "roles": {
         "superadmin": "مدير عام",

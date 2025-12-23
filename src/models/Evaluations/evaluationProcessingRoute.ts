@@ -80,6 +80,7 @@ async function buildCandidateData(
                 textResponses.push({
                     questionId: response.questionId,
                     questionText: question?.text || response.questionId,
+                    questionWeight: question?.weight || 5, // Include weight
                     answer: response.textAnswer,
                 })
             }
@@ -244,6 +245,17 @@ app.post('/process', async (c) => {
         // Save evaluation to database (with bilingual content)
         const existingEval = await Evaluation.findOne({ applicantId })
 
+        // DEBUG: Log what candidateEvaluator returned
+        console.log('🔍 [SAVE] Data from candidateEvaluator:', {
+            hasVoiceAnalysis: !!result.evaluation.voiceAnalysisDetails,
+            voiceAnalysisLength: result.evaluation.voiceAnalysisDetails?.length,
+            voiceAnalysisData: result.evaluation.voiceAnalysisDetails,
+            hasSocialInsights: !!result.evaluation.socialProfileInsights,
+            socialInsightsData: result.evaluation.socialProfileInsights,
+            hasTextAnalysis: !!result.evaluation.textResponseAnalysis,
+            textAnalysisData: result.evaluation.textResponseAnalysis,
+        })
+
         const evaluationData = {
             overallScore: result.evaluation.overallScore,
             criteriaMatches: result.evaluation.criteriaMatches,
@@ -258,9 +270,15 @@ app.post('/process', async (c) => {
             // Sentiment scores
             sentimentScore: result.evaluation.sentimentScore,
             confidenceScore: result.evaluation.confidenceScore,
+            // Detailed analysis sections
+            voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+            socialProfileInsights: result.evaluation.socialProfileInsights,
+            textResponseAnalysis: result.evaluation.textResponseAnalysis,
             isProcessed: true,
             processedAt: new Date(),
         }
+
+        console.log('🔍 [SAVE] Evaluation data to be saved:', evaluationData)
 
         if (existingEval) {
             // Update existing evaluation

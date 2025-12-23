@@ -78,10 +78,12 @@ app.get('/list', async (c) => {
         const skip = (page - 1) * limit
         const total = await Applicant.countDocuments(query)
         const applicants = await Applicant.find(query)
+            .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
             .populate('jobId', 'title')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
+            .lean()
 
         // Remove sensitive data for reviewers
         const isReviewer = userRole === 'reviewer'
@@ -89,7 +91,7 @@ app.get('/list', async (c) => {
         return c.json({
             success: true,
             applicants: applicants.map((a) => ({
-                id: a._id.toString(),
+                id: String(a._id),
                 jobId: a.jobId,
                 personalData: a.personalData ? {
                     name: a.personalData.name || '',

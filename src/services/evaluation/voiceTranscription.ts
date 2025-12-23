@@ -8,8 +8,8 @@ import axios from 'axios'
 import { GoogleGenerativeAI, Part } from '@google/generative-ai'
 import { TranscriptionResult, VoiceAnalysisResult } from './types'
 
-// Gemini 2.5 Flash for audio processing
-const GEMINI_MODEL = 'gemini-2.5-flash'
+// Gemini 2.5 Flash Lite for audio processing
+const GEMINI_MODEL = 'gemini-2.5-flash-lite'
 
 /**
  * Combined result type for transcription + analysis in one go
@@ -358,8 +358,8 @@ export async function batchTranscribeAndAnalyzeAudio(
     
     const results = new Map<string, TranscriptionWithAnalysis>()
     
-    // Process in parallel with concurrency limit
-    const CONCURRENCY_LIMIT = 3
+    // Process in parallel with concurrency limit (reduced to 1 to avoid quota exhaustion)
+    const CONCURRENCY_LIMIT = 1
     const chunks = []
     
     for (let i = 0; i < audioInputs.length; i += CONCURRENCY_LIMIT) {
@@ -386,6 +386,13 @@ export async function batchTranscribeAndAnalyzeAudio(
 
         for (const { questionId, result } of chunkResults) {
             results.set(questionId, result)
+        }
+
+        // Add delay between chunks to respect API quota limits (skip delay after last chunk)
+        if (chunkIndex < chunks.length - 1) {
+            const CHUNK_DELAY_MS = 3000 // 3 seconds between audio transcription chunks
+            console.log(`🔄 [Batch Transcription] Waiting ${CHUNK_DELAY_MS}ms before next chunk...`)
+            await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY_MS))
         }
     }
 

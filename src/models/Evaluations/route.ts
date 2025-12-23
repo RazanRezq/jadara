@@ -154,6 +154,7 @@ app.get('/by-applicant/:applicantId', async (c) => {
 
         const evaluation = await Evaluation.findOne({ applicantId })
             .populate('reviewedBy', 'name')
+            .lean()
 
         if (!evaluation) {
             // Return success: true but with null evaluation to avoid treating as error
@@ -169,9 +170,9 @@ app.get('/by-applicant/:applicantId', async (c) => {
         return c.json({
             success: true,
             evaluation: {
-                id: evaluation._id.toString(),
-                applicantId: evaluation.applicantId.toString(),
-                jobId: evaluation.jobId.toString(),
+                id: String(evaluation._id),
+                applicantId: String(evaluation.applicantId),
+                jobId: String(evaluation.jobId),
                 overallScore: evaluation.overallScore,
                 criteriaMatches: evaluation.criteriaMatches,
                 strengths: evaluation.strengths,
@@ -239,17 +240,19 @@ app.post('/batch-by-applicants', async (c) => {
 
         const evaluations = await Evaluation.find({
             applicantId: { $in: applicantIds },
-        }).populate('reviewedBy', 'name')
+        })
+            .populate('reviewedBy', 'name')
+            .lean()
 
         const isReviewer = userRole === 'reviewer'
 
         // Create a map for quick lookup
-        const evaluationMap: Record<string, any> = {}
+        const evaluationMap: Record<string, unknown> = {}
         evaluations.forEach((e) => {
-            evaluationMap[e.applicantId.toString()] = {
-                id: e._id.toString(),
-                applicantId: e.applicantId.toString(),
-                jobId: e.jobId.toString(),
+            evaluationMap[String(e.applicantId)] = {
+                id: String(e._id),
+                applicantId: String(e.applicantId),
+                jobId: String(e.jobId),
                 overallScore: e.overallScore,
                 criteriaMatches: e.criteriaMatches,
                 strengths: e.strengths,
@@ -268,6 +271,10 @@ app.post('/batch-by-applicants', async (c) => {
                 reviewedBy: e.reviewedBy,
                 reviewedAt: e.reviewedAt,
                 createdAt: e.createdAt,
+                // Detailed analysis fields
+                voiceAnalysisDetails: e.voiceAnalysisDetails,
+                socialProfileInsights: e.socialProfileInsights,
+                textResponseAnalysis: e.textResponseAnalysis,
             }
         })
 
@@ -313,15 +320,18 @@ app.get('/by-job/:jobId', async (c) => {
         const sortField = sortBy === 'date' ? 'createdAt' : 'overallScore'
 
         const evaluations = await Evaluation.find(query)
+            .select('applicantId overallScore recommendation summary redFlags criteriaMatches isProcessed createdAt')
             .populate('applicantId', 'personalData.name personalData.email')
             .sort({ [sortField]: order })
+            .limit(100)
+            .lean()
 
         const isReviewer = userRole === 'reviewer'
 
         return c.json({
             success: true,
             evaluations: evaluations.map((e) => ({
-                id: e._id.toString(),
+                id: String(e._id),
                 applicantId: e.applicantId,
                 overallScore: e.overallScore,
                 recommendation: e.recommendation,

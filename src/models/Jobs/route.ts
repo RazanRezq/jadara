@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
-import Job, { IJob } from './jobSchema'
+import Job from './jobSchema'
 
 const criteriaSchema = z.object({
     name: z.string().min(1, 'Criteria name is required'),
@@ -205,15 +205,17 @@ app.get('/list', async (c) => {
         const skip = (page - 1) * limit
         const total = await Job.countDocuments(query)
         const jobs = await Job.find(query)
+            .select('title description department location employmentType salaryMin salaryMax currency skills minExperience autoRejectThreshold candidateDataConfig candidateInstructions questions retakePolicy requiredSkills responsibilities criteria status expiresAt createdBy createdAt updatedAt')
             .populate('createdBy', 'name email')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
+            .lean()
 
         return c.json({
             success: true,
-            jobs: jobs.map((job: IJob) => ({
-                id: job._id.toString(),
+            jobs: jobs.map((job) => ({
+                id: String(job._id),
                 title: job.title,
                 description: job.description,
                 department: job.department,

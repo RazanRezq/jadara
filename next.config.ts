@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Disable React Strict Mode in development to prevent duplicate server action calls
+  reactStrictMode: false,
+
+  // Optional: Enable strict mode only in production if needed
+  // reactStrictMode: process.env.NODE_ENV === "production",
 };
 
 export default nextConfig;

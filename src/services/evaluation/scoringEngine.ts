@@ -31,6 +31,7 @@ interface CandidateData {
     textResponses: Array<{
         questionId: string
         questionText: string
+        questionWeight: number
         answer: string
     }>
     urlContent?: string // Formatted content extracted from LinkedIn, GitHub, Portfolio, etc.
@@ -183,13 +184,46 @@ Analyze the candidate comprehensively against ALL criteria, including screening 
 - Ensure Arabic translations are professional, formal, and culturally appropriate
 - Each array field must have the same number of items in both languages
 
-Return ONLY valid JSON.`
+**JSON FORMATTING RULES (CRITICAL):**
+- Return ONLY valid JSON - no comments, no trailing commas, no extra text
+- All strings must use double quotes ("), never single quotes (')
+- Arrays must have commas between elements: ["item1", "item2", "item3"]
+- NO trailing commas: ["item1", "item2"] NOT ["item1", "item2",]
+- Ensure all brackets are properly closed: { }, [ ]
+- Test your JSON before returning it
+
+Return ONLY valid JSON. No explanations, no markdown, just pure JSON.`
 
         const result = await model.generateContent(prompt)
         let responseText = result.response.text().trim()
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const evaluation = JSON.parse(responseText)
+        // Try to parse JSON, with error recovery
+        let evaluation
+        try {
+            evaluation = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[Scoring Engine] JSON Parse Error:', parseError)
+            console.error('[Scoring Engine] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            console.error('[Scoring Engine] Problematic JSON (around error):', responseText.substring(2200, 2400))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes
+                .replace(/'/g, '"')
+            
+            try {
+                evaluation = JSON.parse(fixedText)
+                console.log('[Scoring Engine] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[Scoring Engine] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         // Add budget red flag if applicable (bilingual)
         if (budgetCheck.redFlag) {
@@ -227,6 +261,20 @@ Return ONLY valid JSON.`
         console.log('  - Strengths (AR):', strengths.ar?.length || 0)
         console.log('  - Red Flags (EN):', redFlags.en?.length || 0)
 
+        // Build AI Analysis Breakdown for transparency
+        console.log('[Scoring Engine] Building AI Analysis Breakdown...')
+        const aiAnalysisBreakdown = buildAIAnalysisBreakdown(candidateData, jobCriteria, {
+            success: true,
+            overallScore,
+            criteriaMatches,
+            strengths,
+            weaknesses,
+            redFlags,
+            summary,
+            whySection,
+        })
+        console.log('[Scoring Engine] AI Analysis Breakdown complete')
+
         return {
             success: true,
             overallScore,
@@ -236,6 +284,7 @@ Return ONLY valid JSON.`
             redFlags,
             summary,
             whySection,
+            aiAnalysisBreakdown,
         }
     } catch (error) {
         console.error('[Scoring Engine] Error:', error)
@@ -604,7 +653,7 @@ ${v.analysis?.keyPhrases?.length ? `**Key Phrases:** ${v.analysis.keyPhrases.joi
         profile += `
 ## Written Responses
 ${textResponses.map(t => `
-### Question: ${t.questionText}
+### Question (Weight: ${t.questionWeight}/10): ${t.questionText}
 **Answer:** ${t.answer}
 `).join('')}
 `
@@ -741,11 +790,288 @@ function parseDate(dateStr: string): Date | null {
     }
 }
 
+/**
+ * Build AI Analysis Breakdown for transparency
+ * Shows WHAT the AI analyzed and WHY it made decisions
+ */
+export function buildAIAnalysisBreakdown(
+    candidateData: CandidateData,
+    jobCriteria: CandidateEvaluationInput['jobCriteria'],
+    scoringResult: ScoringResult
+): import('./types').AIAnalysisBreakdown {
+    const breakdown: import('./types').AIAnalysisBreakdown = {}
+
+    // 1. Screening Questions Analysis
+    if (candidateData.personalData.screeningAnswers && jobCriteria.screeningQuestions && jobCriteria.screeningQuestions.length > 0) {
+        const failedKnockouts: Array<{ question: string; answer: boolean; impact: string }> = []
+        const passedQuestions: string[] = []
+
+        for (const sq of jobCriteria.screeningQuestions) {
+            const answer = candidateData.personalData.screeningAnswers[sq.question]
+            if (sq.disqualify && answer === false) {
+                failedKnockouts.push({
+                    question: sq.question,
+                    answer: false,
+                    impact: 'Critical - Auto-reject trigger'
+                })
+            } else if (answer === true) {
+                passedQuestions.push(sq.question)
+            }
+        }
+
+        breakdown.screeningQuestionsAnalysis = {
+            totalQuestions: jobCriteria.screeningQuestions.length,
+            knockoutQuestions: jobCriteria.screeningQuestions.filter(sq => sq.disqualify).length,
+            failedKnockouts,
+            passedQuestions,
+            aiReasoning: {
+                en: failedKnockouts.length > 0
+                    ? `Candidate failed ${failedKnockouts.length} critical screening question(s), which are auto-reject triggers for this position.`
+                    : `Candidate passed all ${jobCriteria.screeningQuestions.length} screening questions successfully.`,
+                ar: failedKnockouts.length > 0
+                    ? `فشل المرشح في ${failedKnockouts.length} سؤال فحص حرج، وهي محفزات للرفض التلقائي لهذا المنصب.`
+                    : `اجتاز المرشح جميع أسئلة الفحص الـ ${jobCriteria.screeningQuestions.length} بنجاح.`
+            }
+        }
+    }
+
+    // 2. Voice Responses Analysis
+    if (candidateData.voiceAnalysis && candidateData.voiceAnalysis.length > 0) {
+        const totalWeight = candidateData.voiceAnalysis.reduce((sum, v) => sum + v.questionWeight, 0)
+        const responses = candidateData.voiceAnalysis.map(v => ({
+            questionText: v.questionText,
+            weight: v.questionWeight,
+            transcriptLength: v.transcript.length,
+            sentiment: v.analysis?.sentiment?.label || 'neutral',
+            confidence: v.analysis?.confidence?.score || 0,
+            aiReasoning: {
+                en: v.analysis?.sentiment?.label === 'positive'
+                    ? `Strong response with ${v.analysis?.confidence?.score || 0}% confidence. Shows clarity and conviction.`
+                    : v.analysis?.sentiment?.label === 'negative'
+                    ? `Hesitant response with concerns. Confidence ${v.analysis?.confidence?.score || 0}%.`
+                    : `Neutral response. Adequate but unremarkable. Confidence ${v.analysis?.confidence?.score || 0}%.`,
+                ar: v.analysis?.sentiment?.label === 'positive'
+                    ? `إجابة قوية بثقة ${v.analysis?.confidence?.score || 0}٪. تظهر وضوحاً وقناعة.`
+                    : v.analysis?.sentiment?.label === 'negative'
+                    ? `إجابة مترددة مع مخاوف. الثقة ${v.analysis?.confidence?.score || 0}٪.`
+                    : `إجابة محايدة. كافية لكن غير ملحوظة. الثقة ${v.analysis?.confidence?.score || 0}٪.`
+            }
+        }))
+
+        const avgConfidence = responses.reduce((sum, r) => sum + r.confidence, 0) / responses.length
+
+        breakdown.voiceResponsesAnalysis = {
+            totalResponses: candidateData.voiceAnalysis.length,
+            totalWeight,
+            responses,
+            overallImpact: {
+                en: avgConfidence >= 80
+                    ? `Voice responses demonstrate strong confidence (${Math.round(avgConfidence)}% avg). Candidate communicates effectively.`
+                    : avgConfidence >= 60
+                    ? `Voice responses show moderate confidence (${Math.round(avgConfidence)}% avg). Acceptable communication skills.`
+                    : `Voice responses lack confidence (${Math.round(avgConfidence)}% avg). May need improvement in communication.`,
+                ar: avgConfidence >= 80
+                    ? `تُظهر الردود الصوتية ثقة قوية (${Math.round(avgConfidence)}٪ متوسط). المرشح يتواصل بفعالية.`
+                    : avgConfidence >= 60
+                    ? `تُظهر الردود الصوتية ثقة متوسطة (${Math.round(avgConfidence)}٪ متوسط). مهارات تواصل مقبولة.`
+                    : `تفتقر الردود الصوتية إلى الثقة (${Math.round(avgConfidence)}٪ متوسط). قد تحتاج إلى تحسين في التواصل.`
+            }
+        }
+    }
+
+    // 3. Text Responses Analysis
+    if (candidateData.textResponses && candidateData.textResponses.length > 0) {
+        const totalWeight = candidateData.textResponses.reduce((sum, t) => sum + t.questionWeight, 0)
+        const responses = candidateData.textResponses.map(t => {
+            const wordCount = t.answer.split(/\s+/).length
+            let quality: string = 'average'
+            if (wordCount < 20) quality = 'poor'
+            else if (wordCount < 50) quality = 'average'
+            else if (wordCount < 100) quality = 'good'
+            else quality = 'excellent'
+
+            return {
+                questionText: t.questionText,
+                weight: t.questionWeight,
+                wordCount,
+                quality,
+                aiReasoning: {
+                    en: wordCount >= 100
+                        ? `Comprehensive answer (${wordCount} words). Shows depth of thought and thoroughness.`
+                        : wordCount >= 50
+                        ? `Good answer (${wordCount} words). Adequate detail and clarity.`
+                        : wordCount >= 20
+                        ? `Brief answer (${wordCount} words). Addresses question but lacks detail.`
+                        : `Very short answer (${wordCount} words). Insufficient detail provided.`,
+                    ar: wordCount >= 100
+                        ? `إجابة شاملة (${wordCount} كلمة). تُظهر عمق التفكير والشمولية.`
+                        : wordCount >= 50
+                        ? `إجابة جيدة (${wordCount} كلمة). تفاصيل ووضوح كافيان.`
+                        : wordCount >= 20
+                        ? `إجابة موجزة (${wordCount} كلمة). تتناول السؤال لكن تفتقر إلى التفاصيل.`
+                        : `إجابة قصيرة جداً (${wordCount} كلمة). تفاصيل غير كافية.`
+                }
+            }
+        })
+
+        const avgWordCount = Math.round(responses.reduce((sum, r) => sum + r.wordCount, 0) / responses.length)
+
+        breakdown.textResponsesAnalysis = {
+            totalResponses: candidateData.textResponses.length,
+            totalWeight,
+            responses,
+            overallImpact: {
+                en: avgWordCount >= 75
+                    ? `Written responses are detailed (${avgWordCount} words avg). Candidate provides thorough explanations.`
+                    : avgWordCount >= 35
+                    ? `Written responses are adequate (${avgWordCount} words avg). Sufficient but could be more detailed.`
+                    : `Written responses are brief (${avgWordCount} words avg). Lacks sufficient detail in answers.`,
+                ar: avgWordCount >= 75
+                    ? `الردود المكتوبة مفصلة (${avgWordCount} كلمة متوسط). المرشح يقدم تفسيرات شاملة.`
+                    : avgWordCount >= 35
+                    ? `الردود المكتوبة كافية (${avgWordCount} كلمة متوسط). كافية لكن يمكن أن تكون أكثر تفصيلاً.`
+                    : `الردود المكتوبة موجزة (${avgWordCount} كلمة متوسط). تفتقر إلى تفاصيل كافية في الإجابات.`
+            }
+        }
+    }
+
+    // 4. Additional Notes Analysis
+    if (candidateData.additionalNotes) {
+        const notesLength = candidateData.additionalNotes.length
+        const keyPoints = candidateData.additionalNotes
+            .split(/[.،;]\s+/)
+            .filter(s => s.trim().length > 10)
+            .slice(0, 3)
+
+        breakdown.additionalNotesAnalysis = {
+            notesProvided: true,
+            notesLength,
+            keyPointsExtracted: keyPoints,
+            aiReasoning: {
+                en: keyPoints.length > 0
+                    ? `Candidate provided context: ${keyPoints.join('; ')}. This information adds valuable context to the application.`
+                    : `Candidate provided additional notes but without specific actionable information.`,
+                ar: keyPoints.length > 0
+                    ? `قدم المرشح سياقاً: ${keyPoints.join('؛ ')}. هذه المعلومات تضيف سياقاً قيماً للطلب.`
+                    : `قدم المرشح ملاحظات إضافية لكن بدون معلومات محددة قابلة للتنفيذ.`
+            }
+        }
+    }
+
+    // 5. External Profiles Analysis
+    if (candidateData.urlContent) {
+        const hasLinkedIn = candidateData.personalData.linkedinUrl ? true : false
+        const hasPortfolio = candidateData.personalData.portfolioUrl ? true : false
+
+        breakdown.externalProfilesAnalysis = {
+            linkedinAnalyzed: hasLinkedIn,
+            githubAnalyzed: false,
+            portfolioAnalyzed: hasPortfolio,
+            skillsDiscovered: 0,
+            projectsFound: 0,
+            aiReasoning: {
+                en: hasLinkedIn || hasPortfolio
+                    ? `External profiles analyzed. Online presence adds credibility to resume claims.`
+                    : `No external profiles provided for verification.`,
+                ar: hasLinkedIn || hasPortfolio
+                    ? `تم تحليل الملفات الخارجية. الوجود عبر الإنترنت يضيف مصداقية لادعاءات السيرة الذاتية.`
+                    : `لم يتم تقديم ملفات خارجية للتحقق.`
+            }
+        }
+    }
+
+    // 6. Language Requirements Analysis
+    if (jobCriteria.languages && jobCriteria.languages.length > 0) {
+        const levels = ['beginner', 'intermediate', 'advanced', 'native']
+        const gaps: Array<{ language: string; required: string; candidate: string; gapLevel: number }> = []
+
+        for (const reqLang of jobCriteria.languages) {
+            const candidateLevel = candidateData.personalData.languageProficiency?.[reqLang.language]
+            if (candidateLevel) {
+                const reqIdx = levels.indexOf(reqLang.level.toLowerCase())
+                const candIdx = levels.indexOf(candidateLevel.toLowerCase())
+                if (candIdx < reqIdx) {
+                    gaps.push({
+                        language: reqLang.language,
+                        required: reqLang.level,
+                        candidate: candidateLevel,
+                        gapLevel: reqIdx - candIdx
+                    })
+                }
+            } else {
+                gaps.push({
+                    language: reqLang.language,
+                    required: reqLang.level,
+                    candidate: 'not provided',
+                    gapLevel: 4
+                })
+            }
+        }
+
+        breakdown.languageRequirementsAnalysis = {
+            totalLanguages: jobCriteria.languages.length,
+            meetsAllRequirements: gaps.length === 0,
+            gaps,
+            aiReasoning: {
+                en: gaps.length === 0
+                    ? `Candidate meets all ${jobCriteria.languages.length} language requirements.`
+                    : `Candidate has ${gaps.length} language gap(s): ${gaps.map(g => `${g.language} (has ${g.candidate}, needs ${g.required})`).join(', ')}.`,
+                ar: gaps.length === 0
+                    ? `المرشح يستوفي جميع متطلبات اللغات الـ ${jobCriteria.languages.length}.`
+                    : `لدى المرشح ${gaps.length} فجوة لغوية: ${gaps.map(g => `${g.language} (لديه ${g.candidate}، يحتاج ${g.required})`).join('، ')}.`
+            }
+        }
+    }
+
+    // 7. Experience Analysis
+    if (jobCriteria.minExperience && candidateData.personalData.yearsOfExperience !== undefined) {
+        const meetsRequirement = candidateData.personalData.yearsOfExperience >= jobCriteria.minExperience
+        const gap = meetsRequirement ? 0 : jobCriteria.minExperience - candidateData.personalData.yearsOfExperience
+
+        breakdown.experienceAnalysis = {
+            selfReported: candidateData.personalData.yearsOfExperience,
+            required: jobCriteria.minExperience,
+            meetsRequirement,
+            gap: meetsRequirement ? undefined : gap,
+            aiReasoning: {
+                en: meetsRequirement
+                    ? `Candidate has ${candidateData.personalData.yearsOfExperience} years experience, exceeding the ${jobCriteria.minExperience} year minimum.`
+                    : `Candidate has only ${candidateData.personalData.yearsOfExperience} years, ${gap} year(s) below the ${jobCriteria.minExperience} year requirement.`,
+                ar: meetsRequirement
+                    ? `المرشح لديه ${candidateData.personalData.yearsOfExperience} سنة خبرة، تتجاوز الحد الأدنى ${jobCriteria.minExperience} سنة.`
+                    : `المرشح لديه ${candidateData.personalData.yearsOfExperience} سنة فقط، ${gap} سنة أقل من المطلوب ${jobCriteria.minExperience} سنة.`
+            }
+        }
+    }
+
+    // 8. Scoring Breakdown (from criteriaMatches)
+    if (scoringResult.criteriaMatches && scoringResult.criteriaMatches.length > 0) {
+        const criteriaWeights = scoringResult.criteriaMatches.map(cm => ({
+            criteriaName: cm.criteriaName,
+            weight: cm.weight,
+            score: cm.score,
+            contribution: (cm.weight * cm.score),
+            aiReasoning: cm.reason
+        }))
+
+        const totalWeightedScore = scoringResult.overallScore
+
+        breakdown.scoringBreakdown = {
+            criteriaWeights,
+            totalWeightedScore,
+            aiSummary: scoringResult.summary
+        }
+    }
+
+    return breakdown
+}
+
 export default {
     scoreCandidate,
     generateRecommendation,
     checkBudget,
     calculateTotalExperience,
     matchSkills,
+    buildAIAnalysisBreakdown,
 }
 

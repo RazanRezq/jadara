@@ -21,7 +21,7 @@ import { extractUrlsContent, formatExtractedContentForEvaluation, detectGitHubUr
 type ProgressCallback = (progress: EvaluationProgress) => void
 
 // Rate limiting configuration - delay between major Gemini API calls
-const STAGE_DELAY_MS = 2500 // 2.5 seconds between major stages to respect API rate limits
+const STAGE_DELAY_MS = 7500 // 7.5 seconds between major stages to respect API rate limits and avoid quota exhaustion
 
 /**
  * Delay helper to respect API rate limits
@@ -29,6 +29,47 @@ const STAGE_DELAY_MS = 2500 // 2.5 seconds between major stages to respect API r
 async function rateLimitDelay(stageName: string): Promise<void> {
     console.log(`[Rate Limiter] Waiting ${STAGE_DELAY_MS}ms before ${stageName}...`)
     await new Promise(resolve => setTimeout(resolve, STAGE_DELAY_MS))
+}
+
+/**
+ * Detect error type from error message
+ */
+function detectErrorType(error: unknown): {
+    type: 'quota_exceeded' | 'rate_limit' | 'api_error' | 'unknown'
+    retryAfter?: number
+} {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    // Check for quota exceeded (429 with quota message)
+    if (errorMessage.includes('429') && (
+        errorMessage.includes('quota') ||
+        errorMessage.includes('Quota exceeded') ||
+        errorMessage.includes('quota_free_tier_requests')
+    )) {
+        // Try to extract retry delay from error message
+        const retryMatch = errorMessage.match(/retry in (\d+(?:\.\d+)?)[s\]]/)
+        const retryAfter = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60
+
+        console.log(`🚨 [Error Detection] Quota exceeded. Retry after: ${retryAfter}s`)
+        return { type: 'quota_exceeded', retryAfter }
+    }
+
+    // Check for rate limit (429 without quota)
+    if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+        console.log(`⚠️ [Error Detection] Rate limited`)
+        return { type: 'rate_limit', retryAfter: 30 }
+    }
+
+    // Check for general API errors
+    if (errorMessage.includes('GoogleGenerativeAI Error') ||
+        errorMessage.includes('API') ||
+        errorMessage.includes('fetch')) {
+        console.log(`⚠️ [Error Detection] API error`)
+        return { type: 'api_error' }
+    }
+
+    console.log(`❓ [Error Detection] Unknown error type`)
+    return { type: 'unknown' }
 }
 
 /**
@@ -267,9 +308,113 @@ export async function evaluateCandidate(
         })
 
         // Format URL content for AI evaluation if available
-        const urlContentForEvaluation = urlExtractionResult 
+        const urlContentForEvaluation = urlExtractionResult
             ? formatExtractedContentForEvaluation(urlExtractionResult)
             : undefined
+
+        // Build detailed voice analysis for frontend (before scoring, so it's available for partial results)
+        const voiceAnalysisDetails: import('./types').DetailedVoiceAnalysis[] = voiceAnalysisResults.map(v => ({
+            questionId: v.questionId,
+            questionText: v.questionText,
+            questionWeight: v.questionWeight,
+            rawTranscript: transcripts.find(t => t.questionId === v.questionId)?.rawTranscript || '',
+            cleanTranscript: transcripts.find(t => t.questionId === v.questionId)?.cleanTranscript || '',
+            sentiment: v.analysis?.sentiment,
+            confidence: v.analysis?.confidence,
+            fluency: v.analysis?.fluency,
+            keyPhrases: v.analysis?.keyPhrases,
+        }))
+
+        // Build social profile insights from URL extraction (before scoring)
+        let socialProfileInsights: import('./types').SocialProfileInsights | undefined = undefined
+
+        if (urlExtractionResult?.success && urlExtractionResult.extractedUrls) {
+            const linkedinData = urlExtractionResult.extractedUrls.find(u => u.type === 'linkedin')
+            const githubData = urlExtractionResult.extractedUrls.find(u => u.type === 'github')
+            const portfolioData = urlExtractionResult.extractedUrls.find(u => u.type === 'portfolio')
+
+            socialProfileInsights = {
+                linkedin: linkedinData?.success && linkedinData.content ? {
+                    headline: linkedinData.content.summary?.split('\n')[0] || '',
+                    summary: linkedinData.content.summary || '',
+                    skills: linkedinData.content.skills || [],
+                    experience: linkedinData.content.experience?.map(exp => ({
+                        title: exp,
+                        company: '',
+                        duration: ''
+                    })) || [],
+                    highlights: linkedinData.content.highlights || [],
+                } : undefined,
+                github: githubData?.success && githubData.content ? {
+                    repositories: githubData.content.projects?.length || 0,
+                    stars: githubData.content.projects?.reduce((sum, p) => sum + (p.stars || 0), 0) || 0,
+                    languages: Array.from(new Set(githubData.content.projects?.flatMap(p => p.technologies) || [])),
+                    topProjects: githubData.content.projects?.slice(0, 5).map(p => ({
+                        name: p.name,
+                        description: p.description,
+                        stars: p.stars || 0
+                    })) || [],
+                    highlights: githubData.content.highlights || [],
+                } : undefined,
+                portfolio: portfolioData?.success && portfolioData.content ? {
+                    projects: portfolioData.content.projects || [],
+                    skills: portfolioData.content.skills || [],
+                    highlights: portfolioData.content.highlights || [],
+                } : undefined,
+                overallHighlights: [
+                    ...(linkedinData?.content?.highlights || []),
+                    ...(githubData?.content?.highlights || []),
+                    ...(portfolioData?.content?.highlights || []),
+                ].slice(0, 10),
+            }
+        }
+
+        // Build text response analysis (before scoring)
+        let textResponseAnalysis: import('./types').TextResponseAnalysis | undefined = undefined
+
+        if (input.textResponses && input.textResponses.length > 0) {
+            const responses = input.textResponses.map(r => {
+                const wordCount = r.answer.split(/\s+/).length
+                let quality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
+
+                if (wordCount < 20) quality = 'poor'
+                else if (wordCount < 50) quality = 'average'
+                else if (wordCount < 100) quality = 'good'
+                else quality = 'excellent'
+
+                return {
+                    questionId: r.questionId,
+                    questionText: r.questionText,
+                    questionWeight: r.questionWeight, // Include weight
+                    answer: r.answer,
+                    wordCount,
+                    quality,
+                }
+            })
+
+            const qualityScores = responses.map(r => {
+                const scores = { poor: 1, average: 2, good: 3, excellent: 4 }
+                return scores[r.quality]
+            })
+            const avgQuality = qualityScores.reduce((a, b) => a + b, 0) / qualityScores.length
+
+            let overallQuality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
+            if (avgQuality < 1.5) overallQuality = 'poor'
+            else if (avgQuality < 2.5) overallQuality = 'average'
+            else if (avgQuality < 3.5) overallQuality = 'good'
+            else overallQuality = 'excellent'
+
+            textResponseAnalysis = {
+                totalResponses: responses.length,
+                responses,
+                overallQuality,
+                insights: [
+                    `${responses.length} written responses provided`,
+                    `Average word count: ${Math.round(responses.reduce((a, b) => a + b.wordCount, 0) / responses.length)}`,
+                    `Overall quality: ${overallQuality}`,
+                ],
+            }
+        }
 
         // Pre-evaluation checks for critical HR requirements
         const preEvaluationRedFlags: { en: string[], ar: string[] } = { en: [], ar: [] }
@@ -307,52 +452,137 @@ export async function evaluateCandidate(
             }
         }
 
-        const scoringResult = await scoreCandidate(
-            {
-                personalData: input.personalData,
-                parsedResume,
-                voiceAnalysis: voiceAnalysisResults,
-                textResponses: input.textResponses,
-                urlContent: urlContentForEvaluation,
-                additionalNotes: input.additionalNotes,
-            },
-            input.jobCriteria
-        )
+        // Try scoring with graceful degradation on failure
+        let scoringResult: Awaited<ReturnType<typeof scoreCandidate>> | null = null
+        let scoringError: { type: string; retryAfter?: number; message: string } | null = null
 
-        if (!scoringResult.success) {
-            throw new Error(scoringResult.error || 'Scoring failed')
+        try {
+            scoringResult = await scoreCandidate(
+                {
+                    personalData: input.personalData,
+                    parsedResume,
+                    voiceAnalysis: voiceAnalysisResults,
+                    textResponses: input.textResponses,
+                    urlContent: urlContentForEvaluation,
+                    additionalNotes: input.additionalNotes,
+                },
+                input.jobCriteria
+            )
+
+            if (!scoringResult.success) {
+                throw new Error(scoringResult.error || 'Scoring failed')
+            }
+
+            // Merge pre-evaluation red flags with AI-generated ones
+            if (preEvaluationRedFlags.en.length > 0 || preEvaluationRedFlags.ar.length > 0) {
+                scoringResult.redFlags.en = [...preEvaluationRedFlags.en, ...(scoringResult.redFlags.en || [])]
+                scoringResult.redFlags.ar = [...preEvaluationRedFlags.ar, ...(scoringResult.redFlags.ar || [])]
+            }
+
+            onProgress?.({
+                stage: 'scoring',
+                progress: 80,
+                currentStep: `Scored ${scoringResult.overallScore}%`,
+            })
+        } catch (error) {
+            console.error('🚨 [Evaluator] Scoring failed, entering graceful degradation mode')
+            console.error('🚨 [Evaluator] Error:', error)
+
+            const errorInfo = detectErrorType(error)
+            scoringError = {
+                type: errorInfo.type,
+                retryAfter: errorInfo.retryAfter,
+                message: error instanceof Error ? error.message : 'Unknown scoring error',
+            }
+
+            // If scoring failed, return partial evaluation with collected data
+            console.log('📦 [Evaluator] Saving partial evaluation with collected data...')
+            console.log('📦 [Evaluator] - Transcripts:', transcripts.length)
+            console.log('📦 [Evaluator] - Voice analysis:', voiceAnalysisDetails.length)
+            console.log('📦 [Evaluator] - Resume parsed:', !!parsedResume)
+            console.log('📦 [Evaluator] - Social insights:', !!socialProfileInsights)
+
+            return {
+                success: false,
+                partialEvaluation: {
+                    applicantId: input.applicantId,
+                    jobId: input.jobId,
+                    transcripts: transcripts.length > 0 ? transcripts : undefined,
+                    parsedResume,
+                    voiceAnalysisDetails: voiceAnalysisDetails.length > 0 ? voiceAnalysisDetails : undefined,
+                    socialProfileInsights,
+                    textResponseAnalysis,
+                    failedStages: ['scoring', 'recommendation'],
+                    canRetry: errorInfo.type === 'quota_exceeded' || errorInfo.type === 'rate_limit',
+                },
+                error: scoringError.message,
+                errorType: errorInfo.type,
+                retryAfter: errorInfo.retryAfter,
+                processingTime: Date.now() - startTime,
+            }
         }
-
-        // Merge pre-evaluation red flags with AI-generated ones
-        if (preEvaluationRedFlags.en.length > 0 || preEvaluationRedFlags.ar.length > 0) {
-            scoringResult.redFlags.en = [...preEvaluationRedFlags.en, ...(scoringResult.redFlags.en || [])]
-            scoringResult.redFlags.ar = [...preEvaluationRedFlags.ar, ...(scoringResult.redFlags.ar || [])]
-        }
-
-        onProgress?.({
-            stage: 'scoring',
-            progress: 80,
-            currentStep: `Scored ${scoringResult.overallScore}%`,
-        })
 
         // Rate limit delay before recommendation generation
         await rateLimitDelay('recommendation generation')
 
-        // Stage 4: Generate recommendation
+        // Stage 4: Generate recommendation with graceful degradation
         onProgress?.({
             stage: 'generating_recommendation',
             progress: 85,
             currentStep: 'Generating recommendation...',
         })
 
-        const recommendationResult = await generateRecommendation(
-            scoringResult,
-            input.jobCriteria,
-            input.personalData.name
-        )
+        let recommendationResult: Awaited<ReturnType<typeof generateRecommendation>> | null = null
+        let recommendationError: { type: string; retryAfter?: number; message: string } | null = null
 
-        if (!recommendationResult.success) {
-            throw new Error(recommendationResult.error || 'Recommendation generation failed')
+        try {
+            recommendationResult = await generateRecommendation(
+                scoringResult,
+                input.jobCriteria,
+                input.personalData.name
+            )
+
+            if (!recommendationResult.success) {
+                throw new Error(recommendationResult.error || 'Recommendation generation failed')
+            }
+        } catch (error) {
+            console.error('⚠️ [Evaluator] Recommendation generation failed, using fallback')
+            console.error('⚠️ [Evaluator] Error:', error)
+
+            const errorInfo = detectErrorType(error)
+            recommendationError = {
+                type: errorInfo.type,
+                retryAfter: errorInfo.retryAfter,
+                message: error instanceof Error ? error.message : 'Unknown recommendation error',
+            }
+
+            // Use fallback recommendation based on score
+            const score = scoringResult.overallScore
+            let fallbackRecommendation: 'hire' | 'hold' | 'reject' | 'pending' = 'pending'
+
+            if (score >= 80) fallbackRecommendation = 'hire'
+            else if (score >= 60) fallbackRecommendation = 'hold'
+            else if (score < input.jobCriteria.autoRejectThreshold) fallbackRecommendation = 'reject'
+
+            recommendationResult = {
+                success: true,
+                recommendation: fallbackRecommendation,
+                confidence: 50, // Low confidence for fallback
+                reason: {
+                    en: `Automated recommendation based on ${score}% match score (AI recommendation unavailable due to quota limit)`,
+                    ar: `توصية تلقائية بناءً على نسبة تطابق ${score}% (التوصية بالذكاء الاصطناعي غير متوفرة بسبب حد الحصة)`,
+                },
+                suggestedQuestions: {
+                    en: ['Review candidate manually for detailed assessment'],
+                    ar: ['مراجعة المرشح يدويًا للتقييم التفصيلي'],
+                },
+                nextBestAction: {
+                    en: 'Manual review recommended',
+                    ar: 'يُنصح بالمراجعة اليدوية',
+                },
+            }
+
+            console.log(`✅ [Evaluator] Using fallback recommendation: ${fallbackRecommendation} (score: ${score}%)`)
         }
 
         // Calculate average sentiment and confidence
@@ -383,110 +613,7 @@ export async function evaluateCandidate(
             currentStep: 'Evaluation complete!',
         })
 
-        // Build detailed voice analysis for frontend
-        const voiceAnalysisDetails: import('./types').DetailedVoiceAnalysis[] = voiceAnalysisResults.map(v => ({
-            questionId: v.questionId,
-            questionText: v.questionText,
-            questionWeight: v.questionWeight,
-            rawTranscript: transcripts.find(t => t.questionId === v.questionId)?.rawTranscript || '',
-            cleanTranscript: transcripts.find(t => t.questionId === v.questionId)?.cleanTranscript || '',
-            sentiment: v.analysis?.sentiment,
-            confidence: v.analysis?.confidence,
-            fluency: v.analysis?.fluency,
-            keyPhrases: v.analysis?.keyPhrases,
-        }))
-
-        // Build social profile insights from URL extraction
-        let socialProfileInsights: import('./types').SocialProfileInsights | undefined = undefined
-        
-        if (urlExtractionResult?.success && urlExtractionResult.extractedUrls) {
-            // Convert extractedUrls array into a structured object
-            const linkedinData = urlExtractionResult.extractedUrls.find(u => u.type === 'linkedin')
-            const githubData = urlExtractionResult.extractedUrls.find(u => u.type === 'github')
-            const portfolioData = urlExtractionResult.extractedUrls.find(u => u.type === 'portfolio')
-            
-            socialProfileInsights = {
-                linkedin: linkedinData?.success && linkedinData.content ? {
-                    headline: linkedinData.content.summary?.split('\n')[0] || '',
-                    summary: linkedinData.content.summary || '',
-                    skills: linkedinData.content.skills || [],
-                    experience: linkedinData.content.experience?.map(exp => ({
-                        title: exp,
-                        company: '',
-                        duration: ''
-                    })) || [],
-                    highlights: linkedinData.content.highlights || [],
-                } : undefined,
-                github: githubData?.success && githubData.content ? {
-                    repositories: githubData.content.projects?.length || 0,
-                    stars: githubData.content.projects?.reduce((sum, p) => sum + (p.stars || 0), 0) || 0,
-                    languages: Array.from(new Set(githubData.content.projects?.flatMap(p => p.technologies) || [])),
-                    topProjects: githubData.content.projects?.slice(0, 5).map(p => ({
-                        name: p.name,
-                        description: p.description,
-                        stars: p.stars || 0
-                    })) || [],
-                    highlights: githubData.content.highlights || [],
-                } : undefined,
-                portfolio: portfolioData?.success && portfolioData.content ? {
-                    projects: portfolioData.content.projects || [],
-                    skills: portfolioData.content.skills || [],
-                    highlights: portfolioData.content.highlights || [],
-                } : undefined,
-                overallHighlights: [
-                    ...(linkedinData?.content?.highlights || []),
-                    ...(githubData?.content?.highlights || []),
-                    ...(portfolioData?.content?.highlights || []),
-                ].slice(0, 10), // Top 10 overall highlights
-            }
-        }
-
-        // Build text response analysis
-        let textResponseAnalysis: import('./types').TextResponseAnalysis | undefined = undefined
-        
-        if (input.textResponses && input.textResponses.length > 0) {
-            const responses = input.textResponses.map(r => {
-                const wordCount = r.answer.split(/\s+/).length
-                let quality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
-                
-                if (wordCount < 20) quality = 'poor'
-                else if (wordCount < 50) quality = 'average'
-                else if (wordCount < 100) quality = 'good'
-                else quality = 'excellent'
-                
-                return {
-                    questionId: r.questionId,
-                    questionText: r.questionText,
-                    answer: r.answer,
-                    wordCount,
-                    quality,
-                }
-            })
-            
-            const qualityScores = responses.map(r => {
-                const scores = { poor: 1, average: 2, good: 3, excellent: 4 }
-                return scores[r.quality]
-            })
-            const avgQuality = qualityScores.reduce((a, b) => a + b, 0) / qualityScores.length
-            
-            let overallQuality: 'poor' | 'average' | 'good' | 'excellent' = 'average'
-            if (avgQuality < 1.5) overallQuality = 'poor'
-            else if (avgQuality < 2.5) overallQuality = 'average'
-            else if (avgQuality < 3.5) overallQuality = 'good'
-            else overallQuality = 'excellent'
-            
-            textResponseAnalysis = {
-                totalResponses: responses.length,
-                responses,
-                overallQuality,
-                insights: [
-                    `${responses.length} written responses provided`,
-                    `Average word count: ${Math.round(responses.reduce((a, b) => a + b.wordCount, 0) / responses.length)}`,
-                    `Overall quality: ${overallQuality}`,
-                ],
-            }
-        }
-
+        // All analysis details were already built before scoring (for partial evaluation support)
         const processingTime = Date.now() - startTime
 
         return {
@@ -514,6 +641,9 @@ export async function evaluateCandidate(
                 voiceAnalysisDetails: voiceAnalysisDetails.length > 0 ? voiceAnalysisDetails : undefined,
                 socialProfileInsights,
                 textResponseAnalysis,
+
+                // *** NEW: AI Analysis Breakdown for transparency ***
+                aiAnalysisBreakdown: scoringResult.aiAnalysisBreakdown,
             },
             processingTime,
         }

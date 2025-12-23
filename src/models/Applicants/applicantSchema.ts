@@ -191,11 +191,14 @@ const applicantSchema = new Schema<IApplicant>(
     }
 )
 
-// Indexes for common queries
+// Indexes for common queries - optimized for list/filter operations
 applicantSchema.index({ jobId: 1, status: 1 })
 applicantSchema.index({ jobId: 1, aiScore: -1 })
 applicantSchema.index({ 'personalData.email': 1, jobId: 1 })
 applicantSchema.index({ createdAt: -1 })
+applicantSchema.index({ status: 1, createdAt: -1 }) // For filtering by status across all jobs
+applicantSchema.index({ isComplete: 1, status: 1 }) // For finding incomplete applications
+applicantSchema.index({ jobId: 1, status: 1, createdAt: -1 }) // For sorted filtered list
 
 const Applicant: Model<IApplicant> =
     mongoose.models.Applicant || mongoose.model<IApplicant>('Applicant', applicantSchema)

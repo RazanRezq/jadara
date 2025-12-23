@@ -19,7 +19,7 @@ declare global {
     var mongoose: MongooseCache | undefined
 }
 
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null }
+const cached: MongooseCache = global.mongoose || { conn: null, promise: null }
 
 if (!global.mongoose) {
     global.mongoose = cached
@@ -37,6 +37,13 @@ async function dbConnect(): Promise<typeof mongoose> {
             connectTimeoutMS: 10000,
             socketTimeoutMS: 45000,
             family: 4,
+            // Connection pool settings for better performance
+            maxPoolSize: 20,        // Increase from default 5
+            minPoolSize: 5,         // Keep minimum connections ready
+            maxIdleTimeMS: 30000,   // Close idle connections after 30s
+            // Performance optimizations
+            retryWrites: true,      // Auto-retry failed writes
+            w: 'majority',          // Write concern for data safety
         }
 
         cached.promise = mongoose

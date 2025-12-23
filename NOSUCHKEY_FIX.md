@@ -200,3 +200,4 @@ https://razan-recruitment.fra1.digitaloceanspaces.com/uploads/cv/uuid-file.pdf
 - You may need to re-upload files for existing candidates if needed
 - The enhanced logging will help identify any future issues quickly
 
+

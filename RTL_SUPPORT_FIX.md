@@ -142,3 +142,4 @@ This fix applies to:
 ## Files Modified
 - `/src/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog.tsx`
 
+
