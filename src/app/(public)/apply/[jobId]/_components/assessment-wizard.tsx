@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { TextQuestion } from "./text-question"
 import { VoiceQuestion } from "./voice-question"
 import { FileUploadStep } from "./file-upload-step"
+import { PersonalInfoStep } from "./personal-info-step"
 import {
     AlertCircle,
     CheckCircle2,
@@ -25,19 +26,21 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useApplicationStore, type QuestionResponse } from "./store"
-import { submitApplication, uploadAudio } from "./actions"
+import { useApplicationStore, type QuestionResponse, type PersonalData } from "./store"
+import { submitApplication, uploadAudio, checkExistingApplication } from "./actions"
 
 interface Job {
     id: string
     title: string
     description: string
+    currency?: string
     screeningQuestions: Array<{ question: string; disqualify: boolean }>
     languages: Array<{ language: string; level: string }>
     candidateDataConfig: {
         requireCV: boolean
         requireLinkedIn: boolean
         requirePortfolio: boolean
+        hideSalaryExpectation: boolean
     }
     candidateInstructions: string
     questions: Array<{
@@ -51,12 +54,12 @@ interface Job {
 
 interface AssessmentWizardProps {
     job: Job
-    onBackToPersonalInfo?: () => void
+    onBackToLanding?: () => void
 }
 
-type WizardStep = "instructions" | "questions" | "upload" | "complete"
+type WizardStep = "personalInfo" | "instructions" | "questions" | "upload" | "complete"
 
-export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizardProps) {
+export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps) {
     const { t, locale } = useTranslate()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const hasVisibilityListenerRef = useRef(false)
@@ -65,8 +68,10 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
     const {
         wizardStep,
         currentQuestionIndex,
+        personalData,
         setWizardStep,
         setCurrentQuestionIndex,
+        setPersonalData,
         addResponse,
         hasResponseForQuestion,
         getResponseForQuestion,
@@ -85,20 +90,23 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
 
     // Define wizard steps for the indicator
     const wizardSteps = [
-        { id: "instructions", number: 1, label: t("apply.instructions") },
-        { id: "questions", number: 2, label: t("apply.assessment") },
-        { id: "upload", number: 3, label: t("apply.uploadDocuments") },
+        { id: "personalInfo", number: 1, label: t("apply.personalInfo") },
+        { id: "instructions", number: 2, label: t("apply.instructions") },
+        { id: "questions", number: 3, label: t("apply.assessment") },
+        { id: "upload", number: 4, label: t("apply.uploadDocuments") },
     ]
 
     // Calculate current step number
     const getCurrentStepNumber = () => {
         switch (wizardStep) {
-            case "instructions":
+            case "personalInfo":
                 return 1
-            case "questions":
+            case "instructions":
                 return 2
-            case "upload":
+            case "questions":
                 return 3
+            case "upload":
+                return 4
             default:
                 return 1
         }
@@ -109,6 +117,10 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
     // Check if current question already has a response (for read-only mode)
     const currentQuestionHasResponse = hasResponseForQuestion(currentQuestionIndex)
     const currentQuestionResponse = getResponseForQuestion(currentQuestionIndex)
+
+    // Only voice questions are read-only after recording (to maintain authenticity)
+    // Text questions can be edited to fix typos/mistakes
+    const isCurrentQuestionReadOnly = currentQuestionHasResponse && currentQuestion?.type === "voice"
 
     // Session tracking - flag as suspicious if tab is hidden during voice exam
     const handleFlagSuspicious = useCallback(
@@ -185,15 +197,42 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
     }
 
     /**
+     * Handle personal info submission
+     */
+    const handlePersonalInfoSubmit = async (data: PersonalData) => {
+        try {
+            // Check if already applied (duplicate check)
+            const { exists } = await checkExistingApplication(job.id, data.email)
+
+            if (exists) {
+                throw new Error(t("apply.alreadyApplied") || "You have already applied for this position")
+            }
+
+            // Store personal data in Zustand (NOT in database)
+            setPersonalData(data)
+
+            // Move to instructions step
+            setWizardStep("instructions")
+        } catch (err) {
+            toast.error(
+                err instanceof Error ? err.message : t("common.error")
+            )
+        }
+    }
+
+    /**
      * Handle going back to previous step/question
      */
     const handleGoBack = () => {
-        if (wizardStep === "instructions") {
-            // Go back to personal info form
-            if (onBackToPersonalInfo) {
-                onBackToPersonalInfo()
+        if (wizardStep === "personalInfo") {
+            // Go back to landing page
+            if (onBackToLanding) {
+                onBackToLanding()
             }
             return
+        } else if (wizardStep === "instructions") {
+            // Go back to personal info
+            setWizardStep("personalInfo")
         } else if (wizardStep === "questions") {
             if (currentQuestionIndex > 0) {
                 // Go to previous question
@@ -371,6 +410,17 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
             {/* Main Content */}
             <main className="pt-45 pb-16 px-4">
                 <div className="container mx-auto max-w-2xl">
+                    {/* Personal Info Step */}
+                    {wizardStep === "personalInfo" && (
+                        <PersonalInfoStep
+                            job={job}
+                            existingData={personalData}
+                            onSubmit={handlePersonalInfoSubmit}
+                            onBack={onBackToLanding}
+                            isSubmitting={false}
+                        />
+                    )}
+
                     {/* Instructions Step */}
                     {wizardStep === "instructions" && (
                         <Card className="border-2 border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -538,7 +588,7 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
                                             totalQuestions={totalQuestions}
                                             onSubmit={handleQuestionSubmit}
                                             existingResponse={currentQuestionResponse}
-                                            readOnly={currentQuestionHasResponse}
+                                            readOnly={false}
                                             onNext={() => {
                                                 if (currentQuestionIndex < totalQuestions - 1) {
                                                     setCurrentQuestionIndex(currentQuestionIndex + 1)
@@ -555,7 +605,7 @@ export function AssessmentWizard({ job, onBackToPersonalInfo }: AssessmentWizard
                                             totalQuestions={totalQuestions}
                                             onSubmit={handleQuestionSubmit}
                                             existingResponse={currentQuestionResponse}
-                                            readOnly={currentQuestionHasResponse}
+                                            readOnly={isCurrentQuestionReadOnly}
                                             onNext={() => {
                                                 if (currentQuestionIndex < totalQuestions - 1) {
                                                     setCurrentQuestionIndex(currentQuestionIndex + 1)

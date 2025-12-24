@@ -54,13 +54,14 @@ export function TextQuestion({
     const ArrowPrev = isRTL ? ArrowRight : ArrowLeft
 
     useEffect(() => {
-        // Reset for new question (if not read-only)
-        if (!readOnly && !existingResponse) {
+        // Load existing answer if available
+        if (existingResponse?.answer) {
+            setAnswer(existingResponse.answer)
+        } else if (!readOnly) {
+            // Reset for new question
             startedAtRef.current = new Date().toISOString()
             setAnswer("")
             textareaRef.current?.focus()
-        } else if (existingResponse?.answer) {
-            setAnswer(existingResponse.answer)
         }
     }, [questionNumber, readOnly, existingResponse])
 
@@ -70,7 +71,7 @@ export function TextQuestion({
         onSubmit({
             type: "text",
             answer: answer.trim(),
-            startedAt: startedAtRef.current,
+            startedAt: existingResponse?.startedAt || startedAtRef.current,
             completedAt: new Date().toISOString(),
             isAutoSubmitted: false,
         })

@@ -175,3 +175,4 @@ ml-2 (not mr-2)    // Reverse margin spacing
 This ensures a professional, readable experience for Arabic-speaking users.
 
 
+

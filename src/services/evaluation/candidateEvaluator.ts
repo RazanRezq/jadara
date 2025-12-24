@@ -338,11 +338,16 @@ export async function evaluateCandidate(
                     headline: linkedinData.content.summary?.split('\n')[0] || '',
                     summary: linkedinData.content.summary || '',
                     skills: linkedinData.content.skills || [],
-                    experience: linkedinData.content.experience?.map(exp => ({
-                        title: exp,
-                        company: '',
-                        duration: ''
-                    })) || [],
+                    experience: linkedinData.content.experience?.map(exp => {
+                        // exp is a string like "Position at Company"
+                        // Parse it to extract title and company
+                        const parts = exp.split(' at ')
+                        return {
+                            title: parts[0] || exp,
+                            company: parts[1] || '',
+                            duration: ''
+                        }
+                    }) || [],
                     highlights: linkedinData.content.highlights || [],
                 } : undefined,
                 github: githubData?.success && githubData.content ? {

@@ -105,6 +105,13 @@ app.get('/list', async (c) => {
                     linkedinUrl: a.personalData.linkedinUrl,
                     behanceUrl: a.personalData.behanceUrl,
                     portfolioUrl: a.personalData.portfolioUrl,
+                    // Include screening answers and language proficiency (safely convert Maps)
+                    screeningAnswers: a.personalData.screeningAnswers && a.personalData.screeningAnswers instanceof Map
+                        ? Object.fromEntries(a.personalData.screeningAnswers)
+                        : a.personalData.screeningAnswers || undefined,
+                    languageProficiency: a.personalData.languageProficiency && a.personalData.languageProficiency instanceof Map
+                        ? Object.fromEntries(a.personalData.languageProficiency)
+                        : a.personalData.languageProficiency || undefined,
                 } : {
                     name: '',
                     email: '',

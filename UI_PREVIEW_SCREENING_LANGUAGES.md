@@ -227,3 +227,4 @@ English (LTR):                      Arabic (RTL):
 5. **Empty Form:** Proper validation messages in user's language
 
 
+

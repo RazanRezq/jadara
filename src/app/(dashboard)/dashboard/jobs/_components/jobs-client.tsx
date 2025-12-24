@@ -76,6 +76,7 @@ export interface Job {
     createdBy: { name: string; email: string }
     createdAt: string
     updatedAt: string
+    applicantsCount?: number
 }
 
 interface JobsClientProps {
@@ -357,6 +358,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.jobTitle")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.department")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.location")}</TableHead>
+                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.applicants")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("common.status")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.created")}</TableHead>
                                     <TableHead className={isRTL ? "text-left" : "text-right"}>{t("common.actions")}</TableHead>
@@ -383,6 +385,17 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {job.location || "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link href={`/dashboard/applicants?jobId=${job.id}`}>
+                                                <Badge 
+                                                    variant="outline" 
+                                                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
+                                                >
+                                                    <Users className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1")} />
+                                                    {job.applicantsCount || 0}
+                                                </Badge>
+                                            </Link>
                                         </TableCell>
                                         <TableCell>
                                             <Badge className={cn("border-0", statusColors[job.status])}>

@@ -99,6 +99,10 @@ export function ViewApplicantDialog({
     const [currentStatus, setCurrentStatus] = useState<ApplicantStatus>(applicant.status)
     const [voiceResponses, setVoiceResponses] = useState<VoiceResponse[]>([])
     const [loadingResponses, setLoadingResponses] = useState(false)
+    const [jobData, setJobData] = useState<{
+        screeningQuestions?: Array<{ question: string; disqualify: boolean }>
+        languages?: Array<{ language: string; level: string }>
+    } | null>(null)
 
     // Helper to get bilingual text based on current locale
     const getLocalizedText = (text: BilingualText | string | undefined): string => {
@@ -114,7 +118,7 @@ export function ViewApplicantDialog({
         return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
     }
 
-    // DEBUG: Log evaluation data
+    // DEBUG: Log evaluation and applicant data
     useEffect(() => {
         if (evaluation) {
             console.log('🔍 EVALUATION DEBUG:', {
@@ -131,6 +135,9 @@ export function ViewApplicantDialog({
                 screeningAnswersData: applicant.personalData.screeningAnswers,
                 hasLanguageProficiency: !!applicant.personalData.languageProficiency,
                 languageProficiencyData: applicant.personalData.languageProficiency,
+                hasNotes: !!applicant.notes,
+                notesValue: applicant.notes,
+                notesLength: applicant.notes?.length,
                 fullEvaluation: evaluation
             })
         }
@@ -144,6 +151,28 @@ export function ViewApplicantDialog({
 
     const isReviewer = userRole === "reviewer"
     const score = evaluation?.overallScore ?? applicant.aiScore
+
+    // Fetch job data for comparison
+    useEffect(() => {
+        if (open && applicant.jobId?._id) {
+            fetchJobData()
+        }
+    }, [open, applicant.jobId?._id])
+
+    const fetchJobData = async () => {
+        try {
+            const response = await fetch(`/api/jobs/${applicant.jobId?._id}`)
+            const data = await response.json()
+            if (data.success && data.job) {
+                setJobData({
+                    screeningQuestions: data.job.screeningQuestions || [],
+                    languages: data.job.languages || [],
+                })
+            }
+        } catch (error) {
+            console.error('Failed to fetch job data:', error)
+        }
+    }
 
     // Fetch voice responses
     useEffect(() => {
@@ -1516,39 +1545,70 @@ export function ViewApplicantDialog({
                                                 </p>
                                             </div>
                                             <div className="space-y-2">
-                                                {Object.entries(applicant.personalData.screeningAnswers).map(([question, answer], idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className={cn(
-                                                            "p-3 rounded-lg border flex items-start gap-3",
-                                                            answer
-                                                                ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                                                                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
-                                                            locale === 'ar' && 'flex-row-reverse'
-                                                        )}
-                                                    >
-                                                        {answer ? (
-                                                            <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
-                                                        ) : (
-                                                            <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
-                                                        )}
-                                                        <div className="flex-1">
-                                                            <p className={cn(
-                                                                "text-sm font-medium",
-                                                                locale === 'ar' && 'text-right'
-                                                            )}>
-                                                                {question}
-                                                            </p>
-                                                            <p className={cn(
-                                                                "text-xs mt-1",
-                                                                answer ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
-                                                                locale === 'ar' && 'text-right'
-                                                            )}>
-                                                                {answer ? t("common.yes") : t("common.no")}
-                                                            </p>
+                                                {Object.entries(applicant.personalData.screeningAnswers).map(([question, answer], idx) => {
+                                                    // Check if this is a knockout question
+                                                    const jobQuestion = jobData?.screeningQuestions?.find(sq => sq.question === question)
+                                                    const isKnockout = jobQuestion?.disqualify || false
+                                                    const isFailed = isKnockout && !answer
+
+                                                    return (
+                                                        <div
+                                                            key={idx}
+                                                            className={cn(
+                                                                "p-3 rounded-lg border flex items-start gap-3",
+                                                                isFailed
+                                                                    ? "bg-red-100 dark:bg-red-950/30 border-red-300 dark:border-red-700"
+                                                                    : answer
+                                                                        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                                                                        : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
+                                                                locale === 'ar' && 'flex-row-reverse'
+                                                            )}
+                                                        >
+                                                            {isFailed ? (
+                                                                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                                                            ) : answer ? (
+                                                                <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
+                                                            ) : (
+                                                                <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                                                            )}
+                                                            <div className="flex-1">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <p className={cn(
+                                                                        "text-sm font-medium flex-1",
+                                                                        locale === 'ar' && 'text-right'
+                                                                    )}>
+                                                                        {question}
+                                                                    </p>
+                                                                    {isKnockout && (
+                                                                        <Badge className={cn(
+                                                                            "text-xs shrink-0",
+                                                                            isFailed
+                                                                                ? "bg-red-600 text-white"
+                                                                                : "bg-orange-500 text-white"
+                                                                        )}>
+                                                                            {t("applicants.knockoutQuestion")}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <p className={cn(
+                                                                    "text-xs mt-1",
+                                                                    isFailed
+                                                                        ? "text-red-800 dark:text-red-300 font-semibold"
+                                                                        : answer
+                                                                            ? "text-emerald-700 dark:text-emerald-300"
+                                                                            : "text-red-700 dark:text-red-300",
+                                                                    locale === 'ar' && 'text-right'
+                                                                )}>
+                                                                    {isFailed
+                                                                        ? `❌ ${t("common.no")} - ${t("applicants.knockoutFailed")}`
+                                                                        : answer
+                                                                            ? `✅ ${t("common.yes")}`
+                                                                            : `❌ ${t("common.no")}`}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -1563,22 +1623,78 @@ export function ViewApplicantDialog({
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {Object.entries(applicant.personalData.languageProficiency).map(([language, level], idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200"
-                                                    >
-                                                        <p className={cn(
-                                                            "text-xs text-orange-600 dark:text-orange-400 font-medium mb-1",
-                                                            locale === 'ar' && 'text-right'
-                                                        )}>
-                                                            {language}
-                                                        </p>
-                                                        <Badge className="bg-orange-500 text-white text-xs">
-                                                            {(level as string).toUpperCase()}
-                                                        </Badge>
-                                                    </div>
-                                                ))}
+                                                {Object.entries(applicant.personalData.languageProficiency).map(([language, level], idx) => {
+                                                    // Check if this language is required by the job
+                                                    const jobLanguage = jobData?.languages?.find(l => l.language === language)
+                                                    const requiredLevel = jobLanguage?.level || ''
+                                                    const candidateLevel = (level as string).toLowerCase()
+                                                    const requiredLevelLower = requiredLevel.toLowerCase()
+
+                                                    // Compare levels
+                                                    const levels = ['beginner', 'intermediate', 'advanced', 'native']
+                                                    const candidateIdx = levels.indexOf(candidateLevel)
+                                                    const requiredIdx = levels.indexOf(requiredLevelLower)
+                                                    const meetsRequirement = requiredIdx === -1 || candidateIdx >= requiredIdx
+                                                    const hasGap = requiredIdx !== -1 && candidateIdx < requiredIdx
+
+                                                    return (
+                                                        <div
+                                                            key={idx}
+                                                            className={cn(
+                                                                "p-3 rounded-lg border",
+                                                                hasGap
+                                                                    ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                                                                    : jobLanguage
+                                                                        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                                                                        : "bg-white dark:bg-orange-950/20 border-orange-200"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                                <p className={cn(
+                                                                    "text-xs font-medium",
+                                                                    hasGap
+                                                                        ? "text-red-700 dark:text-red-300"
+                                                                        : jobLanguage
+                                                                            ? "text-emerald-700 dark:text-emerald-300"
+                                                                            : "text-orange-600 dark:text-orange-400",
+                                                                    locale === 'ar' && 'text-right'
+                                                                )}>
+                                                                    {language}
+                                                                </p>
+                                                                {hasGap && (
+                                                                    <Badge className="bg-red-600 text-white text-xs shrink-0">
+                                                                        {t("applicants.languageGap")}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Badge className={cn(
+                                                                    "text-xs",
+                                                                    hasGap
+                                                                        ? "bg-red-500 text-white"
+                                                                        : jobLanguage
+                                                                            ? "bg-emerald-500 text-white"
+                                                                            : "bg-orange-500 text-white"
+                                                                )}>
+                                                                    {candidateLevel.toUpperCase()}
+                                                                </Badge>
+                                                                {jobLanguage && (
+                                                                    <p className={cn(
+                                                                        "text-xs mt-1",
+                                                                        hasGap
+                                                                            ? "text-red-600 dark:text-red-400"
+                                                                            : "text-emerald-600 dark:text-emerald-400",
+                                                                        locale === 'ar' && 'text-right'
+                                                                    )}>
+                                                                        {hasGap
+                                                                            ? `⚠️ ${t("applicants.required")}: ${requiredLevel.toUpperCase()}`
+                                                                            : `✅ ${t("applicants.meetsRequirement")}`}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     )}

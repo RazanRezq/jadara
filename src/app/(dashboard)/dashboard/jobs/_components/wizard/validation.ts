@@ -16,6 +16,7 @@ export function createLocalizedJobWizardSchema(t: (key: string) => string) {
     // Screening Question schema
     const screeningQuestionSchema = z.object({
         question: z.string().min(1, t('jobWizard.validation.questionRequired')),
+        idealAnswer: z.boolean(),
         disqualify: z.boolean(),
     })
 

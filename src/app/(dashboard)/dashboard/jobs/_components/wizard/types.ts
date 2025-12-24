@@ -11,6 +11,7 @@ export const skillSchema = z.object({
 // Screening Question schema
 export const screeningQuestionSchema = z.object({
     question: z.string().min(1, 'Question is required'),
+    idealAnswer: z.boolean(),
     disqualify: z.boolean(),
 })
 

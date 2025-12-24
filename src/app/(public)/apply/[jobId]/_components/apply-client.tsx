@@ -64,14 +64,13 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         jobId: storedJobId,
         jobTitle,
         initSession,
-        setPersonalData,
         setWizardStep,
         resetSession,
-        backToPersonalInfo,
     } = useApplicationStore()
 
-    // Determine if user has started based on having personal data in store
-    const hasStarted = !!personalData && storedJobId === jobId
+    // Determine if user has started the wizard
+    // User has started if they have a session for this job (initiated by clicking start button)
+    const hasStarted = storedJobId === jobId && wizardStep !== null
 
     // Fetch job data
     const fetchJob = useCallback(async () => {
@@ -110,38 +109,21 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     }, [fetchJob])
 
     /**
-     * Handle starting the application.
-     * This NO LONGER creates a DB record - it just stores data in Zustand.
+     * Handle starting the application - just initializes the wizard
      */
-    const handleStartApplication = async (personalDataInput: PersonalData) => {
-        try {
-            // Check if already applied (duplicate check)
-            const { exists } = await checkExistingApplication(jobId, personalDataInput.email)
-
-            if (exists) {
-                throw new Error(t("apply.alreadyApplied") || "You have already applied for this position")
-            }
-
-            // Initialize the session in Zustand
-            initSession(jobId, job?.title || "")
-
-            // Store personal data in Zustand (NOT in database)
-            setPersonalData(personalDataInput)
-
-            // Move to instructions step
-            setWizardStep("instructions")
-
-            // No success toast - this is just a step transition, not a submission
-        } catch (err) {
-            throw err
-        }
+    const handleStartApplication = () => {
+        // Initialize the session in Zustand
+        initSession(jobId, job?.title || "")
+        // Wizard will start at personalInfo step by default
     }
 
     /**
-     * Handle going back to personal info from assessment wizard
+     * Handle going back to landing page from wizard
      */
-    const handleBackToPersonalInfo = () => {
-        backToPersonalInfo()
+    const handleBackToLanding = () => {
+        // Reset to show landing page
+        setWizardStep("personalInfo")
+        resetSession()
     }
 
     // Show loading state
@@ -195,13 +177,13 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         return <ThankYouPage jobTitle={jobTitle || job.title} />
     }
 
-    // Show landing/form if not started
+    // Show landing if not started
     if (!hasStarted) {
         return (
             <JobLanding job={job} onStartApplication={handleStartApplication} />
         )
     }
 
-    // Show assessment wizard
-    return <AssessmentWizard job={job} onBackToPersonalInfo={handleBackToPersonalInfo} />
+    // Show assessment wizard (includes personal info form as first step)
+    return <AssessmentWizard job={job} onBackToLanding={handleBackToLanding} />
 }

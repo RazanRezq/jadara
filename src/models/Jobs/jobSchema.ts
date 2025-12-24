@@ -18,6 +18,7 @@ export interface ISkill {
 
 export interface IScreeningQuestion {
     question: string
+    idealAnswer: boolean  // The correct/desired answer (true = Yes, false = No)
     disqualify: boolean
 }
 
@@ -124,6 +125,11 @@ const screeningQuestionSchema = new Schema<IScreeningQuestion>(
             type: String,
             required: [true, 'Question is required'],
             trim: true,
+        },
+        idealAnswer: {
+            type: Boolean,
+            required: true,
+            default: true, // Default to "YES" for backward compatibility
         },
         disqualify: {
             type: Boolean,

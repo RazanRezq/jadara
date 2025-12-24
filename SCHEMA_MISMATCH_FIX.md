@@ -266,3 +266,4 @@ voiceAnalysisDetails: {
 **Database Migration:** Not required - new evaluations will have correct structure
 
 
+

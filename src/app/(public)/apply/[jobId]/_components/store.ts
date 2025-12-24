@@ -67,7 +67,7 @@ export interface ApplicationState {
 
     // Wizard state
     currentQuestionIndex: number
-    wizardStep: "instructions" | "questions" | "upload" | "complete"
+    wizardStep: "personalInfo" | "instructions" | "questions" | "upload" | "complete"
 
     // Submission state
     isSubmitted: boolean
@@ -143,7 +143,7 @@ const initialState: ApplicationState = {
     isSuspicious: false,
     suspiciousReasons: [],
     currentQuestionIndex: 0,
-    wizardStep: "instructions",
+    wizardStep: "personalInfo",
     isSubmitted: false,
     submittedAt: null,
 }
@@ -181,16 +181,12 @@ export const useApplicationStore = create<ApplicationState & ApplicationActions>
             },
 
             backToPersonalInfo: () => {
-                // Clear personal data to go back to the landing page
+                // Go back to personal info step without clearing data
+                // This allows users to edit their information
                 set({
-                    personalData: null,
-                    responses: [],
-                    fileUploads: {},
+                    wizardStep: "personalInfo",
                     currentQuestionIndex: 0,
-                    wizardStep: "instructions",
-                    isSuspicious: false,
-                    suspiciousReasons: [],
-                    notes: "",
+                    // Keep personalData, responses, fileUploads intact
                 })
             },
 
@@ -198,15 +194,24 @@ export const useApplicationStore = create<ApplicationState & ApplicationActions>
             addResponse: (response: QuestionResponse) => {
                 const { responses } = get()
                 
-                // Check if already exists (shouldn't happen with anti-cheat)
+                // Check if already exists
                 const existingIndex = responses.findIndex(
                     (r) => r.questionIndex === response.questionIndex
                 )
 
                 if (existingIndex === -1) {
+                    // New response - add it
                     set({ responses: [...responses, response] })
+                } else {
+                    // Response exists - only allow overwrite for text questions
+                    // Voice questions cannot be re-recorded (anti-cheat)
+                    if (response.type === "text") {
+                        const updatedResponses = [...responses]
+                        updatedResponses[existingIndex] = response
+                        set({ responses: updatedResponses })
+                    }
+                    // Voice questions: don't overwrite (anti-cheat protection)
                 }
-                // If exists, don't overwrite (anti-cheat)
             },
 
             hasResponseForQuestion: (questionIndex: number) => {

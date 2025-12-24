@@ -143,3 +143,4 @@ This fix applies to:
 - `/src/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog.tsx`
 
 
+

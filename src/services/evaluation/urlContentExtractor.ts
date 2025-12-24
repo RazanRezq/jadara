@@ -246,117 +246,251 @@ export async function extractUrlsContent(urls: {
 // ============================================================================
 
 /**
- * LinkedIn profile data interface from Apify scraper
+ * LinkedIn profile data interface from ScrapingDog API
+ * NOTE: ScrapingDog returns snake_case field names
  */
 interface LinkedInProfileData {
-    firstName?: string
-    lastName?: string
+    fullName?: string
+    first_name?: string
+    last_name?: string
+    linkedin_internal_id?: string
+    public_identifier?: string
     headline?: string
     summary?: string
+    about?: string
     location?: string
-    positions?: Array<{
+    followers?: string
+    connections?: string
+    background_cover_image_url?: string
+    profile_photo?: string
+    
+    // Experience (not "positions")
+    experience?: Array<{
+        company_name?: string
+        company_image?: string
+        company_url?: string
         title?: string
-        companyName?: string
         description?: string
-        startDate?: string
-        endDate?: string
+        start_date?: string
+        end_date?: string
         location?: string
     }>
-    educations?: Array<{
-        schoolName?: string
+    
+    // Education (not "educations")
+    education?: Array<{
+        school_name?: string
+        school_image?: string
         degree?: string
-        fieldOfStudy?: string
-        startDate?: string
-        endDate?: string
+        field_of_study?: string
+        start_date?: string
+        end_date?: string
+        description?: string
     }>
+    
+    // Skills
     skills?: Array<{
         name?: string
     }> | string[]
+    
+    // Languages
     languages?: Array<{
         name?: string
         proficiency?: string
     }>
-    certifications?: Array<{
-        name?: string
-        authority?: string
+    
+    // Certifications
+    certification?: Array<{
+        company_name?: string
+        company_image?: string
+        company_url?: string
+        certification?: string
+        credential_id?: string
+        credential_url?: string
+        issue_date?: string
     }>
+    
+    // Volunteering
+    volunteering?: Array<{
+        title?: string
+        organization?: string
+        description?: string
+    }>
+    
+    // Articles, Description, Activities
+    articles?: any[]
+    description?: {
+        description1?: string
+        description2?: string
+        description3?: string
+        description3_link?: string
+    }
+    activities?: Array<{
+        link?: string
+        image?: string
+        title?: string
+        activity?: string
+    }>
+    
+    // People/Recommendations
+    people_also_viewed?: any[]
+    similar_profiles?: any[]
+    recommendations?: any[]
+    
+    // Other fields
+    publications?: any[]
+    courses?: any[]
+    projects?: any[]
+    awards?: any[]
+    organizations?: any[]
+    score?: any[]
 }
 
 /**
  * Format LinkedIn profile data into a clean string for LLM evaluation
+ * Updated to handle ScrapingDog's snake_case field names
  */
 function formatLinkedInProfileForLLM(profile: LinkedInProfileData, url: string): string {
     const parts: string[] = []
 
-    // Name and Headline
-    const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ')
+    // Name and Headline - USE snake_case
+    const fullName = profile.fullName || [profile.first_name, profile.last_name].filter(Boolean).join(' ')
     if (fullName) {
         parts.push(`**Name:** ${fullName}`)
     }
+    
     if (profile.headline) {
         parts.push(`**Headline:** ${profile.headline}`)
     }
+
+    // LinkedIn ID
+    if (profile.public_identifier) {
+        parts.push(`**LinkedIn ID:** ${profile.public_identifier}`)
+    }
+
+    // Location
     if (profile.location) {
         parts.push(`**Location:** ${profile.location}`)
     }
 
-    // Summary/About
-    if (profile.summary) {
-        parts.push(`\n**Summary:**\n${profile.summary}`)
+    // Connections and Followers
+    if (profile.connections) {
+        parts.push(`**Connections:** ${profile.connections}`)
+    }
+    if (profile.followers) {
+        parts.push(`**Followers:** ${profile.followers}`)
     }
 
-    // Experience
-    if (profile.positions && profile.positions.length > 0) {
-        parts.push('\n**Experience:**')
-        for (const position of profile.positions.slice(0, 5)) {
-            const dateRange = [position.startDate, position.endDate || 'Present'].filter(Boolean).join(' - ')
-            parts.push(`- ${position.title || 'Position'} at ${position.companyName || 'Company'}${dateRange ? ` (${dateRange})` : ''}`)
-            if (position.description) {
-                // Truncate long descriptions
-                const desc = position.description.length > 200 
-                    ? position.description.substring(0, 200) + '...' 
-                    : position.description
+    // About/Summary - CHECK BOTH about and summary
+    if (profile.about || profile.summary) {
+        parts.push(`\n**About:**`)
+        parts.push(profile.about || profile.summary || '')
+    }
+
+    // Description sections
+    if (profile.description) {
+        if (profile.description.description1) {
+            parts.push(`\n**Additional Info:** ${profile.description.description1}`)
+        }
+        if (profile.description.description2) {
+            parts.push(profile.description.description2)
+        }
+        if (profile.description.description3) {
+            parts.push(profile.description.description3)
+        }
+    }
+
+    // Experience - USE "experience" not "positions" and snake_case field names
+    if (profile.experience && profile.experience.length > 0) {
+        parts.push(`\n**Experience:**`)
+        profile.experience.slice(0, 5).forEach(exp => {
+            const title = exp.title || 'Position'
+            const company = exp.company_name || 'Company'  // company_name not companyName
+            const dates = [exp.start_date, exp.end_date || 'Present'].filter(Boolean).join(' - ')
+            parts.push(`- ${title} at ${company}${dates ? ` (${dates})` : ''}`)
+            if (exp.location) {
+                parts.push(`  Location: ${exp.location}`)
+            }
+            if (exp.description) {
+                const desc = exp.description.length > 200 
+                    ? exp.description.substring(0, 200) + '...' 
+                    : exp.description
                 parts.push(`  ${desc}`)
             }
-        }
+        })
     }
 
-    // Education
-    if (profile.educations && profile.educations.length > 0) {
-        parts.push('\n**Education:**')
-        for (const edu of profile.educations.slice(0, 3)) {
-            const degree = [edu.degree, edu.fieldOfStudy].filter(Boolean).join(' in ')
-            parts.push(`- ${degree || 'Degree'} from ${edu.schoolName || 'Institution'}`)
-        }
+    // Education - USE "education" not "educations" and snake_case
+    if (profile.education && profile.education.length > 0) {
+        parts.push(`\n**Education:**`)
+        profile.education.slice(0, 3).forEach(edu => {
+            const school = edu.school_name || 'School'  // school_name not schoolName
+            const degree = edu.degree || ''
+            const field = edu.field_of_study || ''      // field_of_study not fieldOfStudy
+            const dates = [edu.start_date, edu.end_date].filter(Boolean).join(' - ')
+            parts.push(`- ${degree} ${field ? `in ${field}` : ''} from ${school}${dates ? ` (${dates})` : ''}`)
+            if (edu.description) {
+                parts.push(`  ${edu.description}`)
+            }
+        })
     }
 
     // Skills
     if (profile.skills && profile.skills.length > 0) {
-        const skillNames = profile.skills.map(s => typeof s === 'string' ? s : s.name).filter(Boolean)
-        if (skillNames.length > 0) {
-            parts.push(`\n**Skills:** ${skillNames.slice(0, 20).join(', ')}`)
-        }
-    }
-
-    // Certifications
-    if (profile.certifications && profile.certifications.length > 0) {
-        parts.push('\n**Certifications:**')
-        for (const cert of profile.certifications.slice(0, 5)) {
-            parts.push(`- ${cert.name || 'Certification'}${cert.authority ? ` (${cert.authority})` : ''}`)
-        }
+        parts.push(`\n**Skills:**`)
+        const skillNames = profile.skills.map(s => 
+            typeof s === 'string' ? s : s.name
+        ).filter(Boolean)
+        parts.push(skillNames.slice(0, 20).join(', '))
     }
 
     // Languages
     if (profile.languages && profile.languages.length > 0) {
-        const langList = profile.languages.map(l => 
-            l.proficiency ? `${l.name} (${l.proficiency})` : l.name
-        ).filter(Boolean)
-        if (langList.length > 0) {
-            parts.push(`\n**Languages:** ${langList.join(', ')}`)
-        }
+        parts.push(`\n**Languages:**`)
+        profile.languages.forEach(lang => {
+            parts.push(`- ${lang.name}${lang.proficiency ? ` (${lang.proficiency})` : ''}`)
+        })
     }
 
-    parts.push(`\n**Profile URL:** ${url}`)
+    // Certifications
+    if (profile.certification && profile.certification.length > 0) {
+        parts.push(`\n**Certifications:**`)
+        profile.certification.slice(0, 5).forEach(cert => {
+            const certName = cert.certification || 'Certification'
+            const company = cert.company_name || ''
+            const issueDate = cert.issue_date || ''
+            parts.push(`- ${certName}${company ? ` from ${company}` : ''}${issueDate ? ` (${issueDate})` : ''}`)
+            if (cert.credential_id) {
+                parts.push(`  Credential ID: ${cert.credential_id}`)
+            }
+        })
+    }
+
+    // Volunteering
+    if (profile.volunteering && profile.volunteering.length > 0) {
+        parts.push(`\n**Volunteering:**`)
+        profile.volunteering.forEach(vol => {
+            parts.push(`- ${vol.title || 'Volunteer'} at ${vol.organization || 'Organization'}`)
+            if (vol.description) {
+                parts.push(`  ${vol.description}`)
+            }
+        })
+    }
+
+    // Activities
+    if (profile.activities && profile.activities.length > 0) {
+        parts.push(`\n**Recent Activities:**`)
+        profile.activities.slice(0, 5).forEach(activity => {
+            if (activity.title) {
+                parts.push(`- ${activity.title}`)
+            }
+            if (activity.activity) {
+                parts.push(`  ${activity.activity}`)
+            }
+        })
+    }
+
+    // LinkedIn URL
+    parts.push(`\n**LinkedIn Profile:** ${url}`)
 
     return parts.join('\n')
 }
@@ -412,7 +546,49 @@ async function extractLinkedInContent(linkedinUrl: string): Promise<ExtractedUrl
             return result
         }
 
-        const profileData = response.data as LinkedInProfileData
+        // 🔥 CRITICAL FIX: ScrapingDog returns an ARRAY with the profile as first element!
+        // Debug log the raw response structure
+        console.log('[LinkedIn Extractor] 📦 Raw response type:', typeof response.data)
+        console.log('[LinkedIn Extractor] 📦 Is array?:', Array.isArray(response.data))
+        
+        // Extract profile data - handle both array and object responses
+        let profileData: LinkedInProfileData
+        
+        if (Array.isArray(response.data)) {
+            // ScrapingDog returns: [{profile data}]
+            console.log('[LinkedIn Extractor] 📦 Array length:', response.data.length)
+            if (response.data.length === 0) {
+                console.warn('[LinkedIn Extractor] ScrapingDog returned empty array')
+                result.content = {
+                    summary: `LinkedIn profile provided: ${linkedinUrl}`,
+                    highlights: ['LinkedIn profile URL provided - scraper returned empty array'],
+                    skills: [],
+                    projects: [],
+                    experience: [],
+                    rawText: `LinkedIn Profile: ${linkedinUrl}`,
+                }
+                result.success = true
+                return result
+            }
+            profileData = response.data[0] as LinkedInProfileData
+            console.log('[LinkedIn Extractor] ✅ Extracted profile from array[0]')
+        } else if (response.data && typeof response.data === 'object') {
+            // Direct object response (fallback)
+            profileData = response.data as LinkedInProfileData
+            console.log('[LinkedIn Extractor] ✅ Using direct object response')
+        } else {
+            console.warn('[LinkedIn Extractor] ScrapingDog returned unexpected data type:', typeof response.data)
+            result.content = {
+                summary: `LinkedIn profile provided: ${linkedinUrl}`,
+                highlights: ['LinkedIn profile URL provided - unexpected response format'],
+                skills: [],
+                projects: [],
+                experience: [],
+                rawText: `LinkedIn Profile: ${linkedinUrl}`,
+            }
+            result.success = true
+            return result
+        }
 
         if (!profileData) {
             console.warn('[LinkedIn Extractor] ScrapingDog returned no data')
@@ -428,7 +604,62 @@ async function extractLinkedInContent(linkedinUrl: string): Promise<ExtractedUrl
             return result
         }
 
+        // Debug log what we actually received
+        console.log('[LinkedIn Extractor] 📦 Profile data keys:', Object.keys(profileData).slice(0, 15))
+        console.log('[LinkedIn Extractor] 📦 Sample data:', {
+            fullName: profileData.fullName,
+            first_name: profileData.first_name,
+            last_name: profileData.last_name,
+            location: profileData.location,
+            connections: profileData.connections,
+            experienceCount: profileData.experience?.length || 0
+        })
+
         console.log('[LinkedIn Extractor] Successfully extracted LinkedIn profile data')
+
+        // More lenient validation - if we have ANY profile information, it's useful
+        // Fixed: Use .length > 0 instead of truthy check on trimmed strings
+        const hasName = !!(profileData.fullName || profileData.first_name || profileData.last_name)
+        const hasLocation = !!(profileData.location && typeof profileData.location === 'string' && profileData.location.trim().length > 0)
+        const hasHeadline = !!(profileData.headline && typeof profileData.headline === 'string' && profileData.headline.trim().length > 0)
+        const hasConnections = !!(profileData.connections && profileData.connections.length > 0)
+        const hasExperience = !!(profileData.experience && Array.isArray(profileData.experience) && profileData.experience.length > 0)
+        const hasEducation = !!(profileData.education && Array.isArray(profileData.education) && profileData.education.length > 0)
+        const hasSkills = !!(profileData.skills && Array.isArray(profileData.skills) && profileData.skills.length > 0)
+        const hasAbout = !!(profileData.about && typeof profileData.about === 'string' && profileData.about.trim().length > 0)
+        const hasCertifications = !!(profileData.certification && Array.isArray(profileData.certification) && profileData.certification.length > 0)
+
+        console.log('[LinkedIn Extractor] 🔍 Data validation:', {
+            hasName,
+            hasLocation,
+            hasHeadline,
+            hasConnections,
+            hasExperience,
+            hasEducation,
+            hasSkills,
+            hasAbout,
+            hasCertifications
+        })
+
+        // Accept if we have at least name OR location OR connections OR any content
+        const hasUsefulData = hasName || hasLocation || hasHeadline || hasConnections || 
+                              hasExperience || hasEducation || hasSkills || hasAbout || hasCertifications
+
+        console.log('[LinkedIn Extractor] ✅ Has useful data:', hasUsefulData)
+
+        if (!hasUsefulData) {
+            console.warn('[LinkedIn Extractor] ⚠️ LinkedIn returned empty data - profile may be private or incomplete')
+            result.content = {
+                summary: `LinkedIn profile provided: ${linkedinUrl} (Profile appears to be private or empty)`,
+                highlights: ['LinkedIn profile URL provided - scraper returned no useful data (profile may be private)'],
+                skills: [],
+                projects: [],
+                experience: [],
+                rawText: `LinkedIn Profile: ${linkedinUrl} - No data extracted (likely private profile)`,
+            }
+            result.success = true // Still mark as success so evaluation continues
+            return result
+        }
 
         // Format the profile data for LLM
         const formattedProfile = formatLinkedInProfileForLLM(profileData, linkedinUrl)
@@ -442,28 +673,31 @@ async function extractLinkedInContent(linkedinUrl: string): Promise<ExtractedUrl
             }
         }
 
-        // Extract experience as array of strings
+        // Extract experience as array of strings - USE CORRECT FIELD NAMES
         const experience: string[] = []
-        if (profileData.positions) {
-            for (const position of profileData.positions.slice(0, 5)) {
-                const expStr = `${position.title || 'Position'} at ${position.companyName || 'Company'}`
+        if (profileData.experience) {  // Changed from positions
+            for (const position of profileData.experience.slice(0, 5)) {
+                const expStr = `${position.title || 'Position'} at ${position.company_name || 'Company'}`  // company_name
                 experience.push(expStr)
             }
         }
 
-        // Build highlights
+        // Build highlights - USE CORRECT FIELD NAMES
         const highlights: string[] = []
-        const fullName = [profileData.firstName, profileData.lastName].filter(Boolean).join(' ')
+        const fullName = profileData.fullName || [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
         if (fullName) highlights.push(`Name: ${fullName}`)
         if (profileData.headline) highlights.push(profileData.headline)
-        if (profileData.positions?.length) {
-            highlights.push(`${profileData.positions.length} work experience(s)`)
+        if (profileData.experience?.length) {  // Changed from positions
+            highlights.push(`${profileData.experience.length} work experience(s)`)
         }
-        if (profileData.educations?.length) {
-            highlights.push(`${profileData.educations.length} education record(s)`)
+        if (profileData.education?.length) {   // Changed from educations
+            highlights.push(`${profileData.education.length} education record(s)`)
         }
         if (skills.length > 0) {
             highlights.push(`${skills.length} skills listed`)
+        }
+        if (profileData.certification?.length) {  // Add certification count
+            highlights.push(`${profileData.certification.length} certification(s)`)
         }
 
         // Build summary

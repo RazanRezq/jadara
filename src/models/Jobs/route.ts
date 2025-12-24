@@ -212,6 +212,21 @@ app.get('/list', async (c) => {
             .sort({ createdAt: -1 })
             .lean()
 
+        // Import Applicant model to count applicants
+        const Applicant = (await import('../Applicants/applicantSchema')).default
+
+        // Get applicant counts for all jobs in this page
+        const jobIds = jobs.map(job => job._id)
+        const applicantCounts = await Applicant.aggregate([
+            { $match: { jobId: { $in: jobIds } } },
+            { $group: { _id: '$jobId', count: { $sum: 1 } } }
+        ])
+
+        // Create a map for quick lookup
+        const countsMap = new Map(
+            applicantCounts.map(item => [String(item._id), item.count])
+        )
+
         return c.json({
             success: true,
             jobs: jobs.map((job) => ({
@@ -243,6 +258,8 @@ app.get('/list', async (c) => {
                 createdBy: job.createdBy,
                 createdAt: job.createdAt,
                 updatedAt: job.updatedAt,
+                // Applicants count
+                applicantsCount: countsMap.get(String(job._id)) || 0,
             })),
             pagination: {
                 page,

@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useTranslate } from "@/hooks/useTranslate"
 import { JobWizardFormValues, Skill, ScreeningQuestion, Language, PROFICIENCY_LEVELS, COMMON_LANGUAGES, LANGUAGE_TRANSLATIONS } from "./types"
 import { Plus, Trash2, ShieldAlert, Globe2, Clock } from "lucide-react"
@@ -63,6 +65,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
         const current = form.getValues('screeningQuestions') || []
         const newQuestion: ScreeningQuestion = {
             question: '',
+            idealAnswer: true,  // Default to "Yes"
             disqualify: false,
         }
         form.setValue('screeningQuestions', [...current, newQuestion], { shouldValidate: true, shouldDirty: true })
@@ -247,6 +250,34 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     className="transition-all focus:ring-2 focus:ring-primary/20"
                                 />
 
+                                {/* NEW: Ideal Answer Selection */}
+                                <div className="space-y-2 p-3 bg-muted/30 rounded-md border border-border">
+                                    <Label className="text-sm font-medium">
+                                        {t("jobWizard.step2.idealAnswer")}
+                                    </Label>
+                                    <RadioGroup
+                                        value={String(sq.idealAnswer)}
+                                        onValueChange={(value) => updateScreeningQuestion(index, 'idealAnswer', value === 'true')}
+                                        className="flex gap-4"
+                                    >
+                                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                            <RadioGroupItem value="true" id={`ideal-yes-${index}`} />
+                                            <Label htmlFor={`ideal-yes-${index}`} className="cursor-pointer font-normal">
+                                                {t("common.yes")} {locale === 'ar' && '(نعم)'}
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                            <RadioGroupItem value="false" id={`ideal-no-${index}`} />
+                                            <Label htmlFor={`ideal-no-${index}`} className="cursor-pointer font-normal">
+                                                {t("common.no")} {locale === 'ar' && '(لا)'}
+                                            </Label>
+                                        </div>
+                                    </RadioGroup>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t("jobWizard.step2.idealAnswerHint")}
+                                    </p>
+                                </div>
+
                                 <div className="flex items-center gap-3">
                                     <Switch
                                         checked={sq.disqualify}
@@ -254,7 +285,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     />
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium">
-                                            {t("jobWizard.step2.disqualifyIfNo")}
+                                            {t("jobWizard.step2.disqualifyIfMismatch")}
                                         </span>
                                         {sq.disqualify && (
                                             <Badge variant="destructive" className="text-xs">

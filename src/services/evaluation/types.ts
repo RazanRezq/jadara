@@ -355,7 +355,8 @@ export interface CandidateEvaluationInput {
         // HR screening questions (for knockout logic)
         screeningQuestions?: Array<{
             question: string
-            disqualify: boolean  // If true and answer is false → critical red flag
+            idealAnswer: boolean  // The correct/desired answer (true = Yes, false = No)
+            disqualify: boolean  // If true and answer doesn't match idealAnswer → critical red flag
         }>
         salaryMin?: number
         salaryMax?: number

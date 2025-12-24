@@ -237,6 +237,11 @@ export async function submitApplication(
                         weight: c.weight,
                         required: c.required,
                     })) || [],
+                    screeningQuestions: job.screeningQuestions?.map(sq => ({
+                        question: sq.question,
+                        idealAnswer: sq.idealAnswer ?? true, // Default to true for backward compatibility
+                        disqualify: sq.disqualify,
+                    })) || [],
                     salaryMin: job.salaryMin,
                     salaryMax: job.salaryMax,
                     autoRejectThreshold: job.autoRejectThreshold || 35,
@@ -255,10 +260,13 @@ export async function submitApplication(
                         salaryExpectation: payload.personalData.salaryExpectation,
                         linkedinUrl: payload.personalData.linkedinUrl,
                         portfolioUrl: payload.personalData.portfolioUrl,
+                        screeningAnswers: payload.personalData.screeningAnswers,
+                        languageProficiency: payload.personalData.languageProficiency,
                     },
                     voiceResponses,
                     textResponses,
                     cvUrl: payload.fileUploads.cvUrl,
+                    additionalNotes: payload.notes || undefined,
                     jobCriteria,
                 }
 
@@ -327,6 +335,88 @@ export async function submitApplication(
                     console.log("[Submission] AI evaluation completed successfully!")
                     console.log("[Submission] Score:", result.evaluation.overallScore)
                     console.log("[Submission] Recommendation:", result.evaluation.recommendation)
+                } else if (!result.success && result.partialEvaluation) {
+                    // Handle partial evaluation (scoring failed but we have voice/social/text data)
+                    console.log('[Submission] 💾 Saving PARTIAL evaluation with collected data:', {
+                        hasVoiceAnalysis: !!result.partialEvaluation.voiceAnalysisDetails,
+                        voiceAnalysisLength: result.partialEvaluation.voiceAnalysisDetails?.length,
+                        hasSocialInsights: !!result.partialEvaluation.socialProfileInsights,
+                        hasTextAnalysis: !!result.partialEvaluation.textResponseAnalysis,
+                        hasTranscripts: !!result.partialEvaluation.transcripts,
+                        hasParsedResume: !!result.partialEvaluation.parsedResume,
+                        errorType: result.errorType,
+                        retryAfter: result.retryAfter,
+                    })
+
+                    evaluationResult.error = result.error || "Evaluation incomplete"
+                    evaluationResult.completed = false
+
+                    // Save partial evaluation with fallback values
+                    await Evaluation.create({
+                        applicantId,
+                        jobId: payload.jobId,
+                        overallScore: 0, // No score yet
+                        criteriaMatches: [],
+                        strengths: { 
+                            en: ['⚠️ Evaluation incomplete - voice and profile data collected'], 
+                            ar: ['⚠️ التقييم غير مكتمل - تم جمع بيانات الصوت والملف الشخصي'] 
+                        },
+                        weaknesses: { en: [], ar: [] },
+                        redFlags: { 
+                            en: result.errorType === 'quota_exceeded' 
+                                ? ['⚠️ Evaluation incomplete due to API quota limit. Retry available.']
+                                : ['⚠️ Evaluation incomplete due to technical error'],
+                            ar: result.errorType === 'quota_exceeded'
+                                ? ['⚠️ التقييم غير مكتمل بسبب حد حصة API. إعادة المحاولة متاحة.']
+                                : ['⚠️ التقييم غير مكتمل بسبب خطأ تقني']
+                        },
+                        summary: { 
+                            en: `Partial evaluation: ${result.partialEvaluation.failedStages?.join(', ')} failed. ${result.error}`, 
+                            ar: `تقييم جزئي: فشل ${result.partialEvaluation.failedStages?.join(', ')}. ${result.error}` 
+                        },
+                        recommendation: 'pending',
+                        recommendationReason: { 
+                            en: 'Manual review required - automatic evaluation incomplete', 
+                            ar: 'مطلوب مراجعة يدوية - التقييم التلقائي غير مكتمل' 
+                        },
+                        suggestedQuestions: { en: [], ar: [] },
+                        sentimentScore: undefined,
+                        confidenceScore: undefined,
+                        // CRITICAL: Save the collected data even though evaluation is incomplete
+                        voiceAnalysisDetails: result.partialEvaluation.voiceAnalysisDetails,
+                        socialProfileInsights: result.partialEvaluation.socialProfileInsights,
+                        textResponseAnalysis: result.partialEvaluation.textResponseAnalysis,
+                        isProcessed: false, // Mark as unprocessed so it can be retried
+                        processedAt: new Date(),
+                    })
+
+                    // Update applicant status to 'pending' for manual review
+                    await Applicant.findByIdAndUpdate(applicantId, {
+                        status: 'pending',
+                        aiScore: 0,
+                        aiSummary: `Partial evaluation: ${result.error}`,
+                        aiRedFlags: result.errorType === 'quota_exceeded' ? ['API quota exceeded - retry available'] : ['Evaluation incomplete'],
+                        cvParsedData: result.partialEvaluation.parsedResume,
+                    })
+
+                    // Update voice response transcripts if available
+                    if (result.partialEvaluation.transcripts) {
+                        for (const transcript of result.partialEvaluation.transcripts) {
+                            await Response.findOneAndUpdate(
+                                { applicantId, questionId: transcript.questionId },
+                                {
+                                    rawTranscript: transcript.rawTranscript,
+                                    cleanTranscript: transcript.cleanTranscript,
+                                }
+                            )
+                        }
+                    }
+
+                    console.log("[Submission] ⚠️ Partial evaluation saved - manual review required")
+                    console.log("[Submission] Error type:", result.errorType)
+                    if (result.retryAfter) {
+                        console.log("[Submission] Can retry after:", result.retryAfter, "seconds")
+                    }
                 } else {
                     evaluationResult.error = result.error || "Evaluation failed"
                     console.warn("[Submission] AI evaluation failed:", result.error)

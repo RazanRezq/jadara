@@ -94,11 +94,43 @@ ${criteriaList}
 ${candidateProfile}
 
 **CRITICAL EVALUATION RULES:**
-1. 🚨 **KNOCKOUT QUESTIONS:** If any screening question marked as "[KNOCKOUT QUESTION]" was answered "NO", this is a CRITICAL RED FLAG. Add to redFlags immediately.
-2. 🌐 **LANGUAGE REQUIREMENTS:** Compare candidate's language proficiency against required levels. Flag any gaps in redFlags.
-3. 💰 **SALARY ALIGNMENT:** If salary expectation is far outside budget range, note in weaknesses.
-4. 📝 **ADDITIONAL NOTES:** Consider any context provided by the candidate in their notes.
-5. 📊 **EXPERIENCE GAP:** Compare years of experience against minimum required.
+
+*** SCREENING QUESTION EVALUATION LOGIC ***
+1. **MATCH vs MISMATCH Logic:**
+   - Each screening question has an "Ideal Answer" (YES or NO).
+   - Compare: Candidate Answer vs. Ideal Answer.
+   - IF MATCH (✅): Candidate answered correctly → No issue.
+   - IF MISMATCH (❌): Candidate's answer differs from requirement.
+
+2. **KNOCKOUT QUESTION HANDLING:**
+   - IF MISMATCH (❌) AND [KNOCKOUT QUESTION] is TRUE:
+     a) DO NOT REJECT IMMEDIATELY.
+     b) CHECK "Additional Notes" section for keywords/justifications related to this question.
+     c) IF VALID JUSTIFICATION FOUND (e.g., "I can start in 1 week", "I have family obligations but flexible"):
+        → DECISION: HOLD/REVIEW (Yellow Flag) - Mention: "Candidate provided justification: [quote]"
+     d) IF NO JUSTIFICATION OR INSUFFICIENT:
+        → Suggestion: REJECT (Red Flag) - Add to redFlags: "Failed knockout question: [question text]"
+
+3. **Example Scenarios:**
+   - Q: "Do you have a criminal record?" (Ideal: NO, Knockout: YES)
+     * Candidate: NO → ✅ MATCH → Proceed
+     * Candidate: YES + Notes: "Minor traffic violation 10 years ago, record cleared" → ⚠️ HOLD (check notes)
+     * Candidate: YES + No Notes → 🚫 REJECT (add to redFlags)
+   
+   - Q: "Can you start immediately?" (Ideal: YES, Knockout: YES)
+     * Candidate: YES → ✅ MATCH → Proceed
+     * Candidate: NO + Notes: "I can start in 2 weeks after giving notice" → ⚠️ HOLD (reasonable)
+     * Candidate: NO + No Notes → 🚫 REJECT
+
+4. 🌐 **LANGUAGE REQUIREMENTS:** Compare candidate's language proficiency against required levels. Flag any gaps in redFlags.
+5. 💰 **SALARY ALIGNMENT:** If salary expectation is far outside budget range, note in weaknesses.
+6. 📝 **ADDITIONAL NOTES:** ALWAYS check this section for context about ANY mismatch.
+7. 📊 **EXPERIENCE GAP:** Compare years of experience against minimum required.
+
+**Language Support:**
+- Provide all output in BOTH English (en) and Arabic (ar).
+- Use RTL-appropriate formatting for Arabic text.
+- Professional tone in both languages.
 
 **TASK:**
 Analyze the candidate comprehensively against ALL criteria, including screening questions, language requirements, and experience. Provide the evaluation report in TWO languages: English (under "en") and Arabic (under "ar"). Ensure the Arabic translation is professional and accurate.
@@ -580,10 +612,19 @@ ${personalData.portfolioUrl ? `- Portfolio: ${personalData.portfolioUrl}` : ''}
 ## 🚨 SCREENING QUESTIONS (HR-CRITICAL)
 `
         for (const sq of jobCriteria.screeningQuestions) {
-            const answer = personalData.screeningAnswers[sq.question]
-            const answerText = answer === true ? '✅ YES' : answer === false ? '❌ NO' : '⚠️ Not answered'
-            const knockoutWarning = sq.disqualify ? ' **[KNOCKOUT QUESTION - NO = AUTO-REJECT]**' : ''
-            profile += `- **Q:** ${sq.question}\n  **A:** ${answerText}${knockoutWarning}\n`
+            const candidateAnswer = personalData.screeningAnswers[sq.question]
+            const idealAnswer = sq.idealAnswer
+            const isMatch = candidateAnswer === idealAnswer
+            
+            const candidateAnswerText = candidateAnswer === true ? '✅ YES' : candidateAnswer === false ? '❌ NO' : '⚠️ Not answered'
+            const idealAnswerText = idealAnswer ? 'YES' : 'NO'
+            const matchStatus = isMatch ? '✅ MATCH' : '❌ MISMATCH'
+            const knockoutWarning = sq.disqualify ? ' **[KNOCKOUT QUESTION]**' : ''
+            
+            profile += `- **Q:** ${sq.question}
+  **Ideal Answer:** ${idealAnswerText}
+  **Candidate Answer:** ${candidateAnswerText}
+  **Status:** ${matchStatus}${knockoutWarning}\n`
         }
     }
 
@@ -805,17 +846,32 @@ export function buildAIAnalysisBreakdown(
     if (candidateData.personalData.screeningAnswers && jobCriteria.screeningQuestions && jobCriteria.screeningQuestions.length > 0) {
         const failedKnockouts: Array<{ question: string; answer: boolean; impact: string }> = []
         const passedQuestions: string[] = []
+        const mismatches: string[] = []
 
         for (const sq of jobCriteria.screeningQuestions) {
-            const answer = candidateData.personalData.screeningAnswers[sq.question]
-            if (sq.disqualify && answer === false) {
-                failedKnockouts.push({
-                    question: sq.question,
-                    answer: false,
-                    impact: 'Critical - Auto-reject trigger'
-                })
-            } else if (answer === true) {
+            const candidateAnswer = candidateData.personalData.screeningAnswers[sq.question]
+            const idealAnswer = sq.idealAnswer
+            const isMatch = candidateAnswer === idealAnswer
+            
+            if (isMatch) {
                 passedQuestions.push(sq.question)
+            } else {
+                // Mismatch detected
+                if (sq.disqualify) {
+                    // Check additional notes for justification
+                    const hasJustification = candidateData.additionalNotes && 
+                        candidateData.additionalNotes.length > 20 // At least some meaningful text
+                    
+                    failedKnockouts.push({
+                        question: sq.question,
+                        answer: candidateAnswer ?? false,
+                        impact: hasJustification 
+                            ? 'Critical - But candidate provided justification (review required)' 
+                            : 'Critical - Auto-reject trigger (no justification)'
+                    })
+                } else {
+                    mismatches.push(sq.question)
+                }
             }
         }
 
@@ -826,10 +882,14 @@ export function buildAIAnalysisBreakdown(
             passedQuestions,
             aiReasoning: {
                 en: failedKnockouts.length > 0
-                    ? `Candidate failed ${failedKnockouts.length} critical screening question(s), which are auto-reject triggers for this position.`
+                    ? `Candidate failed ${failedKnockouts.length} critical screening question(s). ${failedKnockouts.some(f => f.impact.includes('justification')) ? 'Some have justifications that need review.' : 'No justifications provided - recommend rejection.'}`
+                    : mismatches.length > 0
+                    ? `Candidate answered ${mismatches.length} non-critical question(s) differently than ideal. Review recommended.`
                     : `Candidate passed all ${jobCriteria.screeningQuestions.length} screening questions successfully.`,
                 ar: failedKnockouts.length > 0
-                    ? `فشل المرشح في ${failedKnockouts.length} سؤال فحص حرج، وهي محفزات للرفض التلقائي لهذا المنصب.`
+                    ? `فشل المرشح في ${failedKnockouts.length} سؤال فحص حرج. ${failedKnockouts.some(f => f.impact.includes('justification')) ? 'البعض لديه مبررات تحتاج إلى مراجعة.' : 'لا توجد مبررات - يوصى بالرفض.'}`
+                    : mismatches.length > 0
+                    ? `أجاب المرشح على ${mismatches.length} سؤال غير حرج بشكل مختلف عن المثالي. يوصى بالمراجعة.`
                     : `اجتاز المرشح جميع أسئلة الفحص الـ ${jobCriteria.screeningQuestions.length} بنجاح.`
             }
         }
