@@ -43,7 +43,6 @@ async function dbConnect(): Promise<typeof mongoose> {
             maxIdleTimeMS: 30000,   // Close idle connections after 30s
             // Performance optimizations
             retryWrites: true,      // Auto-retry failed writes
-            w: 'majority',          // Write concern for data safety
         }
 
         cached.promise = mongoose

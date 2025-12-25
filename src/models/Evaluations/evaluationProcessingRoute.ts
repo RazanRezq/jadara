@@ -109,6 +109,7 @@ async function buildCandidateData(
             // HR screening questions for knockout logic
             screeningQuestions: job.screeningQuestions?.map(sq => ({
                 question: sq.question,
+                idealAnswer: sq.idealAnswer || false,
                 disqualify: sq.disqualify,
             })),
             salaryMin: job.salaryMin,
@@ -130,12 +131,8 @@ async function buildCandidateData(
                 behanceUrl: applicant.personalData.behanceUrl,
                 portfolioUrl: applicant.personalData.portfolioUrl,
                 // HR-critical screening data
-                screeningAnswers: applicant.personalData.screeningAnswers 
-                    ? Object.fromEntries(applicant.personalData.screeningAnswers)
-                    : undefined,
-                languageProficiency: applicant.personalData.languageProficiency
-                    ? Object.fromEntries(applicant.personalData.languageProficiency)
-                    : undefined,
+                screeningAnswers: applicant.personalData.screeningAnswers,
+                languageProficiency: applicant.personalData.languageProficiency,
             },
             voiceResponses,
             textResponses,

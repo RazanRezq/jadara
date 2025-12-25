@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTranslate } from "@/hooks/useTranslate"
 import { exportToCSV, exportToExcel, exportToPDF } from "@/lib/export-utils"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 interface ExportButtonProps {
     data: {
@@ -25,7 +25,6 @@ interface ExportButtonProps {
 
 export function ExportButton({ data, variant = "outline", size = "default" }: ExportButtonProps) {
     const { t } = useTranslate()
-    const { toast } = useToast()
     const [isExporting, setIsExporting] = useState(false)
 
     const handleExport = async (format: "csv" | "excel" | "pdf") => {
@@ -35,32 +34,27 @@ export function ExportButton({ data, variant = "outline", size = "default" }: Ex
             switch (format) {
                 case "csv":
                     exportToCSV(data)
-                    toast({
-                        title: t("export.success"),
+                    toast.success(t("export.success"), {
                         description: t("export.csvDownloaded"),
                     })
                     break
                 case "excel":
                     exportToExcel(data)
-                    toast({
-                        title: t("export.success"),
+                    toast.success(t("export.success"), {
                         description: t("export.excelDownloaded"),
                     })
                     break
                 case "pdf":
                     await exportToPDF(data)
-                    toast({
-                        title: t("export.success"),
+                    toast.success(t("export.success"), {
                         description: t("export.pdfDownloaded"),
                     })
                     break
             }
         } catch (error) {
             console.error("Export error:", error)
-            toast({
-                title: t("export.error"),
+            toast.error(t("export.error"), {
                 description: t("export.failed"),
-                variant: "destructive",
             })
         } finally {
             setIsExporting(false)

@@ -303,7 +303,7 @@ app.post('/reorder', async (c) => {
                 filter: { _id: q.id },
                 update: { $set: { order: q.order } },
             },
-        }))
+        })) as any
 
         await Question.bulkWrite(bulkOps)
 

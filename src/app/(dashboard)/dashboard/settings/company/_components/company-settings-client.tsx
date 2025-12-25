@@ -23,7 +23,8 @@ import { cn } from "@/lib/utils"
 import { Building2, Save, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
-import { type UserRole, hasPermission } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { hasPermission } from "@/lib/authClient"
 
 interface CompanySettingsClientProps {
     userRole: UserRole
@@ -34,12 +35,10 @@ const companyProfileSchema = z.object({
     industry: z.string().min(1, "Industry is required"),
     bio: z.string().min(10, "Bio must be at least 10 characters"),
     website: z
-        .union([
-            z.string().url("Invalid URL format"),
-            z.literal(""),
-        ])
-        .optional()
-        .default(""),
+        .string()
+        .refine((val) => !val || z.string().url().safeParse(val).success, {
+            message: "Invalid URL format",
+        }),
 })
 
 type CompanyProfileFormValues = z.infer<typeof companyProfileSchema>

@@ -62,3 +62,83 @@ export function getRoleColor(role: UserRole): string {
     }
     return colors[role]
 }
+
+// Granular permission checking (async - fetches from database)
+export async function checkUserPermission(
+    userRole: UserRole,
+    permission: string
+): Promise<boolean> {
+    // Superadmin always has all permissions
+    if (userRole === 'superadmin') {
+        return true
+    }
+
+    try {
+        const dbConnect = (await import('@/lib/mongodb')).default
+        const PermissionSet = (await import('@/models/Permissions/permissionsSchema')).default
+
+        await dbConnect()
+
+        const permissionSet = await PermissionSet.findOne({ role: userRole })
+        if (!permissionSet) {
+            return false
+        }
+
+        return permissionSet.permissions.includes(permission as any)
+    } catch (error) {
+        console.error('Error checking permission:', error)
+        return false
+    }
+}
+
+// Synchronous permission check (uses default permissions - for client components)
+export function hasGranularPermission(
+    userRole: UserRole,
+    permission: string
+): boolean {
+    // Superadmin always has all permissions
+    if (userRole === 'superadmin') {
+        return true
+    }
+
+    // Default permission sets (fallback when database is not accessible)
+    const defaultPermissions: Record<UserRole, string[]> = {
+        superadmin: [], // Will return true above
+        admin: [
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.delete',
+            'users.export',
+            'users.import',
+            'jobs.view',
+            'jobs.create',
+            'jobs.edit',
+            'jobs.delete',
+            'jobs.publish',
+            'applicants.view',
+            'applicants.edit',
+            'applicants.delete',
+            'applicants.export',
+            'evaluations.view',
+            'evaluations.create',
+            'evaluations.edit',
+            'evaluations.delete',
+            'questions.view',
+            'questions.create',
+            'questions.edit',
+            'questions.delete',
+            'company.view',
+            'company.edit',
+        ],
+        reviewer: [
+            'applicants.view',
+            'evaluations.view',
+            'evaluations.create',
+            'evaluations.edit',
+            'jobs.view',
+        ],
+    }
+
+    return defaultPermissions[userRole]?.includes(permission) || false
+}

@@ -14,6 +14,9 @@ import {
     Library,
     ClipboardCheck,
     Video,
+    ScrollText,
+    UserCog,
+    Activity,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -30,7 +33,8 @@ import {
     SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
-import { hasPermission, type UserRole } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { hasPermission } from "@/lib/authClient"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     user: {
@@ -41,7 +45,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
-    const { t, isRTL } = useTranslate()
+    const { t, isRTL, locale } = useTranslate()
     const pathname = usePathname()
 
     // Navigation structure with grouped sections for ATS
@@ -110,6 +114,41 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 title: t("sidebar.categories.systemManagement"),
                 items: [
                     {
+                        title: t("sidebar.users"),
+                        url: "/dashboard/users",
+                        icon: UserCog,
+                        isActive: pathname.startsWith("/dashboard/users"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.sessions"),
+                        url: "/dashboard/sessions",
+                        icon: Activity,
+                        isActive: pathname.startsWith("/dashboard/sessions"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.auditLogs"),
+                        url: "/dashboard/audit-logs",
+                        icon: ScrollText,
+                        isActive: pathname.startsWith("/dashboard/audit-logs"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.permissions"),
+                        url: "/dashboard/permissions",
+                        icon: Shield,
+                        isActive: pathname.startsWith("/dashboard/permissions"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.systemHealth"),
+                        url: "/dashboard/system-health",
+                        icon: Activity,
+                        isActive: pathname.startsWith("/dashboard/system-health"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
                         title: t("sidebar.settings"),
                         url: "/dashboard/settings",
                         icon: Settings,
@@ -119,13 +158,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 ],
             },
         ]
-    }, [t, pathname])
+    }, [t, pathname, locale])
 
     return (
         <Sidebar
             collapsible="icon"
             side={isRTL ? "right" : "left"}
-            className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
+            className="top-[var(--header-height)] h-[calc(100svh-var(--header-height))]!"
             {...props}
         >
             <SidebarHeader>

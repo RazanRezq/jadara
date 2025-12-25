@@ -14,8 +14,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { getRoleColor } from "@/lib/auth"
 import type { UserRole } from "@/lib/auth"
+import { getRoleColor } from "@/lib/authClient"
 
 interface SuperAdminStats {
     totalUsers: number

@@ -10,6 +10,11 @@ import evaluations from '@/models/Evaluations/route'
 import evaluationProcessing from '@/models/Evaluations/evaluationProcessingRoute'
 import companyProfile from '@/models/CompanyProfile/route'
 import notifications from '@/models/Notifications/route'
+import auditLogs from '@/models/AuditLogs/route'
+import systemConfig from '@/models/SystemConfig/route'
+import sessions from '@/models/Sessions/route'
+import permissions from '@/models/Permissions/route'
+import systemHealth from '@/models/SystemHealth/route'
 
 const app = new Hono().basePath('/api')
 
@@ -23,6 +28,11 @@ const routes = app
     .route('/ai/evaluate', evaluationProcessing)
     .route('/company', companyProfile)
     .route('/notifications', notifications)
+    .route('/audit-logs', auditLogs)
+    .route('/system-config', systemConfig)
+    .route('/sessions', sessions)
+    .route('/permissions', permissions)
+    .route('/system-health', systemHealth)
 
 export const GET = handle(app)
 export const POST = handle(app)

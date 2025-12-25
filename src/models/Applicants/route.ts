@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Applicant from './applicantSchema'
-import { authenticate, getAuthUser } from '@/lib/authMiddleware'
+import { authenticate, getAuthUser, requireRole } from '@/lib/authMiddleware'
+import { logUserAction } from '@/lib/auditLogger'
 
 const updateApplicantSchema = z.object({
     status: z.enum(['new', 'screening', 'interviewing', 'evaluated', 'shortlisted', 'hired', 'rejected', 'withdrawn']).optional(),
@@ -212,17 +213,7 @@ app.post('/update/:id', authenticate, async (c) => {
         await dbConnect()
         const id = c.req.param('id')
         const body = await c.req.json()
-        const userId = c.req.query('userId')
-
-        if (!userId) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'User ID is required',
-                },
-                400
-            )
-        }
+        const user = getAuthUser(c)
 
         const validation = updateApplicantSchema.safeParse(body)
         if (!validation.success) {
@@ -236,7 +227,7 @@ app.post('/update/:id', authenticate, async (c) => {
             )
         }
 
-        const applicant = await Applicant.findById(id)
+        const applicant = await Applicant.findById(id).populate('jobId', 'title')
         if (!applicant) {
             return c.json(
                 {
@@ -247,8 +238,38 @@ app.post('/update/:id', authenticate, async (c) => {
             )
         }
 
+        const oldStatus = applicant.status
+        const applicantName = applicant.personalData?.name || 'Unknown'
+        const applicantEmail = applicant.personalData?.email || 'Unknown'
+        const jobTitle = applicant.jobId && typeof applicant.jobId === 'object' ? (applicant.jobId as any).title : 'Unknown'
+
         Object.assign(applicant, validation.data)
         await applicant.save()
+
+        // Log status change if status was updated
+        if (validation.data.status && oldStatus !== validation.data.status) {
+            await logUserAction(
+                user,
+                'applicant.status_changed',
+                'Applicant',
+                applicant._id.toString(),
+                `Changed applicant status: ${applicantName} from ${oldStatus} to ${validation.data.status}`,
+                {
+                    resourceName: applicantName,
+                    changes: {
+                        before: { status: oldStatus },
+                        after: { status: validation.data.status },
+                    },
+                    metadata: {
+                        applicantEmail,
+                        jobTitle,
+                        oldStatus,
+                        newStatus: validation.data.status,
+                    },
+                    severity: 'info',
+                }
+            )
+        }
 
         return c.json({
             success: true,
@@ -275,6 +296,7 @@ app.post('/bulk-update', authenticate, async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
+        const user = getAuthUser(c)
 
         const bulkSchema = z.object({
             ids: z.array(z.string()).min(1),
@@ -298,6 +320,23 @@ app.post('/bulk-update', authenticate, async (c) => {
             { $set: { status: validation.data.status } }
         )
 
+        // Log bulk status change
+        await logUserAction(
+            user,
+            'applicant.bulk_status_changed',
+            'Applicant',
+            validation.data.ids.join(','),
+            `Bulk updated ${validation.data.ids.length} applicants to status: ${validation.data.status}`,
+            {
+                metadata: {
+                    count: validation.data.ids.length,
+                    newStatus: validation.data.status,
+                    applicantIds: validation.data.ids,
+                },
+                severity: 'info',
+            }
+        )
+
         return c.json({
             success: true,
             message: `${validation.data.ids.length} applicants updated`,
@@ -315,23 +354,13 @@ app.post('/bulk-update', authenticate, async (c) => {
 })
 
 // Delete applicant
-app.delete('/delete/:id', authenticate, async (c) => {
+app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
         const user = getAuthUser(c)
 
-        if (user.role === 'reviewer') {
-            return c.json(
-                {
-                    success: false,
-                    error: 'Reviewers cannot delete applicants',
-                },
-                400
-            )
-        }
-
-        const applicant = await Applicant.findById(id)
+        const applicant = await Applicant.findById(id).populate('jobId', 'title')
         if (!applicant) {
             return c.json(
                 {
@@ -342,7 +371,28 @@ app.delete('/delete/:id', authenticate, async (c) => {
             )
         }
 
+        const applicantName = applicant.personalData?.name || 'Unknown'
+        const applicantEmail = applicant.personalData?.email || 'Unknown'
+        const jobTitle = applicant.jobId && typeof applicant.jobId === 'object' ? (applicant.jobId as any).title : 'Unknown'
+
         await Applicant.findByIdAndDelete(id)
+
+        // Log applicant deletion
+        await logUserAction(
+            user,
+            'applicant.deleted',
+            'Applicant',
+            id,
+            `Deleted applicant: ${applicantName} (${applicantEmail})`,
+            {
+                resourceName: applicantName,
+                metadata: {
+                    applicantEmail,
+                    jobTitle,
+                },
+                severity: 'warning',
+            }
+        )
 
         return c.json({
             success: true,

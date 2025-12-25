@@ -25,7 +25,8 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
-import { getRoleColor, type UserRole } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { getRoleColor } from "@/lib/authClient"
 import { logoutAction } from "@/app/(auth)/login/actions"
 import { cn } from "@/lib/utils"
 

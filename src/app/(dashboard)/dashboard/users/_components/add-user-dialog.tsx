@@ -20,7 +20,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { hasPermission, type UserRole } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import { Eye, EyeOff, UserPlus } from "lucide-react"

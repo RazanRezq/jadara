@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { getRoleColor, hasPermission, type SessionPayload, type UserRole } from "@/lib/auth"
+import { type SessionPayload } from "@/lib/auth"
+import { hasGranularPermission, getRoleColor } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import {
     LayoutDashboard,
@@ -21,7 +22,7 @@ interface NavItem {
     titleKey: string
     href: string
     icon: React.ElementType
-    requiredRole: UserRole
+    requiredPermission?: string // Granular permission (optional - some items always visible)
 }
 
 const navItems: NavItem[] = [
@@ -29,49 +30,49 @@ const navItems: NavItem[] = [
         titleKey: "sidebar.dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
-        requiredRole: "reviewer",
+        // Dashboard always visible to all authenticated users
     },
     {
         titleKey: "sidebar.jobs",
         href: "/dashboard/jobs",
         icon: Briefcase,
-        requiredRole: "reviewer",
+        requiredPermission: "jobs.view",
     },
     {
         titleKey: "sidebar.candidates",
         href: "/dashboard/applicants",
         icon: Users,
-        requiredRole: "reviewer",
+        requiredPermission: "applicants.view",
     },
     {
         titleKey: "sidebar.calendar",
         href: "/dashboard/calendar",
         icon: Calendar,
-        requiredRole: "admin",
+        requiredPermission: "jobs.create", // Calendar is for admins who can create jobs
     },
     {
         titleKey: "sidebar.questionBank",
         href: "/dashboard/questions",
         icon: HelpCircle,
-        requiredRole: "admin",
+        requiredPermission: "questions.view",
     },
     {
         titleKey: "sidebar.scorecards",
         href: "/dashboard/scorecards",
         icon: ClipboardList,
-        requiredRole: "admin",
+        requiredPermission: "evaluations.create", // Scorecards for those who can evaluate
     },
     {
         titleKey: "sidebar.team",
         href: "/dashboard/team",
         icon: UsersRound,
-        requiredRole: "admin",
+        requiredPermission: "users.view",
     },
     {
         titleKey: "sidebar.settings",
         href: "/dashboard/settings",
         icon: Settings,
-        requiredRole: "admin",
+        requiredPermission: "company.view",
     },
 ]
 
@@ -83,9 +84,15 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     const pathname = usePathname()
     const { t, isRTL } = useTranslate()
 
-    const filteredNavItems = navItems.filter((item) =>
-        hasPermission(user.role, item.requiredRole)
-    )
+    // Filter nav items based on granular permissions
+    const filteredNavItems = navItems.filter((item) => {
+        // If no permission required, always show
+        if (!item.requiredPermission) {
+            return true
+        }
+        // Check granular permission synchronously using default permission sets
+        return hasGranularPermission(user.role, item.requiredPermission)
+    })
 
     return (
         <aside className={cn(

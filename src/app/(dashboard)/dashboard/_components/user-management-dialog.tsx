@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useTranslate } from "@/hooks/useTranslate"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import type { UserRole } from "@/lib/auth"
 
 const userFormSchema = z.object({
@@ -67,7 +67,6 @@ export function UserManagementDialog({
     onSuccess,
 }: UserManagementDialogProps) {
     const { t } = useTranslate()
-    const { toast } = useToast()
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const form = useForm<UserFormData>({
@@ -103,25 +102,19 @@ export function UserManagementDialog({
             const result = await response.json()
 
             if (result.success) {
-                toast({
-                    title: t(mode === "create" ? "users.userCreated" : "users.userUpdated"),
-                })
+                toast.success(t(mode === "create" ? "users.userCreated" : "users.userUpdated"))
                 onSuccess()
                 onOpenChange(false)
                 form.reset()
             } else {
-                toast({
-                    title: t("common.error"),
+                toast.error(t("common.error"), {
                     description: result.error || t("users.operationFailed"),
-                    variant: "destructive",
                 })
             }
         } catch (error) {
             console.error("Error saving user:", error)
-            toast({
-                title: t("common.error"),
+            toast.error(t("common.error"), {
                 description: t("users.operationFailed"),
-                variant: "destructive",
             })
         } finally {
             setIsSubmitting(false)

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Job from './jobSchema'
 import { authenticate, requireRole, getAuthUser } from '@/lib/authMiddleware'
+import { logUserAction } from '@/lib/auditLogger'
 
 const criteriaSchema = z.object({
     name: z.string().min(1, 'Criteria name is required'),
@@ -149,6 +150,25 @@ app.post('/add', authenticate, requireRole('admin'), async (c) => {
         }
 
         const job = await Job.create(jobData)
+
+        // Log job creation
+        await logUserAction(
+            user,
+            'job.created',
+            'Job',
+            job._id.toString(),
+            `Created job: ${job.title}`,
+            {
+                resourceName: job.title,
+                metadata: {
+                    department: job.department,
+                    location: job.location,
+                    type: job.employmentType,
+                    status: job.status,
+                },
+                severity: 'info',
+            }
+        )
 
         return c.json(
             {
@@ -369,20 +389,20 @@ app.patch('/:id', authenticate, requireRole('admin'), async (c) => {
             // Extract meaningful field errors from Zod validation
             const issues = validation.error.issues
             const fieldErrors: Record<string, string[]> = {}
-            
+
             for (const issue of issues) {
                 const path = issue.path
                 const fieldName = String(path[0] || 'form')
-                
+
                 if (!fieldErrors[fieldName]) {
                     fieldErrors[fieldName] = []
                 }
-                
+
                 if (!fieldErrors[fieldName].includes(issue.message)) {
                     fieldErrors[fieldName].push(issue.message)
                 }
             }
-            
+
             return c.json(
                 {
                     success: false,
@@ -414,6 +434,27 @@ app.patch('/:id', authenticate, requireRole('admin'), async (c) => {
 
         // Reload the job to get all fields
         const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
+
+        // Log job update
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            await logUserAction(
+                user,
+                'job.updated',
+                'Job',
+                job._id.toString(),
+                `Updated job: ${job.title}`,
+                {
+                    resourceName: job.title,
+                    metadata: {
+                        department: job.department,
+                        location: job.location,
+                        status: job.status,
+                    },
+                    severity: 'info',
+                }
+            )
+        }
 
         return c.json({
             success: true,
@@ -515,6 +556,27 @@ app.post('/update/:id', authenticate, requireRole('admin'), async (c) => {
         // Reload the job to get all fields
         const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
 
+        // Log job update
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            await logUserAction(
+                user,
+                'job.updated',
+                'Job',
+                job._id.toString(),
+                `Updated job: ${job.title}`,
+                {
+                    resourceName: job.title,
+                    metadata: {
+                        department: job.department,
+                        location: job.location,
+                        status: job.status,
+                    },
+                    severity: 'info',
+                }
+            )
+        }
+
         return c.json({
             success: true,
             message: 'Job updated successfully',
@@ -590,11 +652,35 @@ app.post('/toggle-status/:id', authenticate, requireRole('admin'), async (c) => 
         }
 
         // Toggle between active and closed
+        const oldStatus = job.status
         const newStatus = job.status === 'active' ? 'closed' : 'active'
         job.status = newStatus
         await job.save()
 
         const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
+
+        // Log job status change
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            const action = newStatus === 'active' ? 'job.published' : 'job.closed'
+            await logUserAction(
+                user,
+                action,
+                'Job',
+                job._id.toString(),
+                `Changed job status from ${oldStatus} to ${newStatus}: ${job.title}`,
+                {
+                    resourceName: job.title,
+                    metadata: {
+                        oldStatus,
+                        newStatus,
+                        department: job.department,
+                        location: job.location,
+                    },
+                    severity: 'info',
+                }
+            )
+        }
 
         return c.json({
             success: true,
@@ -666,7 +752,33 @@ app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
             )
         }
 
+        // Store job details before deletion for audit log
+        const jobTitle = job.title
+        const jobDepartment = job.department
+        const jobLocation = job.location
+        const jobId = job._id.toString()
+
         await Job.findByIdAndDelete(id)
+
+        // Log job deletion
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            await logUserAction(
+                user,
+                'job.deleted',
+                'Job',
+                jobId,
+                `Deleted job: ${jobTitle}`,
+                {
+                    resourceName: jobTitle,
+                    metadata: {
+                        department: jobDepartment,
+                        location: jobLocation,
+                    },
+                    severity: 'warning',
+                }
+            )
+        }
 
         return c.json({
             success: true,

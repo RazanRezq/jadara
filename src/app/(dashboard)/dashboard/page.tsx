@@ -16,82 +16,134 @@ async function getAdminStats() {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    // Get action required count (new applicants)
-    const actionRequired = await Applicant.countDocuments({ status: "new" })
+    // Use Promise.all to run queries in parallel
+    const [
+        actionRequired,
+        interviewsScheduled,
+        totalHired,
+        activeJobs,
+        applicantsTrend,
+        funnelData,
+        recentApplicantsData,
+    ] = await Promise.all([
+        // Get action required count (new applicants)
+        Applicant.countDocuments({ status: "new" }),
 
-    // Get interviews scheduled count
-    const interviewsScheduled = await Applicant.countDocuments({
-        status: "interviewing",
-    })
+        // Get interviews scheduled count
+        Applicant.countDocuments({ status: "interviewing" }),
 
-    // Get total hired count
-    const totalHired = await Applicant.countDocuments({ status: "hired" })
+        // Get total hired count
+        Applicant.countDocuments({ status: "hired" }),
 
-    // Get active jobs count
-    const activeJobs = await Job.countDocuments({ status: "active" })
+        // Get active jobs count
+        Job.countDocuments({ status: "active" }),
 
-    // Get applications trend for last 30 days
-    const applicants = await Applicant.find({
-        submittedAt: { $gte: thirtyDaysAgo },
-        isComplete: true,
-    }).select("submittedAt")
+        // Get applications trend for last 30 days using aggregation
+        Applicant.aggregate([
+            {
+                $match: {
+                    submittedAt: { $gte: thirtyDaysAgo },
+                    isComplete: true,
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: "%Y-%m-%d", date: "$submittedAt" },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    date: "$_id",
+                    count: 1,
+                },
+            },
+        ]),
 
-    // Group by date
-    const dateMap = new Map<string, number>()
-    applicants.forEach((app) => {
-        const date = app.submittedAt?.toISOString().split("T")[0]
-        if (date) {
-            dateMap.set(date, (dateMap.get(date) || 0) + 1)
-        }
-    })
+        // Get funnel data using aggregation (single query instead of 6)
+        Applicant.aggregate([
+            {
+                $match: {
+                    status: { $in: ["new", "screening", "interviewing", "evaluated", "shortlisted", "hired"] },
+                },
+            },
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 },
+                },
+            },
+        ]),
 
-    const applicationsLast30Days = Array.from(dateMap.entries())
-        .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => a.date.localeCompare(b.date))
+        // Get recent applicants with evaluations using aggregation (single query with lookup)
+        Applicant.aggregate([
+            {
+                $match: {
+                    isComplete: true,
+                    submittedAt: { $exists: true },
+                },
+            },
+            { $sort: { submittedAt: -1 } },
+            { $limit: 5 },
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job",
+                },
+            },
+            {
+                $lookup: {
+                    from: "evaluations",
+                    localField: "_id",
+                    foreignField: "applicantId",
+                    as: "evaluation",
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    name: "$personalData.name",
+                    jobTitle: { $arrayElemAt: ["$job.title", 0] },
+                    aiScore: { $arrayElemAt: ["$evaluation.overallScore", 0] },
+                    submittedAt: 1,
+                },
+            },
+        ]),
+    ])
 
-    // Get funnel data
+    // Format funnel data to match expected structure
     const funnelStages = ["new", "screening", "interviewing", "evaluated", "shortlisted", "hired"]
-    const funnelData = await Promise.all(
-        funnelStages.map(async (stage) => ({
-            stage,
-            count: await Applicant.countDocuments({ status: stage }),
-        }))
-    )
+    const funnelMap = new Map(funnelData.map((item: any) => [item._id, item.count]))
+    const formattedFunnelData = funnelStages.map((stage) => ({
+        stage,
+        count: funnelMap.get(stage) || 0,
+    }))
 
-    // Get recent applicants with AI scores
-    const recentApplicants = await Applicant.find({
-        isComplete: true,
-        submittedAt: { $exists: true },
-    })
-        .sort({ submittedAt: -1 })
-        .limit(5)
-        .populate("jobId", "title")
-        .lean()
-
-    const recentApplicantsWithScores = await Promise.all(
-        recentApplicants.map(async (applicant) => {
-            const evaluation = await Evaluation.findOne({
-                applicantId: applicant._id,
-            }).lean()
-
-            return {
-                _id: applicant._id.toString(),
-                name: applicant.personalData.name,
-                jobTitle: (applicant.jobId as any)?.title || "Unknown",
-                aiScore: evaluation?.overallScore || 0,
-                submittedAt: applicant.submittedAt || new Date(),
-            }
-        })
-    )
+    // Format recent applicants
+    const recentApplicants = recentApplicantsData.map((app: any) => ({
+        _id: app._id.toString(),
+        name: app.name || "Unknown",
+        jobTitle: app.jobTitle || "Unknown",
+        aiScore: app.aiScore || 0,
+        submittedAt: app.submittedAt || new Date(),
+    }))
 
     return {
         actionRequired,
         interviewsScheduled,
         totalHired,
         activeJobs,
-        applicationsLast30Days,
-        funnelData,
-        recentApplicants: recentApplicantsWithScores,
+        applicationsLast30Days: applicantsTrend,
+        funnelData: formattedFunnelData,
+        recentApplicants,
     }
 }
 
@@ -99,36 +151,74 @@ async function getAdminStats() {
 async function getReviewerStats(userId: string) {
     await dbConnect()
 
-    // Get evaluations assigned to this reviewer
-    const assignedEvaluations = await Evaluation.find({
-        reviewedBy: userId,
-    })
-        .populate("applicantId", "personalData sessionId")
-        .populate("jobId", "title")
-        .lean()
+    // Use aggregation to get counts and queue in single query
+    const [stats, evaluationQueue] = await Promise.all([
+        // Get counts using aggregation
+        Evaluation.aggregate([
+            { $match: { reviewedBy: userId } },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    completed: {
+                        $sum: {
+                            $cond: [{ $ne: ["$manualRecommendation", null] }, 1, 0],
+                        },
+                    },
+                    pending: {
+                        $sum: {
+                            $cond: [{ $eq: ["$manualRecommendation", null] }, 1, 0],
+                        },
+                    },
+                },
+            },
+        ]),
 
-    const pendingReviews = assignedEvaluations.filter(
-        (evaluation) => !evaluation.manualRecommendation
-    ).length
+        // Get pending evaluations with lookups
+        Evaluation.aggregate([
+            { $match: { reviewedBy: userId, manualRecommendation: null } },
+            {
+                $lookup: {
+                    from: "applicants",
+                    localField: "applicantId",
+                    foreignField: "_id",
+                    as: "applicant",
+                },
+            },
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job",
+                },
+            },
+            {
+                $project: {
+                    _id: { $arrayElemAt: ["$applicant._id", 0] },
+                    candidateRef: {
+                        $toUpper: {
+                            $substr: [{ $arrayElemAt: ["$applicant.sessionId", 0] }, 0, 8],
+                        },
+                    },
+                    jobTitle: { $arrayElemAt: ["$job.title", 0] },
+                    dateAssigned: "$createdAt",
+                },
+            },
+        ]),
+    ])
 
-    const completedReviews = assignedEvaluations.filter(
-        (evaluation) => evaluation.manualRecommendation
-    ).length
-
-    // Build evaluation queue
-    const evaluationQueue = assignedEvaluations
-        .filter((evaluation) => !evaluation.manualRecommendation)
-        .map((evaluation) => ({
-            _id: (evaluation.applicantId as any)?._id.toString(),
-            candidateRef: (evaluation.applicantId as any)?.sessionId?.substring(0, 8).toUpperCase() || "N/A",
-            jobTitle: (evaluation.jobId as any)?.title || "Unknown",
-            dateAssigned: evaluation.createdAt,
-        }))
+    const { pending = 0, completed = 0 } = stats[0] || {}
 
     return {
-        pendingReviews,
-        completedReviews,
-        evaluationQueue,
+        pendingReviews: pending,
+        completedReviews: completed,
+        evaluationQueue: evaluationQueue.map((item: any) => ({
+            _id: item._id?.toString() || "",
+            candidateRef: item.candidateRef || "N/A",
+            jobTitle: item.jobTitle || "Unknown",
+            dateAssigned: item.dateAssigned,
+        })),
     }
 }
 
@@ -136,15 +226,16 @@ async function getReviewerStats(userId: string) {
 async function getSuperAdminStats() {
     await dbConnect()
 
-    const totalUsers = await User.countDocuments()
-    const totalJobs = await Job.countDocuments()
-
-    // Get all users for the table
-    const users = await User.find()
-        .select("name email role isActive lastLogin")
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .lean()
+    // Run all queries in parallel
+    const [totalUsers, totalJobs, users] = await Promise.all([
+        User.countDocuments(),
+        Job.countDocuments(),
+        User.find()
+            .select("name email role isActive lastLogin")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean(),
+    ])
 
     const usersFormatted = users.map((user) => ({
         _id: user._id.toString(),

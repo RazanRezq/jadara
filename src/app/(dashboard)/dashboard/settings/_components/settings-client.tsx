@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Building2, Users, Shield, Database, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { hasPermission, type UserRole } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { hasPermission } from "@/lib/authClient"
 
 interface SettingsClientProps {
     userRole: UserRole

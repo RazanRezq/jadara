@@ -1,6 +1,6 @@
 import { Context } from 'hono'
 import { getSession } from './session'
-import { hasPermission, UserRole } from './auth'
+import { hasPermission, checkUserPermission, UserRole } from './auth'
 
 export interface AuthenticatedContext extends Context {
   user?: {
@@ -72,4 +72,34 @@ export function getAuthUser(c: Context) {
     throw new Error('User not authenticated')
   }
   return user
+}
+
+/**
+ * Middleware to check if user has a specific granular permission
+ * @param permission Permission to check (e.g., 'jobs.create', 'applicants.delete')
+ */
+export function requirePermission(permission: string) {
+  return async (c: Context, next: () => Promise<void>) => {
+    const user = c.get('user')
+
+    if (!user) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    // Check granular permission from database
+    const hasAccess = await checkUserPermission(user.role, permission)
+
+    if (!hasAccess) {
+      return c.json(
+        {
+          success: false,
+          error: 'Forbidden',
+          details: `This action requires '${permission}' permission`,
+        },
+        403
+      )
+    }
+
+    await next()
+  }
 }

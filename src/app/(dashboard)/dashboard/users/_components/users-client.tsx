@@ -28,7 +28,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent } from "@/components/ui/card"
-import { getRoleColor, hasPermission, type UserRole } from "@/lib/auth"
+import { type UserRole } from "@/lib/auth"
+import { getRoleColor, hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 import {
@@ -41,10 +42,13 @@ import {
     UserCheck,
     UserX,
     RefreshCw,
+    Upload,
+    Download,
 } from "lucide-react"
 import { AddUserDialog } from "./add-user-dialog"
 import { EditUserDialog } from "./edit-user-dialog"
 import { DeleteUserDialog } from "./delete-user-dialog"
+import { BulkImportDialog } from "./bulk-import-dialog"
 import { toast } from "sonner"
 
 interface User {
@@ -76,6 +80,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
     const fetchUsers = useCallback(async () => {
@@ -135,6 +140,28 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
             day: "numeric",
             year: "numeric",
         })
+    }
+
+    const handleExport = async () => {
+        try {
+            const params = new URLSearchParams()
+            if (roleFilter && roleFilter !== "all") params.append("role", roleFilter)
+
+            const response = await fetch(`/api/users/export?${params}`)
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `users-export-${new Date().toISOString().split("T")[0]}.csv`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+            toast.success("Users exported successfully")
+        } catch (error) {
+            console.error("Export failed:", error)
+            toast.error("Failed to export users")
+        }
     }
 
     return (
@@ -198,15 +225,35 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                     <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                 </Button>
 
-                {/* Add User Button */}
                 {hasPermission(currentUserRole, "admin") && (
-                    <Button
-                        onClick={() => setAddDialogOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
-                    >
-                        <Plus className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                        {t("users.addUser")}
-                    </Button>
+                    <>
+                        {/* Export Button */}
+                        <Button
+                            variant="outline"
+                            onClick={handleExport}
+                        >
+                            <Download className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            Export
+                        </Button>
+
+                        {/* Bulk Import Button */}
+                        <Button
+                            variant="outline"
+                            onClick={() => setBulkImportDialogOpen(true)}
+                        >
+                            <Upload className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            Import
+                        </Button>
+
+                        {/* Add User Button */}
+                        <Button
+                            onClick={() => setAddDialogOpen(true)}
+                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
+                        >
+                            <Plus className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            {t("users.addUser")}
+                        </Button>
+                    </>
                 )}
             </div>
 
@@ -343,6 +390,12 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                 onOpenChange={setAddDialogOpen}
                 onSuccess={fetchUsers}
                 currentUserRole={currentUserRole}
+            />
+
+            <BulkImportDialog
+                open={bulkImportDialogOpen}
+                onOpenChange={setBulkImportDialogOpen}
+                onSuccess={fetchUsers}
             />
 
             {selectedUser && (

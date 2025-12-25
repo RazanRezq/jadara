@@ -20,7 +20,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="[--header-height:3.5rem] bg-background">
-            <SidebarProvider className="flex flex-col">
+            <SidebarProvider defaultOpen={true} className="flex flex-col">
                 <SiteHeader userId={session.userId} />
                 <div className="flex flex-1">
                     <AppSidebar user={{
