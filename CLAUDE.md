@@ -48,12 +48,12 @@ src/app/
 │   └── dashboard/
 │       ├── applicants/        # Candidate management
 │       ├── jobs/              # Job postings & wizard
-│       ├── settings/          # Company & user settings
+│       ├── settings/          # Company & user settings (admin+)
 │       ├── calendar/          # Interview scheduling
 │       ├── interviews/        # Interview management
 │       ├── questions/         # Question bank
 │       ├── scorecards/        # Evaluation scorecards
-│       └── team/              # Team management
+│       └── users/             # User management (superadmin only)
 ├── (public)/                  # Public routes
 │   └── apply/[jobId]/         # Public job application flow
 └── api/
@@ -253,7 +253,58 @@ const form = useForm<z.infer<typeof formSchema>>({
 ### Authentication & Sessions
 - Session management: `src/lib/session.ts` (JWT-based)
 - Auth utilities: `src/lib/auth.ts`
+- Authorization middleware: `src/lib/authMiddleware.ts`
 - Protected routes use Server Components with session checks
+
+### Authorization & Role-Based Access Control (RBAC)
+
+**Role Hierarchy:**
+- `reviewer` (level 1) - View and evaluate candidates, submit reviews
+- `admin` (level 2) - All reviewer permissions + job management, settings
+- `superadmin` (level 3) - All admin permissions + user management
+
+**Authorization Middleware:**
+```typescript
+import { authenticate, requireRole, getAuthUser } from '@/lib/authMiddleware'
+
+// All authenticated users
+app.get('/route', authenticate, async (c) => {
+  const user = getAuthUser(c)
+})
+
+// Admin only
+app.post('/route', authenticate, requireRole('admin'), async (c) => {
+  // Only admin and superadmin can access
+})
+```
+
+**Page-Level Guards:**
+```typescript
+// Superadmin only
+if (session.role !== "superadmin") {
+    redirect("/dashboard")
+}
+
+// Admin and above
+if (!hasPermission(session.role, "admin")) {
+    redirect("/dashboard")
+}
+```
+
+**Access Control:**
+- Settings page: Admin+ only
+- User management: Superadmin only
+- Job create/edit/delete: Admin+ only
+- Applicant delete: Admin+ only (reviewers can view/update status only)
+- All evaluation routes: All authenticated users (data filtered by role)
+
+**Security Features:**
+- Session-based authentication (no role/userId in query params)
+- Server-side authorization checks on all protected routes
+- Data filtering for reviewers (hides salary, red flags)
+- Automatic role-based menu filtering in UI
+
+See `REVIEWER_AUTHORIZATION_GUIDE.md` for complete documentation.
 
 ### Component Conventions
 - Use function declarations (not arrow functions) for components

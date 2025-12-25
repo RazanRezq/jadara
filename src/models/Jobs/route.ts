@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Job from './jobSchema'
+import { authenticate, requireRole, getAuthUser } from '@/lib/authMiddleware'
 
 const criteriaSchema = z.object({
     name: z.string().min(1, 'Criteria name is required'),
@@ -90,14 +91,14 @@ const updateJobSchema = createJobSchema.partial()
 
 const app = new Hono()
 
-// Create new job
-app.post('/add', async (c) => {
+// Create new job (admin only)
+app.post('/add', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
-        const userId = c.req.query('userId')
+        const user = getAuthUser(c)
 
-        if (!userId) {
+        if (!user.userId) {
             return c.json(
                 {
                     success: false,
@@ -143,7 +144,7 @@ app.post('/add', async (c) => {
 
         const jobData = {
             ...validation.data,
-            createdBy: userId,
+            createdBy: user.userId,
             expiresAt: validation.data.expiresAt ? new Date(validation.data.expiresAt) : undefined,
         }
 
@@ -176,7 +177,7 @@ app.post('/add', async (c) => {
 })
 
 // Get all jobs with pagination and filtering
-app.get('/list', async (c) => {
+app.get('/list', authenticate, async (c) => {
     try {
         await dbConnect()
         const page = parseInt(c.req.query('page') || '1')
@@ -281,7 +282,7 @@ app.get('/list', async (c) => {
 })
 
 // Get single job
-app.get('/:id', async (c) => {
+app.get('/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -346,7 +347,7 @@ app.get('/:id', async (c) => {
 })
 
 // Update job (PATCH endpoint)
-app.patch('/:id', async (c) => {
+app.patch('/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -463,7 +464,7 @@ app.patch('/:id', async (c) => {
 })
 
 // Update job (POST endpoint - kept for backward compatibility)
-app.post('/update/:id', async (c) => {
+app.post('/update/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -561,7 +562,7 @@ app.post('/update/:id', async (c) => {
 })
 
 // Toggle job status (quick action for active/closed)
-app.post('/toggle-status/:id', async (c) => {
+app.post('/toggle-status/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -638,7 +639,7 @@ app.post('/toggle-status/:id', async (c) => {
 })
 
 // Delete job
-app.delete('/delete/:id', async (c) => {
+app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -684,7 +685,7 @@ app.delete('/delete/:id', async (c) => {
 })
 
 // Get job statistics
-app.get('/stats/overview', async (c) => {
+app.get('/stats/overview', authenticate, async (c) => {
     try {
         await dbConnect()
 
@@ -717,7 +718,7 @@ app.get('/stats/overview', async (c) => {
 })
 
 // Get actionable stats for HR dashboard
-app.get('/stats/actionable', async (c) => {
+app.get('/stats/actionable', authenticate, async (c) => {
     try {
         await dbConnect()
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Applicant from './applicantSchema'
+import { authenticate, getAuthUser } from '@/lib/authMiddleware'
 
 const updateApplicantSchema = z.object({
     status: z.enum(['new', 'screening', 'interviewing', 'evaluated', 'shortlisted', 'hired', 'rejected', 'withdrawn']).optional(),
@@ -25,7 +26,7 @@ const app = new Hono()
 // ============================================
 
 // Get all applicants with pagination and filtering (Admin)
-app.get('/list', async (c) => {
+app.get('/list', authenticate, async (c) => {
     try {
         await dbConnect()
         const page = parseInt(c.req.query('page') || '1')
@@ -36,7 +37,7 @@ app.get('/list', async (c) => {
         const minScore = c.req.query('minScore')
         const maxAge = c.req.query('maxAge')
         const minExperience = c.req.query('minExperience')
-        const userRole = c.req.query('role') || 'admin'
+        const user = getAuthUser(c)
         const onlyComplete = c.req.query('onlyComplete') === 'true'
 
         const query: Record<string, unknown> = {}
@@ -86,7 +87,7 @@ app.get('/list', async (c) => {
             .lean()
 
         // Remove sensitive data for reviewers
-        const isReviewer = userRole === 'reviewer'
+        const isReviewer = user.role === 'reviewer'
 
         return c.json({
             success: true,
@@ -149,11 +150,11 @@ app.get('/list', async (c) => {
 })
 
 // Get single applicant
-app.get('/:id', async (c) => {
+app.get('/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
-        const userRole = c.req.query('role') || 'admin'
+        const user = getAuthUser(c)
 
         const applicant = await Applicant.findById(id).populate('jobId', 'title criteria')
 
@@ -167,7 +168,7 @@ app.get('/:id', async (c) => {
             )
         }
 
-        const isReviewer = userRole === 'reviewer'
+        const isReviewer = user.role === 'reviewer'
 
         return c.json({
             success: true,
@@ -206,7 +207,7 @@ app.get('/:id', async (c) => {
 })
 
 // Update applicant (change status, add notes, etc.)
-app.post('/update/:id', async (c) => {
+app.post('/update/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -270,21 +271,10 @@ app.post('/update/:id', async (c) => {
 })
 
 // Bulk update status
-app.post('/bulk-update', async (c) => {
+app.post('/bulk-update', authenticate, async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
-        const userId = c.req.query('userId')
-
-        if (!userId) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'User ID is required',
-                },
-                400
-            )
-        }
 
         const bulkSchema = z.object({
             ids: z.array(z.string()).min(1),
@@ -325,17 +315,17 @@ app.post('/bulk-update', async (c) => {
 })
 
 // Delete applicant
-app.delete('/delete/:id', async (c) => {
+app.delete('/delete/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
-        const userId = c.req.query('userId')
+        const user = getAuthUser(c)
 
-        if (!userId) {
+        if (user.role === 'reviewer') {
             return c.json(
                 {
                     success: false,
-                    error: 'User ID is required',
+                    error: 'Reviewers cannot delete applicants',
                 },
                 400
             )
@@ -371,7 +361,7 @@ app.delete('/delete/:id', async (c) => {
 })
 
 // Get statistics by job
-app.get('/stats/:jobId', async (c) => {
+app.get('/stats/:jobId', authenticate, async (c) => {
     try {
         await dbConnect()
         const jobId = c.req.param('jobId')

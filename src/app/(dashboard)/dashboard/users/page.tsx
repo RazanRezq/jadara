@@ -10,8 +10,8 @@ export default async function UsersPage() {
         redirect("/login")
     }
 
-    // Only admin and superadmin can access this page
-    if (!hasPermission(session.role, "admin")) {
+    // Only superadmin can access this page
+    if (session.role !== "superadmin") {
         redirect("/dashboard")
     }
 

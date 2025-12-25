@@ -4,7 +4,7 @@ import { useTranslate } from "@/hooks/useTranslate"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Users, Shield, Bell, Globe, Palette, Lock, Database } from "lucide-react"
+import { Building2, Users, Shield, Database, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { hasPermission, type UserRole } from "@/lib/auth"
 
@@ -35,7 +35,7 @@ export function SettingsClient({ userRole }: SettingsClientProps) {
             color: "from-indigo-500 to-purple-500",
             shadowColor: "shadow-indigo-500/20",
             href: "/dashboard/users",
-            requiredRole: "admin" as UserRole,
+            requiredRole: "superadmin" as UserRole,
         },
         {
             id: "roles",
@@ -56,26 +56,6 @@ export function SettingsClient({ userRole }: SettingsClientProps) {
             shadowColor: "shadow-rose-500/20",
             href: "/dashboard/settings/system",
             requiredRole: "superadmin" as UserRole,
-        },
-        {
-            id: "notifications",
-            titleKey: "settings.notifications.title",
-            descriptionKey: "settings.notifications.description",
-            icon: Bell,
-            color: "from-emerald-500 to-green-500",
-            shadowColor: "shadow-emerald-500/20",
-            href: "/dashboard/settings/notifications",
-            requiredRole: "reviewer" as UserRole,
-        },
-        {
-            id: "preferences",
-            titleKey: "settings.preferences.title",
-            descriptionKey: "settings.preferences.description",
-            icon: Palette,
-            color: "from-violet-500 to-purple-500",
-            shadowColor: "shadow-violet-500/20",
-            href: "/dashboard/settings/preferences",
-            requiredRole: "reviewer" as UserRole,
         },
     ]
 

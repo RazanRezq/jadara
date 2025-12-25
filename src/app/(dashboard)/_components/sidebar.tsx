@@ -8,13 +8,13 @@ import { useTranslate } from "@/hooks/useTranslate"
 import {
     LayoutDashboard,
     Users,
-    FileText,
     Settings,
     BookOpen,
-    BarChart3,
     Briefcase,
-    Shield,
-    MessageSquare,
+    Calendar,
+    HelpCircle,
+    ClipboardList,
+    UsersRound,
 } from "lucide-react"
 
 interface NavItem {
@@ -38,46 +38,40 @@ const navItems: NavItem[] = [
         requiredRole: "reviewer",
     },
     {
-        titleKey: "sidebar.applicants",
+        titleKey: "sidebar.candidates",
         href: "/dashboard/applicants",
         icon: Users,
         requiredRole: "reviewer",
     },
     {
-        titleKey: "sidebar.content",
-        href: "/dashboard/content",
-        icon: FileText,
-        requiredRole: "reviewer",
-    },
-    {
-        titleKey: "sidebar.reviews",
-        href: "/dashboard/reviews",
-        icon: MessageSquare,
-        requiredRole: "reviewer",
-    },
-    {
-        titleKey: "sidebar.analytics",
-        href: "/dashboard/analytics",
-        icon: BarChart3,
+        titleKey: "sidebar.calendar",
+        href: "/dashboard/calendar",
+        icon: Calendar,
         requiredRole: "admin",
     },
     {
-        titleKey: "sidebar.users",
-        href: "/dashboard/users",
-        icon: Users,
+        titleKey: "sidebar.questionBank",
+        href: "/dashboard/questions",
+        icon: HelpCircle,
         requiredRole: "admin",
     },
     {
-        titleKey: "sidebar.roles",
-        href: "/dashboard/roles",
-        icon: Shield,
-        requiredRole: "superadmin",
+        titleKey: "sidebar.scorecards",
+        href: "/dashboard/scorecards",
+        icon: ClipboardList,
+        requiredRole: "admin",
+    },
+    {
+        titleKey: "sidebar.team",
+        href: "/dashboard/team",
+        icon: UsersRound,
+        requiredRole: "admin",
     },
     {
         titleKey: "sidebar.settings",
         href: "/dashboard/settings",
         icon: Settings,
-        requiredRole: "superadmin",
+        requiredRole: "admin",
     },
 ]
 

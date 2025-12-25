@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import User from '../src/models/Users/userSchema'
 
-const MONGODB_URI = process.env.MONGODB_URI
+const MONGODB_URI = process.env.MONGODB_URI as string
 
 if (!MONGODB_URI) {
     console.error('Please define MONGODB_URI environment variable')

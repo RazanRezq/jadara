@@ -2,11 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import {
-    BadgeCheck,
-    Bell,
     ChevronsUpDown,
     LogOut,
-    Settings,
 } from "lucide-react"
 
 import {
@@ -16,7 +13,6 @@ import {
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -97,21 +93,6 @@ export function NavUser({ user }: NavUserProps) {
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                {t("header.profile")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Settings />
-                                {t("header.settings")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                {t("header.notifications")}
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                             <LogOut />

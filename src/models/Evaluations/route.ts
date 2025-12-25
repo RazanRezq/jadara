@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongodb'
 import Evaluation from './evaluationSchema'
 import Applicant from '../Applicants/applicantSchema'
 import mongoose from 'mongoose'
+import { authenticate, getAuthUser } from '@/lib/authMiddleware'
 
 // Bilingual content schemas
 const bilingualTextSchema = z.object({
@@ -146,11 +147,11 @@ app.post('/create', async (c) => {
 })
 
 // Get evaluation by applicant
-app.get('/by-applicant/:applicantId', async (c) => {
+app.get('/by-applicant/:applicantId', authenticate, async (c) => {
     try {
         await dbConnect()
         const applicantId = c.req.param('applicantId')
-        const userRole = c.req.query('role') || 'admin'
+        const user = getAuthUser(c)
 
         const evaluation = await Evaluation.findOne({ applicantId })
             .populate('reviewedBy', 'name')
@@ -165,7 +166,7 @@ app.get('/by-applicant/:applicantId', async (c) => {
             })
         }
 
-        const isReviewer = userRole === 'reviewer'
+        const isReviewer = user.role === 'reviewer'
 
         return c.json({
             success: true,
@@ -210,12 +211,12 @@ app.get('/by-applicant/:applicantId', async (c) => {
 })
 
 // Batch get evaluations for multiple applicants (reduces API calls)
-app.post('/batch-by-applicants', async (c) => {
+app.post('/batch-by-applicants', authenticate, async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
         const applicantIds = body.applicantIds as string[]
-        const userRole = c.req.query('role') || 'admin'
+        const user = getAuthUser(c)
 
         if (!Array.isArray(applicantIds) || applicantIds.length === 0) {
             return c.json(
@@ -244,7 +245,7 @@ app.post('/batch-by-applicants', async (c) => {
             .populate('reviewedBy', 'name')
             .lean()
 
-        const isReviewer = userRole === 'reviewer'
+        const isReviewer = user.role === 'reviewer'
 
         // Create a map for quick lookup
         const evaluationMap: Record<string, unknown> = {}
@@ -297,7 +298,7 @@ app.post('/batch-by-applicants', async (c) => {
 })
 
 // Get evaluations by job with sorting
-app.get('/by-job/:jobId', async (c) => {
+app.get('/by-job/:jobId', authenticate, async (c) => {
     try {
         await dbConnect()
         const jobId = c.req.param('jobId')
@@ -305,7 +306,7 @@ app.get('/by-job/:jobId', async (c) => {
         const order = c.req.query('order') === 'asc' ? 1 : -1
         const recommendation = c.req.query('recommendation')
         const minScore = c.req.query('minScore')
-        const userRole = c.req.query('role') || 'admin'
+        const user = getAuthUser(c)
 
         const query: Record<string, unknown> = { jobId, isProcessed: true }
 
@@ -326,7 +327,7 @@ app.get('/by-job/:jobId', async (c) => {
             .limit(100)
             .lean()
 
-        const isReviewer = userRole === 'reviewer'
+        const isReviewer = user.role === 'reviewer'
 
         return c.json({
             success: true,
@@ -356,22 +357,12 @@ app.get('/by-job/:jobId', async (c) => {
 })
 
 // Update evaluation (add manual notes, override recommendation)
-app.post('/update/:id', async (c) => {
+app.post('/update/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
         const body = await c.req.json()
-        const userId = c.req.query('userId')
-
-        if (!userId) {
-            return c.json(
-                {
-                    success: false,
-                    error: 'User ID is required',
-                },
-                400
-            )
-        }
+        const user = getAuthUser(c)
 
         const validation = updateEvaluationSchema.safeParse(body)
         if (!validation.success) {
@@ -398,7 +389,7 @@ app.post('/update/:id', async (c) => {
 
         // If adding manual review
         if (validation.data.manualRecommendation || validation.data.manualNotes) {
-            evaluation.reviewedBy = userId as unknown as mongoose.Types.ObjectId
+            evaluation.reviewedBy = user.userId as unknown as mongoose.Types.ObjectId
             evaluation.reviewedAt = new Date()
         }
 
@@ -422,7 +413,7 @@ app.post('/update/:id', async (c) => {
 })
 
 // Get top candidates for a job
-app.get('/top-candidates/:jobId', async (c) => {
+app.get('/top-candidates/:jobId', authenticate, async (c) => {
     try {
         await dbConnect()
         const jobId = c.req.param('jobId')

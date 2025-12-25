@@ -6,6 +6,7 @@ import { SidebarIcon } from "lucide-react"
 
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { NotificationsDropdown } from "@/components/notifications-dropdown"
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -19,7 +20,11 @@ import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+    userId: string
+}
+
+export function SiteHeader({ userId }: SiteHeaderProps) {
     const { toggleSidebar } = useSidebar()
     const { t, isRTL } = useTranslate()
     const pathname = usePathname()
@@ -113,6 +118,7 @@ export function SiteHeader() {
                     </BreadcrumbList>
                 </Breadcrumb>
                 <div className={`flex items-center gap-2 ${isRTL ? "mr-auto" : "ml-auto"}`}>
+                    <NotificationsDropdown userId={userId} />
                     <ThemeToggle />
                     <LanguageSwitcher />
                 </div>

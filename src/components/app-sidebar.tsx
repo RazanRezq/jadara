@@ -110,13 +110,6 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 title: t("sidebar.categories.systemManagement"),
                 items: [
                     {
-                        title: t("sidebar.team"),
-                        url: "/dashboard/team",
-                        icon: Shield,
-                        isActive: pathname.startsWith("/dashboard/team"),
-                        requiredRole: "admin" as UserRole,
-                    },
-                    {
                         title: t("sidebar.settings"),
                         url: "/dashboard/settings",
                         icon: Settings,
