@@ -50,9 +50,22 @@ app.post('/login', async (c) => {
             )
         }
 
+        // Check if password exists
+        if (!user.password) {
+            console.error(`[Login] User ${email} has no password set`)
+            return c.json(
+                {
+                    success: false,
+                    error: 'User account error. Please contact administrator.',
+                },
+                500
+            )
+        }
+
         const isPasswordValid = await user.comparePassword(password)
 
         if (!isPasswordValid) {
+            console.error(`[Login] Invalid password attempt for ${email}`)
             return c.json(
                 {
                     success: false,
@@ -337,6 +350,60 @@ app.post('/update/:id', async (c) => {
                 role: user.role,
                 isActive: user.isActive,
             },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Reset password (for admin use or when passwords are unknown)
+app.post('/reset-password/:id', async (c) => {
+    try {
+        await dbConnect()
+        const id = c.req.param('id')
+        const body = await c.req.json()
+
+        const resetPasswordSchema = z.object({
+            newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+        })
+
+        const validation = resetPasswordSchema.safeParse(body)
+        if (!validation.success) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Validation failed',
+                    details: validation.error.flatten().fieldErrors,
+                },
+                400
+            )
+        }
+
+        const user = await User.findById(id).select('+password')
+        if (!user) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'User not found',
+                },
+                404
+            )
+        }
+
+        // Set new password (will be hashed by pre-save hook)
+        user.password = validation.data.newPassword
+        await user.save()
+
+        return c.json({
+            success: true,
+            message: 'Password reset successfully',
         })
     } catch (error) {
         return c.json(

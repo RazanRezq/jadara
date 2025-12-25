@@ -28,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { hasPermission, type UserRole } from "@/lib/auth"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
@@ -49,13 +50,16 @@ import {
     Link as LinkIcon,
     Ban,
     ExternalLink,
+    Inbox,
+    Star,
+    Trophy,
 } from "lucide-react"
 import { JobWizardDialog } from "./wizard"
-import { EditJobDialog } from "./edit-job-dialog"
 import { DeleteJobDialog } from "./delete-job-dialog"
 import { ViewJobDialog } from "./view-job-dialog"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export type JobStatus = 'draft' | 'active' | 'closed' | 'archived'
 
@@ -93,6 +97,7 @@ const statusColors: Record<JobStatus, string> = {
 
 export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
     const { t, isRTL } = useTranslate()
+    const router = useRouter()
     const [jobs, setJobs] = useState<Job[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -101,9 +106,16 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
 
+    // Actionable stats
+    const [actionableStats, setActionableStats] = useState({
+        needsReview: 0,
+        topTalent: 0,
+        activeJobs: 0,
+    })
+    const [statsLoading, setStatsLoading] = useState(true)
+
     // Dialog states
     const [addDialogOpen, setAddDialogOpen] = useState(false)
-    const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -134,9 +146,26 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
         }
     }, [page, searchTerm, statusFilter, t])
 
+    // Fetch actionable stats
+    const fetchActionableStats = useCallback(async () => {
+        setStatsLoading(true)
+        try {
+            const response = await fetch('/api/jobs/stats/actionable')
+            const data = await response.json()
+            if (data.success) {
+                setActionableStats(data.stats)
+            }
+        } catch (error) {
+            console.error("Failed to fetch actionable stats:", error)
+        } finally {
+            setStatsLoading(false)
+        }
+    }, [])
+
     useEffect(() => {
         fetchJobs()
-    }, [fetchJobs])
+        fetchActionableStats()
+    }, [fetchJobs, fetchActionableStats])
 
     const handleSearch = (value: string) => {
         setSearchTerm(value)
@@ -154,8 +183,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
     }
 
     const handleEditJob = (job: Job) => {
-        setSelectedJob(job)
-        setEditDialogOpen(true)
+        router.push(`/dashboard/jobs/${job.id}/edit`)
     }
 
     const handleDeleteJob = (job: Job) => {
@@ -173,7 +201,17 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
         })
     }
 
-    const handleToggleStatus = async (job: Job) => {
+    const handleToggleStatus = async (job: Job, checked: boolean) => {
+        const newStatus = checked ? 'active' : 'closed'
+        const previousStatus = job.status
+
+        // Optimistic update
+        setJobs(prevJobs =>
+            prevJobs.map(j =>
+                j.id === job.id ? { ...j, status: newStatus as JobStatus } : j
+            )
+        )
+
         try {
             const response = await fetch(`/api/jobs/toggle-status/${job.id}?userId=${userId}`, {
                 method: "POST",
@@ -181,18 +219,31 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
             const data = await response.json()
 
             if (data.success) {
-                const newStatus = job.status === 'active' ? 'closed' : 'active'
                 toast.success(
-                    newStatus === 'closed'
-                        ? t("jobs.hiringClosed")
-                        : t("jobs.hiringActivated")
+                    newStatus === 'active'
+                        ? t("jobs.hiringActivated")
+                        : t("jobs.hiringClosed")
                 )
+                // Refresh to get latest data
                 fetchJobs()
+                fetchActionableStats()
             } else {
+                // Revert on error
+                setJobs(prevJobs =>
+                    prevJobs.map(j =>
+                        j.id === job.id ? { ...j, status: previousStatus } : j
+                    )
+                )
                 toast.error(data.error || t("common.error"))
             }
         } catch (error) {
             console.error("Failed to toggle status:", error)
+            // Revert on error
+            setJobs(prevJobs =>
+                prevJobs.map(j =>
+                    j.id === job.id ? { ...j, status: previousStatus } : j
+                )
+            )
             toast.error(t("common.error"))
         }
     }
@@ -206,35 +257,34 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
         })
     }
 
-    // Dummy stats data
-    const stats = [
+    // Actionable stats cards
+    const actionableCards = [
         {
-            labelKey: "jobs.stats.actionNeeded",
-            valueKey: "jobs.stats.actionNeededValue",
-            icon: AlertCircle,
-            color: "from-red-500 to-rose-500",
-            shadowColor: "shadow-red-500/20",
+            labelKey: "jobs.stats.needsReview",
+            value: actionableStats.needsReview,
+            icon: Inbox,
+            color: "from-orange-500 to-amber-500",
+            shadowColor: "shadow-orange-500/20",
+            href: "/dashboard/applicants?status=new",
         },
         {
-            labelKey: "jobs.stats.qualityHires",
-            valueKey: "jobs.stats.qualityHiresValue",
-            icon: CheckCircle2,
+            labelKey: "jobs.stats.topTalent",
+            value: actionableStats.topTalent,
+            icon: Trophy,
             color: "from-emerald-500 to-green-500",
             shadowColor: "shadow-emerald-500/20",
-        },
-        {
-            labelKey: "jobs.stats.expiringSoon",
-            valueKey: "jobs.stats.expiringSoonValue",
-            icon: Clock,
-            color: "from-amber-500 to-yellow-500",
-            shadowColor: "shadow-amber-500/20",
+            href: "/dashboard/applicants?minScore=80",
         },
         {
             labelKey: "jobs.stats.activeJobs",
-            valueKey: "jobs.stats.activeJobsValue",
-            icon: Activity,
+            value: actionableStats.activeJobs,
+            icon: Briefcase,
             color: "from-blue-500 to-indigo-500",
             shadowColor: "shadow-blue-500/20",
+            onClick: () => {
+                setStatusFilter("active")
+                setPage(1)
+            },
         },
     ]
 
@@ -250,38 +300,87 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                    <Card key={index} className="relative overflow-hidden">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className={cn(
-                                "text-sm font-medium text-muted-foreground",
-                                isRTL && "text-right"
-                            )}>
-                                {t(stat.labelKey)}
-                            </CardTitle>
-                            <div
-                                className={cn(
-                                    "w-10 h-10 rounded-lg bg-gradient-to-br",
-                                    stat.color,
-                                    "flex items-center justify-center shadow-lg",
-                                    stat.shadowColor
-                                )}
-                            >
-                                <stat.icon className="w-5 h-5 text-white" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className={cn(
-                                "text-2xl font-bold",
-                                isRTL && "text-right"
-                            )}>
-                                {t(stat.valueKey)}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+            {/* Actionable Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {actionableCards.map((card, index) => {
+                    if (card.href) {
+                        return (
+                            <Link key={index} href={card.href}>
+                                <Card className="relative overflow-hidden transition-all hover:shadow-lg cursor-pointer">
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <CardTitle className={cn(
+                                            "text-sm font-medium text-muted-foreground",
+                                            isRTL && "text-right"
+                                        )}>
+                                            {t(card.labelKey)}
+                                        </CardTitle>
+                                        <div
+                                            className={cn(
+                                                "w-10 h-10 rounded-lg bg-gradient-to-br",
+                                                card.color,
+                                                "flex items-center justify-center shadow-lg",
+                                                card.shadowColor
+                                            )}
+                                        >
+                                            <card.icon className="w-5 h-5 text-white" />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className={cn(
+                                            "text-2xl font-bold",
+                                            isRTL && "text-right"
+                                        )}>
+                                            {statsLoading ? (
+                                                <Spinner className="h-6 w-6 text-muted-foreground" />
+                                            ) : (
+                                                card.value
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        )
+                    }
+
+                    return (
+                        <Card
+                            key={index}
+                            onClick={card.onClick}
+                            className="relative overflow-hidden transition-all hover:shadow-lg cursor-pointer"
+                        >
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className={cn(
+                                    "text-sm font-medium text-muted-foreground",
+                                    isRTL && "text-right"
+                                )}>
+                                    {t(card.labelKey)}
+                                </CardTitle>
+                                <div
+                                    className={cn(
+                                        "w-10 h-10 rounded-lg bg-gradient-to-br",
+                                        card.color,
+                                        "flex items-center justify-center shadow-lg",
+                                        card.shadowColor
+                                    )}
+                                >
+                                    <card.icon className="w-5 h-5 text-white" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={cn(
+                                    "text-2xl font-bold",
+                                    isRTL && "text-right"
+                                )}>
+                                    {statsLoading ? (
+                                        <Spinner className="h-6 w-6" />
+                                    ) : (
+                                        card.value
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
             </div>
 
             {/* Filters and Actions Bar */}
@@ -357,7 +456,6 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                 <TableRow>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.jobTitle")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.department")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.location")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.applicants")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("common.status")}</TableHead>
                                     <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.created")}</TableHead>
@@ -383,13 +481,10 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                         <TableCell className="text-muted-foreground">
                                             {job.department || "-"}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {job.location || "-"}
-                                        </TableCell>
                                         <TableCell>
                                             <Link href={`/dashboard/applicants?jobId=${job.id}`}>
-                                                <Badge 
-                                                    variant="outline" 
+                                                <Badge
+                                                    variant="outline"
                                                     className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
                                                 >
                                                     <Users className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1")} />
@@ -398,9 +493,16 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                             </Link>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={cn("border-0", statusColors[job.status])}>
-                                                {t(`jobs.status.${job.status}`)}
-                                            </Badge>
+                                            {(job.status === 'active' || job.status === 'closed') ? (
+                                                <Switch
+                                                    checked={job.status === 'active'}
+                                                    onCheckedChange={(checked) => handleToggleStatus(job, checked)}
+                                                />
+                                            ) : (
+                                                <Badge className={cn("border-0", statusColors[job.status])}>
+                                                    {t(`jobs.status.${job.status}`)}
+                                                </Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {formatDate(job.createdAt)}
@@ -413,7 +515,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    {/* Priority Action: Copy Application Link */}
+                                                    {/* Copy Application Link */}
                                                     <DropdownMenuItem
                                                         onClick={() => handleCopyApplicationLink(job.id)}
                                                         className="cursor-pointer font-medium"
@@ -421,31 +523,6 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         <LinkIcon className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
                                                         {t("jobs.copyApplicationLink")}
                                                     </DropdownMenuItem>
-
-                                                    <DropdownMenuSeparator />
-
-                                                    {/* Quick Status Toggle */}
-                                                    {(job.status === 'active' || job.status === 'closed') && (
-                                                        <>
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleToggleStatus(job)}
-                                                                className="cursor-pointer"
-                                                            >
-                                                                {job.status === 'active' ? (
-                                                                    <>
-                                                                        <Ban className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                                        {t("jobs.closeHiring")}
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <CheckCircle2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                                        {t("jobs.activateHiring")}
-                                                                    </>
-                                                                )}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                        </>
-                                                    )}
 
                                                     {/* Preview Page */}
                                                     <DropdownMenuItem
@@ -456,14 +533,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         {t("jobs.previewPage")}
                                                     </DropdownMenuItem>
 
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleViewJob(job)}
-                                                        className="cursor-pointer"
-                                                    >
-                                                        <Eye className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                        {t("common.view")}
-                                                    </DropdownMenuItem>
-
+                                                    {/* Questions Builder */}
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/jobs/${job.id}/questions`} className="cursor-pointer">
                                                             <FileQuestion className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
@@ -471,15 +541,9 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         </Link>
                                                     </DropdownMenuItem>
 
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/dashboard/applicants?jobId=${job.id}`} className="cursor-pointer">
-                                                            <Users className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
-                                                            {t("jobs.applicants")}
-                                                        </Link>
-                                                    </DropdownMenuItem>
-
                                                     <DropdownMenuSeparator />
 
+                                                    {/* Edit */}
                                                     <DropdownMenuItem
                                                         onClick={() => handleEditJob(job)}
                                                         className="cursor-pointer"
@@ -490,6 +554,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
 
                                                     <DropdownMenuSeparator />
 
+                                                    {/* Delete */}
                                                     <DropdownMenuItem
                                                         onClick={() => handleDeleteJob(job)}
                                                         className="text-destructive focus:text-destructive cursor-pointer"
@@ -552,13 +617,6 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         open={viewDialogOpen}
                         onOpenChange={setViewDialogOpen}
                         job={selectedJob}
-                    />
-                    <EditJobDialog
-                        open={editDialogOpen}
-                        onOpenChange={setEditDialogOpen}
-                        job={selectedJob}
-                        onSuccess={fetchJobs}
-                        userId={userId}
                     />
                     <DeleteJobDialog
                         open={deleteDialogOpen}

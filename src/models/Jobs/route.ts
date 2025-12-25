@@ -345,7 +345,124 @@ app.get('/:id', async (c) => {
     }
 })
 
-// Update job
+// Update job (PATCH endpoint)
+app.patch('/:id', async (c) => {
+    try {
+        await dbConnect()
+        const id = c.req.param('id')
+        const body = await c.req.json()
+        const userId = c.req.query('userId')
+
+        if (!userId) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'User ID is required',
+                },
+                400
+            )
+        }
+
+        const validation = updateJobSchema.safeParse(body)
+        if (!validation.success) {
+            // Extract meaningful field errors from Zod validation
+            const issues = validation.error.issues
+            const fieldErrors: Record<string, string[]> = {}
+            
+            for (const issue of issues) {
+                const path = issue.path
+                const fieldName = String(path[0] || 'form')
+                
+                if (!fieldErrors[fieldName]) {
+                    fieldErrors[fieldName] = []
+                }
+                
+                if (!fieldErrors[fieldName].includes(issue.message)) {
+                    fieldErrors[fieldName].push(issue.message)
+                }
+            }
+            
+            return c.json(
+                {
+                    success: false,
+                    error: 'Validation failed',
+                    details: fieldErrors,
+                },
+                400
+            )
+        }
+
+        const job = await Job.findById(id)
+        if (!job) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job not found',
+                },
+                404
+            )
+        }
+
+        const updateData = {
+            ...validation.data,
+            expiresAt: validation.data.expiresAt ? new Date(validation.data.expiresAt) : job.expiresAt,
+        }
+
+        Object.assign(job, updateData)
+        await job.save()
+
+        // Reload the job to get all fields
+        const updatedJob = await Job.findById(id).populate('createdBy', 'name email')
+
+        return c.json({
+            success: true,
+            message: 'Job updated successfully',
+            job: updatedJob ? {
+                id: updatedJob._id.toString(),
+                title: updatedJob.title,
+                description: updatedJob.description,
+                department: updatedJob.department,
+                location: updatedJob.location,
+                employmentType: updatedJob.employmentType,
+                salaryMin: updatedJob.salaryMin,
+                salaryMax: updatedJob.salaryMax,
+                currency: updatedJob.currency,
+                // Step 2: Evaluation Criteria
+                skills: updatedJob.skills,
+                screeningQuestions: updatedJob.screeningQuestions,
+                languages: updatedJob.languages,
+                minExperience: updatedJob.minExperience,
+                autoRejectThreshold: updatedJob.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: updatedJob.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: updatedJob.candidateInstructions,
+                questions: updatedJob.questions,
+                retakePolicy: updatedJob.retakePolicy,
+                // Legacy fields
+                requiredSkills: updatedJob.requiredSkills,
+                responsibilities: updatedJob.responsibilities,
+                criteria: updatedJob.criteria,
+                status: updatedJob.status,
+                expiresAt: updatedJob.expiresAt,
+                createdBy: updatedJob.createdBy,
+                createdAt: updatedJob.createdAt,
+                updatedAt: updatedJob.updatedAt,
+            } : null,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Update job (POST endpoint - kept for backward compatibility)
 app.post('/update/:id', async (c) => {
     try {
         await dbConnect()
@@ -585,6 +702,54 @@ app.get('/stats/overview', async (c) => {
                 active: activeJobs,
                 draft: draftJobs,
                 closed: closedJobs,
+            },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Get actionable stats for HR dashboard
+app.get('/stats/actionable', async (c) => {
+    try {
+        await dbConnect()
+
+        // Import Applicant model
+        const Applicant = (await import('../Applicants/applicantSchema')).default
+
+        // Get active job IDs
+        const activeJobs = await Job.find({ status: 'active' }).select('_id').lean()
+        const activeJobIds = activeJobs.map(job => job._id)
+
+        // Count applicants with status 'new' across all active jobs
+        const needsReviewCount = activeJobIds.length > 0
+            ? await Applicant.countDocuments({
+                jobId: { $in: activeJobIds },
+                status: 'new',
+            })
+            : 0
+
+        // Count applicants with AI Score > 80% (across all jobs)
+        const topTalentCount = await Applicant.countDocuments({
+            aiScore: { $gt: 80 },
+        })
+
+        // Count active jobs
+        const activeJobsCount = activeJobIds.length
+
+        return c.json({
+            success: true,
+            stats: {
+                needsReview: needsReviewCount,
+                topTalent: topTalentCount,
+                activeJobs: activeJobsCount,
             },
         })
     } catch (error) {

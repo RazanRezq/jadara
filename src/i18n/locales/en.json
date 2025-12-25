@@ -113,7 +113,29 @@
         "viewEditContent": "View & edit content",
         "submitReviews": "Submit reviews",
         "systemSettings": "System settings",
-        "roleManagement": "Role management"
+        "roleManagement": "Role management",
+        "recruiter": {
+            "totalApplicants": "Total Applicants",
+            "activeJobs": "Active Jobs",
+            "interviewsScheduled": "Interviews Scheduled",
+            "needsReview": "Needs Review",
+            "fromLastMonth": "from last month",
+            "applicationsOverTime": "Applications Over Time",
+            "applicationsOverTimeDesc": "Daily application submissions for the last 30 days",
+            "recruitmentFunnel": "Recruitment Funnel",
+            "recruitmentFunnelDesc": "Candidate progression through hiring stages",
+            "recentActivity": "Recent Activity",
+            "recentActivityDesc": "Latest updates and actions",
+            "upcomingInterviews": "Upcoming Interviews",
+            "upcomingInterviewsDesc": "Scheduled interviews for today and tomorrow",
+            "noRecentActivity": "No recent activity",
+            "noUpcomingInterviews": "No upcoming interviews",
+            "newApplicant": "New applicant",
+            "interviewScheduled": "Interview scheduled",
+            "evaluationCompleted": "Evaluation completed",
+            "shortlisted": "Shortlisted",
+            "hired": "Hired"
+        }
     },
     "activities": {
         "newReadingPassage": "New Reading Passage Added",
@@ -232,7 +254,9 @@
             "expiringSoon": "Expiring Soon",
             "expiringSoonValue": "2 Jobs",
             "activeJobs": "Active Jobs",
-            "activeJobsValue": "8"
+            "activeJobsValue": "8",
+            "needsReview": "Needs Review",
+            "topTalent": "Top Talent"
         }
     },
     "applicants": {
@@ -516,9 +540,11 @@
     },
     "jobWizard": {
         "title": "Smart Job Creation Wizard",
+        "editJob": "Edit Job",
         "step": "Step",
         "saveAsDraft": "Save as Draft",
         "publishJob": "Publish Job",
+        "updateJob": "Update Job",
         "jobPublished": "Job published successfully",
         "jobSavedAsDraft": "Job saved as draft",
         "validationError": "Please fix errors before continuing",

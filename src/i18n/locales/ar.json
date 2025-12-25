@@ -113,7 +113,29 @@
         "viewEditContent": "عرض وتحرير المحتوى",
         "submitReviews": "تقديم المراجعات",
         "systemSettings": "إعدادات النظام",
-        "roleManagement": "إدارة الأدوار"
+        "roleManagement": "إدارة الأدوار",
+        "recruiter": {
+            "totalApplicants": "إجمالي المتقدمين",
+            "activeJobs": "الوظائف النشطة",
+            "interviewsScheduled": "المقابلات المجدولة",
+            "needsReview": "يحتاج إلى مراجعة",
+            "fromLastMonth": "مقارنة بالشهر الماضي",
+            "applicationsOverTime": "الطلبات بمرور الوقت",
+            "applicationsOverTimeDesc": "تقديمات الطلبات اليومية خلال آخر 30 يوم",
+            "recruitmentFunnel": "قمع التوظيف",
+            "recruitmentFunnelDesc": "تقدم المرشحين عبر مراحل التوظيف",
+            "recentActivity": "النشاط الأخير",
+            "recentActivityDesc": "آخر التحديثات والإجراءات",
+            "upcomingInterviews": "المقابلات القادمة",
+            "upcomingInterviewsDesc": "المقابلات المجدولة لليوم وغداً",
+            "noRecentActivity": "لا يوجد نشاط حديث",
+            "noUpcomingInterviews": "لا توجد مقابلات قادمة",
+            "newApplicant": "متقدم جديد",
+            "interviewScheduled": "تم جدولة مقابلة",
+            "evaluationCompleted": "اكتمل التقييم",
+            "shortlisted": "قائمة مختصرة",
+            "hired": "تم التوظيف"
+        }
     },
     "activities": {
         "newReadingPassage": "تمت إضافة نص قراءة جديد",
@@ -232,7 +254,9 @@
             "expiringSoon": "تنتهي قريباً",
             "expiringSoonValue": "2 وظيفة",
             "activeJobs": "الوظائف النشطة",
-            "activeJobsValue": "8"
+            "activeJobsValue": "8",
+            "needsReview": "مطلوب مراجعتهم",
+            "topTalent": "أفضل المواهب"
         }
     },
     "applicants": {
@@ -516,9 +540,11 @@
     },
     "jobWizard": {
         "title": "معالج إنشاء الوظيفة الذكية",
+        "editJob": "تعديل الوظيفة",
         "step": "الخطوة",
         "saveAsDraft": "حفظ كمسودة",
         "publishJob": "نشر الوظيفة",
+        "updateJob": "تحديث الوظيفة",
         "jobPublished": "تم نشر الوظيفة بنجاح",
         "jobSavedAsDraft": "تم حفظ الوظيفة كمسودة",
         "validationError": "يرجى إصلاح الأخطاء قبل المتابعة",

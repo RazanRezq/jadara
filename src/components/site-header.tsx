@@ -23,6 +23,28 @@ export function SiteHeader() {
     const { toggleSidebar } = useSidebar()
     const { t, isRTL } = useTranslate()
     const pathname = usePathname()
+    const [jobTitle, setJobTitle] = React.useState<string | null>(null)
+
+    // Check if we're on any job-related page and fetch job title
+    React.useEffect(() => {
+        const jobRouteMatch = pathname.match(/^\/dashboard\/jobs\/([a-f0-9]{24})/)
+        if (jobRouteMatch) {
+            const jobId = jobRouteMatch[1]
+            // Fetch job title
+            fetch(`/api/jobs/${jobId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.job?.title) {
+                        setJobTitle(data.job.title)
+                    }
+                })
+                .catch(() => {
+                    // Silently fail - will show jobId as fallback
+                })
+        } else {
+            setJobTitle(null)
+        }
+    }, [pathname])
 
     // Generate breadcrumbs from pathname
     const pathSegments = pathname.split("/").filter(Boolean)
@@ -30,24 +52,34 @@ export function SiteHeader() {
         const href = "/" + pathSegments.slice(0, index + 1).join("/")
         const isLast = index === pathSegments.length - 1
         
-        // Try multiple translation keys in order of preference
-        const translationKeys = [
-            `breadcrumb.${segment}`,  // Breadcrumb-specific translations
-            `sidebar.${segment}`,     // Sidebar translations
-            `settings.${segment}.title`, // Settings section titles
-        ]
+        // Check if this segment is a jobId (24 character hex string) and we have the job title
+        const isJobId = /^[a-f0-9]{24}$/i.test(segment)
+        let displayName = segment
         
-        let translatedName = segment.charAt(0).toUpperCase() + segment.slice(1) // Default fallback
-        
-        for (const key of translationKeys) {
-            const translation = t(key)
-            if (translation !== key) {
-                translatedName = translation
-                break
+        if (isJobId && jobTitle) {
+            // Replace jobId with job title
+            displayName = jobTitle
+        } else {
+            // Try multiple translation keys in order of preference
+            const translationKeys = [
+                `breadcrumb.${segment}`,  // Breadcrumb-specific translations
+                `common.${segment}`,      // Common translations (edit, delete, etc.)
+                `sidebar.${segment}`,     // Sidebar translations
+                `settings.${segment}.title`, // Settings section titles
+            ]
+            
+            displayName = segment.charAt(0).toUpperCase() + segment.slice(1) // Default fallback
+            
+            for (const key of translationKeys) {
+                const translation = t(key)
+                if (translation !== key) {
+                    displayName = translation
+                    break
+                }
             }
         }
         
-        return { href, name: translatedName, isLast }
+        return { href, name: displayName, isLast }
     })
 
     return (

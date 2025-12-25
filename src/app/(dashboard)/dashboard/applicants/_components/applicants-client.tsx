@@ -280,6 +280,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const { t, isRTL } = useTranslate()
     const searchParams = useSearchParams()
     const jobIdFromUrl = searchParams.get("jobId")
+    const statusFromUrl = searchParams.get("status")
+    const minScoreFromUrl = searchParams.get("minScore")
 
     // Data states
     const [applicants, setApplicants] = useState<Applicant[]>([])
@@ -289,9 +291,13 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState("")
-    const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set())
+    const [statusFilters, setStatusFilters] = useState<Set<string>>(
+        statusFromUrl ? new Set([statusFromUrl]) : new Set()
+    )
     const [jobFilter, setJobFilter] = useState<string>(jobIdFromUrl || "all")
-    const [minScore, setMinScore] = useState<number>(0)
+    const [minScore, setMinScore] = useState<number>(
+        minScoreFromUrl ? parseInt(minScoreFromUrl) : 0
+    )
     const [experienceRange, setExperienceRange] = useState<[number, number]>([0, 20])
     const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
 
@@ -433,7 +439,13 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         if (jobIdFromUrl) {
             setJobFilter(jobIdFromUrl)
         }
-    }, [jobIdFromUrl])
+        if (statusFromUrl) {
+            setStatusFilters(new Set([statusFromUrl]))
+        }
+        if (minScoreFromUrl) {
+            setMinScore(parseInt(minScoreFromUrl))
+        }
+    }, [jobIdFromUrl, statusFromUrl, minScoreFromUrl])
 
     // Filter handlers
     const handleSearch = (value: string) => {

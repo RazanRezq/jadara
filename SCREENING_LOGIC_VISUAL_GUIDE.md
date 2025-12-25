@@ -402,3 +402,4 @@ Score Impact: Critical - Auto-reject trigger
 Use this alongside `SMART_SCREENING_IMPLEMENTATION.md` for comprehensive understanding.
 
 
+
