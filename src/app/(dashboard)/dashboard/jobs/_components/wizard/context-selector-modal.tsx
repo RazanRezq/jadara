@@ -224,7 +224,7 @@ export function ContextSelectorModal({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className={cn("max-w-3xl max-h-[90vh] overflow-y-auto", isRTL && "text-right")}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto text-start">
                 {/* Step 1: Context Selection */}
                 {step === "select" && (
                     <>
@@ -289,7 +289,7 @@ export function ContextSelectorModal({
                                             )}
                                             onClick={() => toggleVibe(chip.id)}
                                         >
-                                            <span className="mr-1">{chip.icon}</span>
+                                            <span className="me-1">{chip.icon}</span>
                                             {locale === 'ar' ? chip.labelAr : chip.label}
                                         </Badge>
                                     ))}
@@ -318,7 +318,7 @@ export function ContextSelectorModal({
                                             )}
                                             onClick={() => toggleBenefit(chip.id)}
                                         >
-                                            <span className="mr-1">{chip.icon}</span>
+                                            <span className="me-1">{chip.icon}</span>
                                             {locale === 'ar' ? chip.labelAr : chip.label}
                                         </Badge>
                                     ))}
@@ -428,7 +428,7 @@ export function ContextSelectorModal({
                                 disabled={!jobTitle}
                                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                             >
-                                <Sparkles className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                <Sparkles className="h-4 w-4 me-2" />
                                 {t("jobWizard.contextSelector.generate")}
                             </Button>
                         </DialogFooter>
@@ -535,7 +535,7 @@ export function ContextSelectorModal({
                                 onClick={handleUseDescription}
                                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                             >
-                                <CheckCircle2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                <CheckCircle2 className="h-4 w-4 me-2" />
                                 {t("jobWizard.aiGeneration.useDescription")}
                             </Button>
                         </DialogFooter>

@@ -16,9 +16,21 @@ export interface AuthenticatedContext extends Context {
  */
 export async function authenticate(c: Context, next: () => Promise<void>) {
   try {
+    console.log('[Auth Middleware] Step 1: Attempting to get session...')
     const session = await getSession()
 
+    console.log('[Auth Middleware] Step 2: Session retrieved:', session ? '✅ YES' : '❌ NO')
+    if (session) {
+      console.log('[Auth Middleware] Session details:', {
+        userId: session.userId,
+        name: session.name,
+        role: session.role,
+        email: session.email,
+      })
+    }
+
     if (!session) {
+      console.warn('[Auth Middleware] ❌ No session found - returning 401')
       return c.json({ success: false, error: 'Unauthorized' }, 401)
     }
 
@@ -30,8 +42,11 @@ export async function authenticate(c: Context, next: () => Promise<void>) {
       role: session.role,
     })
 
+    console.log('[Auth Middleware] Step 3: User attached to context successfully')
     await next()
   } catch (error) {
+    console.error('[Auth Middleware] ❌ ERROR:', error)
+    console.error('[Auth Middleware] Error details:', error instanceof Error ? error.message : 'Unknown error')
     return c.json({ success: false, error: 'Authentication failed' }, 401)
   }
 }
@@ -69,9 +84,13 @@ export function requireRole(requiredRole: UserRole) {
 export function getAuthUser(c: Context) {
   const user = c.get('user')
   if (!user) {
+    console.error('[getAuthUser] ❌ No user in context! This should not happen after authenticate middleware.')
     throw new Error('User not authenticated')
   }
-  return user
+  return {
+    id: user.userId,  // Map userId to id for backwards compatibility
+    ...user,
+  }
 }
 
 /**

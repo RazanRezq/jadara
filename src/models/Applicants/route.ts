@@ -269,6 +269,30 @@ app.post('/update/:id', authenticate, async (c) => {
                     severity: 'info',
                 }
             )
+
+            // Auto-send emails on status change (CRITICAL for workflow)
+            try {
+                const { sendOfferEmail, sendRejectionEmail } = await import('@/lib/email')
+
+                if (validation.data.status === 'hired' && applicantEmail && applicantEmail !== 'Unknown') {
+                    await sendOfferEmail(applicantEmail, {
+                        candidateName: applicantName,
+                        jobTitle: jobTitle,
+                    })
+                    console.log(`✅ Offer email sent to ${applicantEmail}`)
+                }
+
+                if (validation.data.status === 'rejected' && applicantEmail && applicantEmail !== 'Unknown') {
+                    await sendRejectionEmail(applicantEmail, {
+                        candidateName: applicantName,
+                        jobTitle: jobTitle,
+                    })
+                    console.log(`✅ Rejection email sent to ${applicantEmail}`)
+                }
+            } catch (emailError) {
+                console.error('❌ Failed to send email:', emailError)
+                // Don't fail the status update if email fails
+            }
         }
 
         return c.json({

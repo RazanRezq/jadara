@@ -131,9 +131,11 @@ function downloadBlob(blob: Blob, filename: string) {
 
 /**
  * Format applicant data for export
+ * Enhanced with AI Summary and Key Insights
  */
-export function formatApplicantsForExport(applicants: any[]) {
-    const headers = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function formatApplicantsForExport(applicants: any[], includeAISummary = true) {
+    const baseHeaders = [
         "Name",
         "Email",
         "Phone",
@@ -144,18 +146,54 @@ export function formatApplicantsForExport(applicants: any[]) {
         "Submitted Date",
     ]
 
-    const rows = applicants.map((applicant) => [
-        applicant.personalData?.name || "N/A",
-        applicant.personalData?.email || "N/A",
-        applicant.personalData?.phone || "N/A",
-        applicant.jobTitle || "N/A",
-        applicant.status || "N/A",
-        applicant.aiScore || 0,
-        applicant.personalData?.yearsOfExperience || 0,
-        applicant.submittedAt
-            ? new Date(applicant.submittedAt).toLocaleDateString()
-            : "N/A",
-    ])
+    const aiHeaders = includeAISummary
+        ? [
+              "AI Summary",
+              "Top Strengths",
+              "Red Flags",
+              "Recommendation",
+          ]
+        : []
+
+    const headers = [...baseHeaders, ...aiHeaders]
+
+    const rows = applicants.map((applicant) => {
+        const baseData = [
+            applicant.personalData?.name || "N/A",
+            applicant.personalData?.email || "N/A",
+            applicant.personalData?.phone || "N/A",
+            applicant.jobTitle || "N/A",
+            applicant.status || "N/A",
+            applicant.aiScore || 0,
+            applicant.personalData?.yearsOfExperience || 0,
+            applicant.submittedAt
+                ? new Date(applicant.submittedAt).toLocaleDateString()
+                : "N/A",
+        ]
+
+        if (!includeAISummary) {
+            return baseData
+        }
+
+        // Extract AI evaluation data
+        const evaluation = applicant.evaluation
+        const aiSummary = evaluation?.summary || "No AI evaluation available"
+
+        const topStrengths = evaluation?.strengths
+            ?.slice(0, 3)
+            .map((s: string) => `• ${s}`)
+            .join("\n") || "N/A"
+
+        const redFlags = evaluation?.redFlags && evaluation.redFlags.length > 0
+            ? evaluation.redFlags.map((r: string) => `⚠️ ${r}`).join("\n")
+            : "None"
+
+        const recommendation = evaluation?.recommendation || "Pending review"
+
+        const aiData = [aiSummary, topStrengths, redFlags, recommendation]
+
+        return [...baseData, ...aiData]
+    })
 
     return { headers, rows }
 }
@@ -163,6 +201,7 @@ export function formatApplicantsForExport(applicants: any[]) {
 /**
  * Format dashboard stats for export
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function formatDashboardStatsForExport(stats: any) {
     const headers = ["Metric", "Value"]
 

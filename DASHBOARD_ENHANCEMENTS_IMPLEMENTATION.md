@@ -528,11 +528,11 @@ import { ar, enUS } from "date-fns/locale"
 - [x] User CRUD operations complete
 - [x] Translations added (English + Arabic)
 - [x] Documentation created
-- [ ] Install dependencies: `bun add jspdf jspdf-autotable`
-- [ ] Register notification routes in main API router
-- [ ] Add NotificationsDropdown to header
-- [ ] Test all export formats
-- [ ] Test notifications across different roles
+- [x] Install dependencies: `bun add jspdf jspdf-autotable`
+- [x] Register notification routes in main API router
+- [x] Add NotificationsDropdown to header
+- [x] Test all export formats
+- [x] Test notifications across different roles
 
 ---
 

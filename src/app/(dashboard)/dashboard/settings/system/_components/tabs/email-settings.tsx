@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Mail, Send } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslate } from "@/hooks/useTranslate"
 
 interface EmailSettingsProps {
     config: any
@@ -23,6 +24,7 @@ interface EmailSettingsProps {
 }
 
 export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
+    const { t, dir } = useTranslate()
     const [formData, setFormData] = useState(config || {})
     const [testing, setTesting] = useState(false)
 
@@ -39,7 +41,7 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
     }
 
     const handleTest = async () => {
-        const testEmail = prompt("Enter email address to send test email:")
+        const testEmail = prompt(t("settings.system.email.testEmailPrompt"))
         if (!testEmail) return
 
         try {
@@ -53,36 +55,36 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
             const result = await response.json()
 
             if (result.success) {
-                toast.success("Test email sent successfully")
+                toast.success(t("settings.system.email.testEmailSuccess"))
             } else {
-                toast.error(result.error || "Failed to send test email")
+                toast.error(result.error || t("settings.system.email.testEmailError"))
             }
         } catch (error) {
-            toast.error("Error sending test email")
+            toast.error(t("settings.system.email.testEmailErrorSending"))
         } finally {
             setTesting(false)
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" dir={dir}>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Mail className="h-5 w-5" />
-                        Email Configuration
+                        {t("settings.system.email.title")}
                     </CardTitle>
-                    <CardDescription>
-                        Configure email service for sending notifications and communications
+                    <CardDescription className="text-start">
+                        {t("settings.system.email.description")}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Enable/Disable Email */}
                     <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label>Enable Email Service</Label>
+                        <div className="space-y-0.5 text-start">
+                            <Label>{t("settings.system.email.enableService")}</Label>
                             <p className="text-sm text-muted-foreground">
-                                Turn on email functionality for the system
+                                {t("settings.system.email.enableDescription")}
                             </p>
                         </div>
                         <Switch
@@ -92,14 +94,15 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
                     </div>
 
                     {/* Email Provider */}
-                    <div className="space-y-2">
-                        <Label htmlFor="provider">Email Provider</Label>
+                    <div className="space-y-2 text-start">
+                        <Label htmlFor="provider">{t("settings.system.email.provider")}</Label>
                         <Select
                             value={formData.provider}
                             onValueChange={(value) => handleChange("provider", value)}
+                            dir={dir}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select provider" />
+                                <SelectValue placeholder={t("settings.system.email.selectProvider")} />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="resend">Resend</SelectItem>
@@ -112,14 +115,15 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
 
                     {/* API Key (for non-SMTP providers) */}
                     {formData.provider !== "smtp" && (
-                        <div className="space-y-2">
-                            <Label htmlFor="apiKey">API Key</Label>
+                        <div className="space-y-2 text-start">
+                            <Label htmlFor="apiKey">{t("settings.system.email.apiKey")}</Label>
                             <Input
                                 id="apiKey"
                                 type="password"
                                 value={formData.apiKey || ""}
                                 onChange={(e) => handleChange("apiKey", e.target.value)}
-                                placeholder="Enter API key"
+                                placeholder={t("settings.system.email.apiKeyPlaceholder")}
+                                dir="ltr"
                             />
                         </div>
                     )}
@@ -128,44 +132,48 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
                     {formData.provider === "smtp" && (
                         <>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="smtpHost">SMTP Host</Label>
+                                <div className="space-y-2 text-start">
+                                    <Label htmlFor="smtpHost">{t("settings.system.email.smtpHost")}</Label>
                                     <Input
                                         id="smtpHost"
                                         value={formData.smtpHost || ""}
                                         onChange={(e) => handleChange("smtpHost", e.target.value)}
-                                        placeholder="smtp.example.com"
+                                        placeholder={t("settings.system.email.smtpHostPlaceholder")}
+                                        dir="ltr"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="smtpPort">SMTP Port</Label>
+                                <div className="space-y-2 text-start">
+                                    <Label htmlFor="smtpPort">{t("settings.system.email.smtpPort")}</Label>
                                     <Input
                                         id="smtpPort"
                                         type="number"
                                         value={formData.smtpPort || 587}
                                         onChange={(e) => handleChange("smtpPort", parseInt(e.target.value))}
-                                        placeholder="587"
+                                        placeholder={t("settings.system.email.smtpPortPlaceholder")}
+                                        dir="ltr"
                                     />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="smtpUser">SMTP Username</Label>
+                                <div className="space-y-2 text-start">
+                                    <Label htmlFor="smtpUser">{t("settings.system.email.smtpUsername")}</Label>
                                     <Input
                                         id="smtpUser"
                                         value={formData.smtpUser || ""}
                                         onChange={(e) => handleChange("smtpUser", e.target.value)}
-                                        placeholder="username"
+                                        placeholder={t("settings.system.email.smtpUsernamePlaceholder")}
+                                        dir="ltr"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="smtpPassword">SMTP Password</Label>
+                                <div className="space-y-2 text-start">
+                                    <Label htmlFor="smtpPassword">{t("settings.system.email.smtpPassword")}</Label>
                                     <Input
                                         id="smtpPassword"
                                         type="password"
                                         value={formData.smtpPassword || ""}
                                         onChange={(e) => handleChange("smtpPassword", e.target.value)}
-                                        placeholder="password"
+                                        placeholder={t("settings.system.email.smtpPasswordPlaceholder")}
+                                        dir="ltr"
                                     />
                                 </div>
                             </div>
@@ -173,39 +181,41 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
                     )}
 
                     {/* From Email */}
-                    <div className="space-y-2">
-                        <Label htmlFor="fromEmail">From Email Address</Label>
+                    <div className="space-y-2 text-start">
+                        <Label htmlFor="fromEmail">{t("settings.system.email.fromEmail")}</Label>
                         <Input
                             id="fromEmail"
                             type="email"
                             value={formData.fromEmail || ""}
                             onChange={(e) => handleChange("fromEmail", e.target.value)}
-                            placeholder="noreply@example.com"
+                            placeholder={t("settings.system.email.fromEmailPlaceholder")}
+                            dir="ltr"
                             required
                         />
                     </div>
 
                     {/* From Name */}
-                    <div className="space-y-2">
-                        <Label htmlFor="fromName">From Name</Label>
+                    <div className="space-y-2 text-start">
+                        <Label htmlFor="fromName">{t("settings.system.email.fromName")}</Label>
                         <Input
                             id="fromName"
                             value={formData.fromName || ""}
                             onChange={(e) => handleChange("fromName", e.target.value)}
-                            placeholder="GoIELTS Recruitment"
+                            placeholder={t("settings.system.email.fromNamePlaceholder")}
                             required
                         />
                     </div>
 
                     {/* Reply To */}
-                    <div className="space-y-2">
-                        <Label htmlFor="replyTo">Reply-To Email (Optional)</Label>
+                    <div className="space-y-2 text-start">
+                        <Label htmlFor="replyTo">{t("settings.system.email.replyTo")}</Label>
                         <Input
                             id="replyTo"
                             type="email"
                             value={formData.replyTo || ""}
                             onChange={(e) => handleChange("replyTo", e.target.value)}
-                            placeholder="support@example.com"
+                            placeholder={t("settings.system.email.replyToPlaceholder")}
+                            dir="ltr"
                         />
                     </div>
                 </CardContent>
@@ -219,20 +229,11 @@ export function EmailSettings({ config, onSave, saving }: EmailSettingsProps) {
                     onClick={handleTest}
                     disabled={!formData.enabled || testing}
                 >
-                    {testing ? (
-                        <>
-                            <span className="animate-spin mr-2">⏳</span>
-                            Sending...
-                        </>
-                    ) : (
-                        <>
-                            <Send className="h-4 w-4 mr-2" />
-                            Send Test Email
-                        </>
-                    )}
+                    <Send className="h-4 w-4 me-2" />
+                    {testing ? t("settings.system.email.sending") : t("settings.system.email.sendTestEmail")}
                 </Button>
                 <Button type="submit" disabled={saving}>
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? t("settings.system.email.saving") : t("settings.system.email.saveChanges")}
                 </Button>
             </div>
         </form>

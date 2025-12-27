@@ -76,7 +76,7 @@ interface Alert {
 }
 
 export function SystemHealthClient() {
-    const { locale, isRTL } = useTranslate()
+    const { locale } = useTranslate()
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [health, setHealth] = useState<SystemHealth | null>(null)
@@ -169,12 +169,12 @@ export function SystemHealthClient() {
                         variant={autoRefresh ? "default" : "outline"}
                         onClick={() => setAutoRefresh(!autoRefresh)}
                     >
-                        <Zap className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                        <Zap className="h-4 w-4 me-2" />
                         {locale === "ar" ? "تحديث تلقائي" : "Auto Refresh"}
                     </Button>
                     <Button variant="outline" onClick={() => fetchHealth(false)} disabled={refreshing}>
                         <RefreshCw
-                            className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2", refreshing && "animate-spin")}
+                            className={cn("h-4 w-4 me-2", refreshing && "animate-spin")}
                         />
                         {locale === "ar" ? "تحديث" : "Refresh"}
                     </Button>
@@ -460,19 +460,19 @@ export function SystemHealthClient() {
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50">
                                 <tr>
-                                    <th className={cn("p-3 text-left", isRTL && "text-right")}>
+                                    <th className="p-3 text-start">
                                         {locale === "ar" ? "المجموعة" : "Collection"}
                                     </th>
-                                    <th className={cn("p-3 text-left", isRTL && "text-right")}>
+                                    <th className="p-3 text-start">
                                         {locale === "ar" ? "العدد" : "Count"}
                                     </th>
-                                    <th className={cn("p-3 text-left", isRTL && "text-right")}>
+                                    <th className="p-3 text-start">
                                         {locale === "ar" ? "الحجم" : "Size"}
                                     </th>
-                                    <th className={cn("p-3 text-left", isRTL && "text-right")}>
+                                    <th className="p-3 text-start">
                                         {locale === "ar" ? "متوسط حجم العنصر" : "Avg. Object Size"}
                                     </th>
-                                    <th className={cn("p-3 text-left", isRTL && "text-right")}>
+                                    <th className="p-3 text-start">
                                         {locale === "ar" ? "الفهارس" : "Indexes"}
                                     </th>
                                 </tr>

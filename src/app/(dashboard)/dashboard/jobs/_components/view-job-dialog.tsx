@@ -117,7 +117,7 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
                                 size="lg"
                                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0"
                             >
-                                <Copy className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                <Copy className="h-4 w-4 me-2" />
                                 {t("jobs.copyLink")}
                             </Button>
                         </div>
@@ -166,11 +166,8 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
                     {/* Description */}
                     <div>
                         <h4 className="font-semibold mb-2">{t("jobs.description")}</h4>
-                        <article 
-                            className={cn(
-                                "prose prose-sm max-w-none",
-                                isRTL && "text-right"
-                            )}
+                        <article
+                            className="prose prose-sm max-w-none text-start"
                             dir={isRTL ? "rtl" : "ltr"}
                         >
                             <ReactMarkdown>{job.description}</ReactMarkdown>

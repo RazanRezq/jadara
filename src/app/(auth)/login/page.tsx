@@ -96,8 +96,7 @@ export default function LoginPage() {
 
                 {/* Content */}
                 <div className={cn(
-                    "relative z-10 flex flex-col justify-center px-16 xl:px-24",
-                    isRTL && "text-right"
+                    "relative z-10 flex flex-col justify-center px-16 xl:px-24 text-start"
                 )}>
                     {/* Logo */}
                     <div className="mb-12">
@@ -170,7 +169,7 @@ export default function LoginPage() {
                     </div>
 
                     {/* Form header */}
-                    <div className={cn("mb-10", isRTL && "text-right")}>
+                    <div className="mb-10 text-start">
                         <h2 className="text-3xl font-bold text-foreground mb-3">
                             {t("auth.welcomeBack")}
                         </h2>
@@ -199,10 +198,8 @@ export default function LoginPage() {
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 required
-                                className={cn(
-                                    "h-12 rounded-xl",
-                                    isRTL && "text-right"
-                                )}
+                                className="h-12 rounded-xl text-start"
+                                dir="ltr"
                             />
                         </div>
 
@@ -218,18 +215,13 @@ export default function LoginPage() {
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     required
-                                    className={cn(
-                                        "h-12 rounded-xl",
-                                        isRTL ? "pl-12 text-right" : "pr-12"
-                                    )}
+                                    className="h-12 rounded-xl pe-12 text-start"
+                                    dir="ltr"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className={cn(
-                                        "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors",
-                                        isRTL ? "left-4" : "right-4"
-                                    )}
+                                    className="absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors end-4"
                                 >
                                     {showPassword ? (
                                         <EyeOff className="w-5 h-5" />

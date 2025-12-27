@@ -28,6 +28,19 @@ export type AuditAction =
     | 'evaluation.created'
     | 'evaluation.updated'
     | 'evaluation.deleted'
+    // Interview actions
+    | 'interview.scheduled'
+    | 'interview.updated'
+    | 'interview.cancelled'
+    | 'interview.completed'
+    // Review actions
+    | 'review.submitted'
+    | 'review.updated'
+    | 'review.deleted'
+    // Comment actions
+    | 'comment.created'
+    | 'comment.updated'
+    | 'comment.deleted'
     // System actions
     | 'system.settings_updated'
     | 'system.backup_created'
@@ -148,7 +161,6 @@ const AuditLogSchema = new Schema<IAuditLog>(
         timestamp: {
             type: Date,
             default: Date.now,
-            index: true,
         },
     },
     {

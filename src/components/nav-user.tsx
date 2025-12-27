@@ -72,7 +72,7 @@ export function NavUser({ user }: NavUserProps) {
                                     {t(`roles.${user.role}`)}
                                 </span>
                             </div>
-                            <ChevronsUpDown className={cn("size-4", isRTL ? "mr-auto" : "ml-auto")} />
+                            <ChevronsUpDown className="size-4 ms-auto" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent

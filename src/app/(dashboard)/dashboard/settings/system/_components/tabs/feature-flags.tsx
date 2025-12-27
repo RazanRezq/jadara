@@ -5,56 +5,89 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { ToggleLeft } from "lucide-react"
+import { useTranslate } from "@/hooks/useTranslate"
 
-export function FeatureFlags({ config, onSave, saving }: any) {
+interface FeatureFlagsProps {
+    config: any
+    onSave: (data: any) => Promise<void>
+    saving: boolean
+}
+
+export function FeatureFlags({ config, onSave, saving }: FeatureFlagsProps) {
+    const { t, dir } = useTranslate()
     const [formData, setFormData] = useState(config || {})
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        await onSave(formData)
+    }
+
+    const features = [
+        {
+            key: "enableVoiceRecording",
+            labelKey: "settings.system.features.voiceRecording",
+            descKey: "settings.system.features.voiceRecordingDesc"
+        },
+        {
+            key: "enableAIEvaluation",
+            labelKey: "settings.system.features.aiEvaluation",
+            descKey: "settings.system.features.aiEvaluationDesc"
+        },
+        {
+            key: "enableInterviewScheduling",
+            labelKey: "settings.system.features.interviewScheduling",
+            descKey: "settings.system.features.interviewSchedulingDesc"
+        },
+        {
+            key: "enableOfferManagement",
+            labelKey: "settings.system.features.offerManagement",
+            descKey: "settings.system.features.offerManagementDesc"
+        },
+        {
+            key: "enableVideoInterviews",
+            labelKey: "settings.system.features.videoInterviews",
+            descKey: "settings.system.features.videoInterviewsDesc"
+        }
+    ]
+
     return (
-        <form onSubmit={(e) => { e.preventDefault(); onSave(formData) }} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" dir={dir}>
             <Card>
                 <CardHeader>
-                    <CardTitle>Feature Flags</CardTitle>
-                    <CardDescription>Enable or disable specific features across the platform</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                        <ToggleLeft className="h-5 w-5" />
+                        {t("settings.system.features.title")}
+                    </CardTitle>
+                    <CardDescription className="text-start">
+                        {t("settings.system.features.description")}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label>Voice Recording</Label>
-                            <p className="text-sm text-muted-foreground">Allow voice question responses</p>
+                    {features.map((feature) => (
+                        <div
+                            key={feature.key}
+                            className="flex items-center justify-between"
+                        >
+                            <div className="text-start">
+                                <Label>{t(feature.labelKey)}</Label>
+                                <p className="text-sm text-muted-foreground">{t(feature.descKey)}</p>
+                            </div>
+                            <Switch
+                                checked={formData[feature.key]}
+                                onCheckedChange={(c) => setFormData({ ...formData, [feature.key]: c })}
+                            />
                         </div>
-                        <Switch checked={formData.enableVoiceRecording} onCheckedChange={(c) => setFormData({...formData, enableVoiceRecording: c})} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label>AI Evaluation</Label>
-                            <p className="text-sm text-muted-foreground">Enable AI-powered candidate evaluation</p>
-                        </div>
-                        <Switch checked={formData.enableAIEvaluation} onCheckedChange={(c) => setFormData({...formData, enableAIEvaluation: c})} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label>Interview Scheduling</Label>
-                            <p className="text-sm text-muted-foreground">Enable calendar and interview booking</p>
-                        </div>
-                        <Switch checked={formData.enableInterviewScheduling} onCheckedChange={(c) => setFormData({...formData, enableInterviewScheduling: c})} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label>Offer Management</Label>
-                            <p className="text-sm text-muted-foreground">Enable offer creation and tracking</p>
-                        </div>
-                        <Switch checked={formData.enableOfferManagement} onCheckedChange={(c) => setFormData({...formData, enableOfferManagement: c})} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label>Video Interviews</Label>
-                            <p className="text-sm text-muted-foreground">Enable video interview functionality</p>
-                        </div>
-                        <Switch checked={formData.enableVideoInterviews} onCheckedChange={(c) => setFormData({...formData, enableVideoInterviews: c})} />
-                    </div>
+                    ))}
                 </CardContent>
             </Card>
-            <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+                <Button type="submit" disabled={saving}>
+                    {saving ? t("settings.system.features.saving") : t("settings.system.features.saveChanges")}
+                </Button>
+            </div>
         </form>
     )
 }

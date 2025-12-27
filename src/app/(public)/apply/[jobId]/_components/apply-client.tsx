@@ -75,7 +75,7 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     // Fetch job data
     const fetchJob = useCallback(async () => {
         try {
-            const response = await fetch(`/api/jobs/${jobId}`)
+            const response = await fetch(`/api/jobs/public/${jobId}`)
             const data = await response.json()
 
             if (!data.success) {

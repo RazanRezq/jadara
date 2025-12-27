@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
 import { type UserRole } from "@/lib/auth"
-import { hasPermission } from "@/lib/authClient"
+import { hasRolePermission } from "@/lib/authClient"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     user: {
@@ -190,9 +190,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             </SidebarHeader>
             <SidebarContent>
                 {navSections.map((section) => {
-                    // Filter items based on user permissions
+                    // Filter items based on user role permissions
                     const filteredItems = section.items.filter((item) =>
-                        hasPermission(user.role, item.requiredRole)
+                        hasRolePermission(user.role, item.requiredRole)
                     )
 
                     // Only render section if there are visible items

@@ -10,6 +10,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { Slider } from "@/components/ui/slider"
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
     Mic,
     MicOff,
     Play,
@@ -103,6 +113,7 @@ export function VoiceQuestion({
     const [duration, setDuration] = useState(0)
     const [audioError, setAudioError] = useState<string | null>(null)
     const [audioLoadAttempts, setAudioLoadAttempts] = useState(0)
+    const [showNoRetakeDialog, setShowNoRetakeDialog] = useState(false)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
@@ -843,7 +854,7 @@ export function VoiceQuestion({
                                 </Button>
                             )}
                             <Button
-                                onClick={startCountdown}
+                                onClick={() => setShowNoRetakeDialog(true)}
                                 size="lg"
                                 className="flex-1 h-12 text-base gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                             >
@@ -1047,6 +1058,33 @@ export function VoiceQuestion({
                     </div>
                 )}
             </CardContent>
+
+            {/* No Retake Warning Dialog */}
+            <AlertDialog open={showNoRetakeDialog} onOpenChange={setShowNoRetakeDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            <AlertTriangle className="size-6" />
+                            {t("apply.noRetakeDialogTitle")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-base leading-relaxed pt-2">
+                            {t("apply.noRetakeDialogDescription")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t("apply.noRetakeDialogCancel")}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setShowNoRetakeDialog(false)
+                                startCountdown()
+                            }}
+                            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                        >
+                            {t("apply.noRetakeDialogConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     )
 }

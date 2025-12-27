@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
-import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -56,7 +55,7 @@ interface AuditLog {
 }
 
 export function AuditLogsClient() {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
@@ -176,15 +175,12 @@ export function AuditLogsClient() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {/* Search */}
                         <div className="relative">
-                            <Search className={cn(
-                                "absolute top-3 h-4 w-4 text-muted-foreground",
-                                isRTL ? "right-3" : "left-3"
-                            )} />
+                            <Search className="absolute top-3 start-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder={t("auditLogs.searchPlaceholder")}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className={cn(isRTL ? "pr-9 text-right" : "pl-9")}
+                                className="ps-9"
                             />
                         </div>
 
@@ -249,7 +245,7 @@ export function AuditLogsClient() {
                             </CardDescription>
                         </div>
                         <Button variant="outline" size="sm">
-                            <Download className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Download className="h-4 w-4 me-2" />
                             {t("auditLogs.export")}
                         </Button>
                     </div>
@@ -268,13 +264,13 @@ export function AuditLogsClient() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.timestamp")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.user")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.action")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.resource")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.severity")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.details")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-left", !isRTL && "text-right")}>{t("common.actions")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.timestamp")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.user")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.action")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.resource")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.severity")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.details")}</TableHead>
+                                        <TableHead className="text-end">{t("common.actions")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

@@ -15,6 +15,9 @@ import systemConfig from '@/models/SystemConfig/route'
 import sessions from '@/models/Sessions/route'
 import permissions from '@/models/Permissions/route'
 import systemHealth from '@/models/SystemHealth/route'
+import interviews from '@/models/Interviews/route'
+import reviews from '@/models/Reviews/route'
+import comments from '@/models/Comments/route'
 
 const app = new Hono().basePath('/api')
 
@@ -33,6 +36,9 @@ const routes = app
     .route('/sessions', sessions)
     .route('/permissions', permissions)
     .route('/system-health', systemHealth)
+    .route('/interviews', interviews)
+    .route('/reviews', reviews)
+    .route('/comments', comments)
 
 export const GET = handle(app)
 export const POST = handle(app)

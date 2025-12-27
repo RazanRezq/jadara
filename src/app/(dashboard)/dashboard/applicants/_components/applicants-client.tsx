@@ -35,10 +35,13 @@ import {
     Filter,
     Building2,
     X,
+    LayoutGrid,
+    Columns3,
 } from "lucide-react"
 import { CandidateCard } from "./candidate-card"
 import { DashboardStats } from "./dashboard-stats"
 import { ViewApplicantDialog } from "./view-applicant-dialog"
+import { KanbanBoard } from "./kanban-board"
 import { toast } from "sonner"
 
 export type ApplicantStatus =
@@ -277,7 +280,7 @@ const SKILL_OPTIONS = [
 ]
 
 export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const searchParams = useSearchParams()
     const jobIdFromUrl = searchParams.get("jobId")
     const statusFromUrl = searchParams.get("status")
@@ -317,6 +320,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     // Dialog states
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
+
+    // View mode state (grid or kanban)
+    const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid')
 
     // Request deduplication refs
     const isFetchingApplicants = useRef(false)
@@ -545,109 +551,154 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                         </div>
                     </div>
 
-                    {/* Search */}
-                    <div className="relative w-full sm:w-80">
-                        <Search className={cn(
-                            "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                            isRTL ? "right-3" : "left-3"
-                        )} />
-                        <Input
-                            placeholder={t("applicants.searchPlaceholder")}
-                            value={searchTerm}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className={cn("h-10", isRTL ? "pr-10" : "pl-10")}
-                        />
+                    {/* Search & View Toggle */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative w-full sm:w-80">
+                            <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
+                            <Input
+                                placeholder={t("applicants.searchPlaceholder")}
+                                value={searchTerm}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className="h-10 ps-10"
+                            />
+                        </div>
+
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                            <Button
+                                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                                size="sm"
+                                className="h-8 px-3"
+                                onClick={() => setViewMode('grid')}
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                                size="sm"
+                                className="h-8 px-3"
+                                onClick={() => setViewMode('kanban')}
+                            >
+                                <Columns3 className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
                 <DashboardStats stats={stats} />
 
-                {/* AI Recommended Section */}
-                {recommendedApplicants.length > 0 && (
+                {/* Kanban View */}
+                {viewMode === 'kanban' ? (
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-primary" />
-                            <h2 className="text-lg font-semibold">{t("applicants.aiRecommendedTitle")}</h2>
-                            <Badge variant="secondary" className="text-xs">
-                                {recommendedApplicants.length} {t("applicants.candidates")}
-                            </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {recommendedApplicants.slice(0, 6).map((applicant) => (
-                                <CandidateCard
-                                    key={applicant.id}
-                                    applicant={applicant}
-                                    evaluation={evaluations.get(applicant.id)}
-                                    onView={handleViewApplicant}
-                                    isRecommended
-                                />
-                            ))}
-                        </div>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Spinner className="h-8 w-8 text-primary" />
+                            </div>
+                        ) : filteredApplicants.length === 0 ? (
+                            <Card className="border-dashed">
+                                <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                    <Users className="h-12 w-12 mb-4 opacity-50" />
+                                    <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
+                                    <p className="text-sm">{t("applicants.tryAdjusting")}</p>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <KanbanBoard
+                                applicants={filteredApplicants}
+                                onApplicantClick={handleViewApplicant}
+                            />
+                        )}
                     </div>
+                ) : (
+                    <>
+                        {/* AI Recommended Section */}
+                        {recommendedApplicants.length > 0 && (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-primary" />
+                                    <h2 className="text-lg font-semibold">{t("applicants.aiRecommendedTitle")}</h2>
+                                    <Badge variant="secondary" className="text-xs">
+                                        {recommendedApplicants.length} {t("applicants.candidates")}
+                                    </Badge>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {recommendedApplicants.slice(0, 6).map((applicant) => (
+                                        <CandidateCard
+                                            key={applicant.id}
+                                            applicant={applicant}
+                                            evaluation={evaluations.get(applicant.id)}
+                                            onView={handleViewApplicant}
+                                            isRecommended
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* All Candidates Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <Users className="h-5 w-5 text-muted-foreground" />
+                                <h2 className="text-lg font-semibold">{t("applicants.allCandidates")}</h2>
+                                <Badge variant="outline" className="text-xs">
+                                    {otherApplicants.length} {t("applicants.candidates")}
+                                </Badge>
+                            </div>
+
+                            {loading ? (
+                                <div className="flex items-center justify-center py-20">
+                                    <Spinner className="h-8 w-8 text-primary" />
+                                </div>
+                            ) : filteredApplicants.length === 0 ? (
+                                <Card className="border-dashed">
+                                    <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                        <Users className="h-12 w-12 mb-4 opacity-50" />
+                                        <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
+                                        <p className="text-sm">{t("applicants.tryAdjusting")}</p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {otherApplicants.map((applicant) => (
+                                        <CandidateCard
+                                            key={applicant.id}
+                                            applicant={applicant}
+                                            evaluation={evaluations.get(applicant.id)}
+                                            onView={handleViewApplicant}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 pt-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                    >
+                                        {t("common.previous")}
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground px-4">
+                                        {t("common.page")} {page} {t("common.of")} {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={page === totalPages}
+                                    >
+                                        {t("common.next")}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
-
-                {/* All Candidates Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-muted-foreground" />
-                        <h2 className="text-lg font-semibold">{t("applicants.allCandidates")}</h2>
-                        <Badge variant="outline" className="text-xs">
-                            {otherApplicants.length} {t("applicants.candidates")}
-                        </Badge>
-                    </div>
-
-                    {loading ? (
-                        <div className="flex items-center justify-center py-20">
-                            <Spinner className="h-8 w-8 text-primary" />
-                        </div>
-                    ) : filteredApplicants.length === 0 ? (
-                        <Card className="border-dashed">
-                            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                                <Users className="h-12 w-12 mb-4 opacity-50" />
-                                <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
-                                <p className="text-sm">{t("applicants.tryAdjusting")}</p>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {otherApplicants.map((applicant) => (
-                                <CandidateCard
-                                    key={applicant.id}
-                                    applicant={applicant}
-                                    evaluation={evaluations.get(applicant.id)}
-                                    onView={handleViewApplicant}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-2 pt-4">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                {t("common.previous")}
-                            </Button>
-                            <span className="text-sm text-muted-foreground px-4">
-                                {t("common.page")} {page} {t("common.of")} {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages}
-                            >
-                                {t("common.next")}
-                            </Button>
-                        </div>
-                    )}
-                </div>
             </div>
 
             {/* Filters Sidebar */}
@@ -674,15 +725,12 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     <CardContent className="space-y-4">
                         {/* Search in filters */}
                         <div className="relative">
-                            <Search className={cn(
-                                "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                                isRTL ? "right-3" : "left-3"
-                            )} />
+                            <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
                             <Input
                                 placeholder={t("applicants.searchCandidate")}
                                 value={searchTerm}
                                 onChange={(e) => handleSearch(e.target.value)}
-                                className={cn("h-9 text-sm", isRTL ? "pr-9" : "pl-9")}
+                                className="h-9 text-sm ps-9"
                             />
                         </div>
 
@@ -811,7 +859,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                             onClick={clearAllFilters}
                             disabled={!hasActiveFilters}
                         >
-                            <X className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <X className="h-4 w-4 me-2" />
                             {t("applicants.clearAllFilters")}
                         </Button>
 
@@ -822,7 +870,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                             onClick={fetchApplicants}
                             disabled={loading}
                         >
-                            <RefreshCw className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2", loading && "animate-spin")} />
+                            <RefreshCw className={cn("h-4 w-4 me-2", loading && "animate-spin")} />
                             {t("common.refresh")}
                         </Button>
                     </CardContent>

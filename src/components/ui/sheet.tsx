@@ -6,6 +6,18 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Hook to get document direction for RTL support in portals
+function useDocumentDir() {
+  const [dir, setDir] = React.useState<"rtl" | "ltr">("rtl")
+
+  React.useEffect(() => {
+    const htmlDir = document.documentElement.getAttribute("dir") as "rtl" | "ltr" | null
+    if (htmlDir) setDir(htmlDir)
+  }, [])
+
+  return dir
+}
+
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
 }
@@ -52,14 +64,17 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
 }) {
+  const dir = useDocumentDir()
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
+        dir={dir}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 text-start",
           side === "right" &&
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 end-0 h-full w-3/4 border-s sm:max-w-sm",
           side === "left" &&

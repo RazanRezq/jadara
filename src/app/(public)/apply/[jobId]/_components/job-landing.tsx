@@ -131,10 +131,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                             </CardHeader>
                             <CardContent>
                                 <article
-                                    className={cn(
-                                        "prose max-w-none",
-                                        isRTL && "text-right"
-                                    )}
+                                    className="prose max-w-none text-start"
                                     dir={isRTL ? "rtl" : "ltr"}
                                 >
                                     <ReactMarkdown>{job.description}</ReactMarkdown>
@@ -164,7 +161,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                                 className="px-3 py-1"
                                             >
                                                 {skill.importance === "required" && (
-                                                    <CheckCircle2 className="size-3 mr-1" />
+                                                    <CheckCircle2 className="size-3 me-1" />
                                                 )}
                                                 {skill.name}
                                             </Badge>

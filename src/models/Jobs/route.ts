@@ -301,7 +301,83 @@ app.get('/list', authenticate, async (c) => {
     }
 })
 
-// Get single job
+// Get single job (public - for apply pages)
+app.get('/public/:id', async (c) => {
+    try {
+        await dbConnect()
+        const id = c.req.param('id')
+
+        const job = await Job.findById(id).populate('createdBy', 'name email')
+
+        if (!job) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job not found',
+                },
+                404
+            )
+        }
+
+        // Only return active jobs publicly
+        if (job.status !== 'active') {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job not available',
+                },
+                404
+            )
+        }
+
+        return c.json({
+            success: true,
+            job: {
+                id: job._id.toString(),
+                title: job.title,
+                description: job.description,
+                department: job.department,
+                location: job.location,
+                employmentType: job.employmentType,
+                salaryMin: job.salaryMin,
+                salaryMax: job.salaryMax,
+                currency: job.currency,
+                // Step 2: Evaluation Criteria
+                skills: Array.isArray(job.skills) ? job.skills : [],
+                screeningQuestions: Array.isArray(job.screeningQuestions) ? job.screeningQuestions : [],
+                languages: Array.isArray(job.languages) ? job.languages : [],
+                minExperience: job.minExperience,
+                autoRejectThreshold: job.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: job.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: job.candidateInstructions,
+                questions: job.questions,
+                retakePolicy: job.retakePolicy,
+                // Legacy fields
+                requiredSkills: job.requiredSkills,
+                responsibilities: job.responsibilities,
+                criteria: job.criteria,
+                status: job.status,
+                expiresAt: job.expiresAt,
+                createdBy: job.createdBy,
+                createdAt: job.createdAt,
+                updatedAt: job.updatedAt,
+            },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Get single job (authenticated - for dashboard)
 app.get('/:id', authenticate, async (c) => {
     try {
         await dbConnect()

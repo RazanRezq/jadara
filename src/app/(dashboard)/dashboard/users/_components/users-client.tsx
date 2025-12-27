@@ -67,7 +67,7 @@ interface UsersClientProps {
 }
 
 export function UsersClient({ currentUserRole }: UsersClientProps) {
-    const { t, isRTL } = useTranslate()
+    const { t, locale } = useTranslate()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -135,7 +135,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return t("users.never")
-        return new Date(dateString).toLocaleDateString(isRTL ? "AR-US" : "en-US", {
+        return new Date(dateString).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -180,17 +180,12 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
             <div className="flex flex-col sm:flex-row gap-4">
                 {/* Search */}
                 <div className="relative flex-1">
-                    <Search className={cn(
-                        "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                        isRTL ? "right-3" : "left-3"
-                    )} />
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder={t("users.searchPlaceholder")}
                         value={searchTerm}
                         onChange={(e) => handleSearch(e.target.value)}
-                        className={cn(
-                            isRTL ? "pr-10 text-right" : "pl-10"
-                        )}
+                        className="ps-10"
                     />
                 </div>
 
@@ -232,7 +227,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                             variant="outline"
                             onClick={handleExport}
                         >
-                            <Download className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Download className="h-4 w-4 me-2" />
                             Export
                         </Button>
 
@@ -241,7 +236,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                             variant="outline"
                             onClick={() => setBulkImportDialogOpen(true)}
                         >
-                            <Upload className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Upload className="h-4 w-4 me-2" />
                             Import
                         </Button>
 
@@ -250,7 +245,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                             onClick={() => setAddDialogOpen(true)}
                             className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                         >
-                            <Plus className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Plus className="h-4 w-4 me-2" />
                             {t("users.addUser")}
                         </Button>
                     </>
@@ -274,12 +269,12 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("users.user")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("common.role")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("common.status")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("users.lastLogin")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("users.joined")}</TableHead>
-                                    <TableHead className={isRTL ? "text-left" : "text-right"}>{t("common.actions")}</TableHead>
+                                    <TableHead className="text-start">{t("users.user")}</TableHead>
+                                    <TableHead className="text-start">{t("common.role")}</TableHead>
+                                    <TableHead className="text-start">{t("common.status")}</TableHead>
+                                    <TableHead className="text-start">{t("users.lastLogin")}</TableHead>
+                                    <TableHead className="text-start">{t("users.joined")}</TableHead>
+                                    <TableHead className="text-end">{t("common.actions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -320,7 +315,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                         <TableCell className="text-muted-foreground">
                                             {formatDate(user.createdAt)}
                                         </TableCell>
-                                        <TableCell className={isRTL ? "text-left" : "text-right"}>
+                                        <TableCell className="text-end">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="icon">
@@ -332,7 +327,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                                         onClick={() => handleEditUser(user)}
                                                         className="cursor-pointer"
                                                     >
-                                                        <Pencil className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <Pencil className="h-4 w-4 me-2" />
                                                         {t("common.edit")}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
@@ -340,7 +335,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                                         onClick={() => handleDeleteUser(user)}
                                                         className="text-destructive focus:text-destructive cursor-pointer"
                                                     >
-                                                        <Trash2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <Trash2 className="h-4 w-4 me-2" />
                                                         {t("common.delete")}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>

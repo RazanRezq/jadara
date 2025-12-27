@@ -4,7 +4,7 @@ import { useTranslate } from "@/hooks/useTranslate"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, Users, Shield, Database, Lock } from "lucide-react"
+import { Building2, Database, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type UserRole } from "@/lib/auth"
 import { hasPermission } from "@/lib/authClient"
@@ -27,26 +27,6 @@ export function SettingsClient({ userRole }: SettingsClientProps) {
             shadowColor: "shadow-cyan-500/20",
             href: "/dashboard/settings/company",
             requiredRole: "admin" as UserRole,
-        },
-        {
-            id: "users",
-            titleKey: "settings.users.title",
-            descriptionKey: "settings.users.description",
-            icon: Users,
-            color: "from-indigo-500 to-purple-500",
-            shadowColor: "shadow-indigo-500/20",
-            href: "/dashboard/users",
-            requiredRole: "superadmin" as UserRole,
-        },
-        {
-            id: "roles",
-            titleKey: "settings.roles.title",
-            descriptionKey: "settings.roles.description",
-            icon: Shield,
-            color: "from-amber-500 to-orange-500",
-            shadowColor: "shadow-amber-500/20",
-            href: "/dashboard/settings/roles",
-            requiredRole: "superadmin" as UserRole,
         },
         {
             id: "system",

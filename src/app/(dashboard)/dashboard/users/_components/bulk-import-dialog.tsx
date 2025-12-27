@@ -161,7 +161,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                     {/* Download Template */}
                     <div>
                         <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
-                            <Download className="h-4 w-4 mr-2" />
+                            <Download className="h-4 w-4 me-2" />
                             Download CSV Template
                         </Button>
                         <p className="text-xs text-muted-foreground mt-1">

@@ -23,7 +23,7 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ userId }: SiteHeaderProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const pathname = usePathname()
     const [jobTitle, setJobTitle] = React.useState<string | null>(null)
 
@@ -88,7 +88,7 @@ export function SiteHeader({ userId }: SiteHeaderProps) {
         <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
             <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
                 <SidebarTrigger className="h-8 w-8" />
-                <Separator orientation="vertical" className={isRTL ? "ml-2" : "mr-2"} />
+                <Separator orientation="vertical" className="me-2" />
             <Breadcrumb className="hidden sm:block">
                 <BreadcrumbList>
                     {breadcrumbs.map((crumb, index) => (
@@ -107,7 +107,7 @@ export function SiteHeader({ userId }: SiteHeaderProps) {
                     ))}
                 </BreadcrumbList>
             </Breadcrumb>
-            <div className={`flex items-center gap-2 ${isRTL ? "mr-auto" : "ml-auto"}`}>
+            <div className="flex items-center gap-2 ms-auto">
                 <NotificationsDropdown userId={userId} />
                 <ThemeToggle />
                 <LanguageSwitcher />

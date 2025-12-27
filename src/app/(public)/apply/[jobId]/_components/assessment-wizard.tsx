@@ -398,7 +398,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                         <p className="text-xs text-muted-foreground">
                             {wizardSteps[currentStepNumber - 1]?.label}
                             {wizardStep === "questions" && totalQuestions > 0 && (
-                                <span className={cn(isRTL ? "mr-1" : "ml-1")}>
+                                <span className="ms-1">
                                     ({currentQuestionIndex + 1} / {totalQuestions})
                                 </span>
                             )}

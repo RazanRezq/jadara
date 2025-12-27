@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -17,7 +17,7 @@ import { NotificationSettings } from "./tabs/notification-settings"
 import { FeatureFlags } from "./tabs/feature-flags"
 
 export function SystemSettingsClient() {
-    const { t } = useTranslate()
+    const { t, dir } = useTranslate()
     const [config, setConfig] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -32,11 +32,11 @@ export function SystemSettingsClient() {
             if (result.success) {
                 setConfig(result.data)
             } else {
-                toast.error("Failed to load system configuration")
+                toast.error(t("settings.system.failedToLoad"))
             }
         } catch (error) {
             console.error("Error loading system config:", error)
-            toast.error("Error loading system configuration")
+            toast.error(t("settings.system.failedToLoad"))
         } finally {
             setLoading(false)
         }
@@ -70,20 +70,20 @@ export function SystemSettingsClient() {
 
             if (result.success) {
                 setConfig(result.data)
-                toast.success(`${section} settings updated successfully`)
+                toast.success(t("settings.system.configResetSuccess"))
             } else {
-                toast.error(result.error || "Failed to update settings")
+                toast.error(result.error || t("settings.system.configResetError"))
             }
         } catch (error) {
             console.error("Error saving config:", error)
-            toast.error("Error saving configuration")
+            toast.error(t("settings.system.configResetError"))
         } finally {
             setSaving(false)
         }
     }
 
     const handleReset = async () => {
-        if (!confirm("Are you sure you want to reset all settings to defaults? This cannot be undone.")) {
+        if (!confirm(t("settings.system.resetConfirm"))) {
             return
         }
 
@@ -97,17 +97,28 @@ export function SystemSettingsClient() {
 
             if (result.success) {
                 setConfig(result.data)
-                toast.success("System configuration reset to defaults")
+                toast.success(t("settings.system.configResetSuccess"))
             } else {
-                toast.error(result.error || "Failed to reset settings")
+                toast.error(result.error || t("settings.system.configResetError"))
             }
         } catch (error) {
             console.error("Error resetting config:", error)
-            toast.error("Error resetting configuration")
+            toast.error(t("settings.system.configResetError"))
         } finally {
             setSaving(false)
         }
     }
+
+    // Define tabs - flexbox with dir="rtl" handles ordering automatically
+    const tabs = [
+        { value: "email", icon: Mail, labelKey: "settings.system.tabs.email" },
+        { value: "ai", icon: Brain, labelKey: "settings.system.tabs.ai" },
+        { value: "application", icon: Settings, labelKey: "settings.system.tabs.application" },
+        { value: "security", icon: Shield, labelKey: "settings.system.tabs.security" },
+        { value: "storage", icon: Database, labelKey: "settings.system.tabs.storage" },
+        { value: "notifications", icon: Bell, labelKey: "settings.system.tabs.notifications" },
+        { value: "features", icon: ToggleLeft, labelKey: "settings.system.tabs.features" },
+    ]
 
     if (loading) {
         return (
@@ -119,64 +130,46 @@ export function SystemSettingsClient() {
 
     if (!config) {
         return (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground">Failed to load system configuration</p>
+            <div className="text-center py-12" dir={dir}>
+                <p className="text-muted-foreground">{t("settings.system.failedToLoad")}</p>
                 <Button onClick={fetchConfig} className="mt-4">
-                    Retry
+                    {t("settings.system.retry")}
                 </Button>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" dir={dir}>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
+                <div className="text-start">
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Settings className="h-8 w-8" />
-                        System Configuration
+                        {t("settings.system.systemConfiguration")}
                     </h1>
                     <p className="text-muted-foreground">
-                        Manage system-wide settings and configurations
+                        {t("settings.system.manageSystemWide")}
                     </p>
                 </div>
                 <Button variant="destructive" onClick={handleReset} disabled={saving}>
-                    Reset to Defaults
+                    {t("settings.system.resetToDefaults")}
                 </Button>
             </div>
 
             {/* Settings Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid grid-cols-7 w-full">
-                    <TabsTrigger value="email" className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email
-                    </TabsTrigger>
-                    <TabsTrigger value="ai" className="flex items-center gap-2">
-                        <Brain className="h-4 w-4" />
-                        AI
-                    </TabsTrigger>
-                    <TabsTrigger value="application" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Application
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Security
-                    </TabsTrigger>
-                    <TabsTrigger value="storage" className="flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        Storage
-                    </TabsTrigger>
-                    <TabsTrigger value="notifications" className="flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
-                        Notifications
-                    </TabsTrigger>
-                    <TabsTrigger value="features" className="flex items-center gap-2">
-                        <ToggleLeft className="h-4 w-4" />
-                        Features
-                    </TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6" dir={dir}>
+                <TabsList className="flex w-full">
+                    {tabs.map((tab) => (
+                        <TabsTrigger
+                            key={tab.value}
+                            value={tab.value}
+                            className="flex-1 flex items-center justify-center gap-2"
+                        >
+                            <tab.icon className="h-4 w-4" />
+                            {t(tab.labelKey)}
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
                 <TabsContent value="email">
@@ -240,9 +233,9 @@ export function SystemSettingsClient() {
             {config.lastUpdatedBy && (
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-sm text-muted-foreground">
-                            Last updated by {config.lastUpdatedBy.name} ({config.lastUpdatedBy.email})
-                            {config.updatedAt && ` on ${new Date(config.updatedAt).toLocaleString()}`}
+                        <p className="text-sm text-muted-foreground text-start">
+                            {t("settings.system.lastUpdatedBy")} {config.lastUpdatedBy.name} ({config.lastUpdatedBy.email})
+                            {config.updatedAt && ` ${t("settings.system.on")} ${new Date(config.updatedAt).toLocaleString()}`}
                         </p>
                     </CardContent>
                 </Card>

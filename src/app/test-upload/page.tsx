@@ -133,7 +133,7 @@ export default function TestUploadPage() {
                                 type="file"
                                 onChange={handleFileChange}
                                 className="block w-full text-sm text-slate-500
-                                    file:mr-4 file:py-2 file:px-4
+                                    file:me-4 file:py-2 file:px-4
                                     file:rounded-md file:border-0
                                     file:text-sm file:font-semibold
                                     file:bg-primary file:text-primary-foreground
@@ -173,12 +173,12 @@ export default function TestUploadPage() {
                             >
                                 {uploading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
                                         Uploading...
                                     </>
                                 ) : (
                                     <>
-                                        <Upload className="mr-2 h-4 w-4" />
+                                        <Upload className="me-2 h-4 w-4" />
                                         Upload File
                                     </>
                                 )}
@@ -222,12 +222,12 @@ export default function TestUploadPage() {
                                     >
                                         {deleting ? (
                                             <>
-                                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                                <Loader2 className="me-2 h-3 w-3 animate-spin" />
                                                 Deleting...
                                             </>
                                         ) : (
                                             <>
-                                                <Trash2 className="mr-2 h-3 w-3" />
+                                                <Trash2 className="me-2 h-3 w-3" />
                                                 Delete File
                                             </>
                                         )}

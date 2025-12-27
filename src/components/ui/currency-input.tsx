@@ -38,8 +38,8 @@ export const CurrencyInput = React.forwardRef<
                 type="number"
                 className={cn(
                     currencyPosition === "suffix"
-                        ? "pr-16"
-                        : "pl-16",
+                        ? "pe-16"
+                        : "ps-16",
                     className
                 )}
                 {...props}
@@ -48,8 +48,8 @@ export const CurrencyInput = React.forwardRef<
                 className={cn(
                     "absolute top-0 bottom-0 flex items-center pointer-events-none text-muted-foreground text-sm font-medium",
                     currencyPosition === "suffix"
-                        ? "right-3"
-                        : "left-3"
+                        ? "end-3"
+                        : "start-3"
                 )}
             >
                 {currency}

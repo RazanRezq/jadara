@@ -198,7 +198,7 @@ export function AdminView({ stats }: AdminViewProps) {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <div className="text-right">
+                                        <div className="text-end">
                                             <p className="text-sm font-medium">
                                                 {t("dashboard.admin.aiMatchScore")}
                                             </p>

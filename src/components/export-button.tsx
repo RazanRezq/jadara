@@ -65,21 +65,21 @@ export function ExportButton({ data, variant = "outline", size = "default" }: Ex
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant={variant} size={size} disabled={isExporting}>
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-4 h-4 me-2" />
                     {isExporting ? t("export.exporting") : t("export.export")}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleExport("csv")}>
-                    <FileText className="w-4 h-4 mr-2" />
+                    <FileText className="w-4 h-4 me-2" />
                     {t("export.exportCSV")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("excel")}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    <FileSpreadsheet className="w-4 h-4 me-2" />
                     {t("export.exportExcel")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                    <FileType className="w-4 h-4 mr-2" />
+                    <FileType className="w-4 h-4 me-2" />
                     {t("export.exportPDF")}
                 </DropdownMenuItem>
             </DropdownMenuContent>

@@ -19,7 +19,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { useTranslate } from "@/hooks/useTranslate"
-import { cn } from "@/lib/utils"
 import { Building2, Save, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
@@ -44,7 +43,7 @@ const companyProfileSchema = z.object({
 type CompanyProfileFormValues = z.infer<typeof companyProfileSchema>
 
 export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -212,9 +211,6 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                                 placeholder={t("settings.company.companyNamePlaceholder")}
                                                 {...field}
                                                 disabled={!canEdit}
-                                                className={cn(
-                                                    isRTL && "text-right"
-                                                )}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -234,9 +230,6 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                                 placeholder={t("settings.company.industryPlaceholder")}
                                                 {...field}
                                                 disabled={!canEdit}
-                                                className={cn(
-                                                    isRTL && "text-right"
-                                                )}
                                             />
                                         </FormControl>
                                         <FormDescription>
@@ -260,9 +253,6 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                                 placeholder="https://example.com"
                                                 {...field}
                                                 disabled={!canEdit}
-                                                className={cn(
-                                                    isRTL && "text-right"
-                                                )}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -283,10 +273,7 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                                 rows={6}
                                                 {...field}
                                                 disabled={!canEdit}
-                                                className={cn(
-                                                    "resize-none",
-                                                    isRTL && "text-right"
-                                                )}
+                                                className="resize-none"
                                             />
                                         </FormControl>
                                         <FormDescription>
@@ -312,12 +299,12 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                     >
                                         {saving ? (
                                             <>
-                                                <Spinner className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                <Spinner className="h-4 w-4 me-2" />
                                                 {t("common.saving")}
                                             </>
                                         ) : (
                                             <>
-                                                <Save className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                <Save className="h-4 w-4 me-2" />
                                                 {t("common.save")}
                                             </>
                                         )}
@@ -328,7 +315,7 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                         onClick={() => form.reset()}
                                         disabled={saving}
                                     >
-                                        <RefreshCw className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                        <RefreshCw className="h-4 w-4 me-2" />
                                         {t("common.reset")}
                                     </Button>
                                 </div>

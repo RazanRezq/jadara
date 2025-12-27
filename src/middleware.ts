@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth'
 const publicPaths = ['/login', '/register', '/forgot-password', '/apply']
 const authPaths = ['/login', '/register']
 
-export async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
     const token = request.cookies.get('session')?.value
 
@@ -44,3 +44,4 @@ export const config = {
         '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|_next).*)',
     ],
 }
+

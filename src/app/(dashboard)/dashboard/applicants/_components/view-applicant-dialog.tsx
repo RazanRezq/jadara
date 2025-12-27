@@ -55,6 +55,10 @@ import {
     Target,
 } from "lucide-react"
 import type { Applicant, ApplicantStatus, EvaluationData, BilingualText, BilingualTextArray } from "./applicants-client"
+import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
+import { ManualReviewForm } from "./manual-review-form"
+import { TeamNotes } from "./team-notes"
+import { ReviewStats } from "./review-stats"
 
 interface VoiceResponse {
     questionId: string
@@ -94,7 +98,8 @@ export function ViewApplicantDialog({
     userId,
     onStatusChange,
 }: ViewApplicantDialogProps) {
-    const { t, isRTL, locale } = useTranslate()
+    const { t, locale, dir } = useTranslate()
+    const [activeTab, setActiveTab] = useState("overview")
     const [updating, setUpdating] = useState(false)
     const [currentStatus, setCurrentStatus] = useState<ApplicantStatus>(applicant.status)
     const [voiceResponses, setVoiceResponses] = useState<VoiceResponse[]>([])
@@ -103,6 +108,16 @@ export function ViewApplicantDialog({
         screeningQuestions?: Array<{ question: string; disqualify: boolean }>
         languages?: Array<{ language: string; level: string }>
     } | null>(null)
+    const [showScheduleDialog, setShowScheduleDialog] = useState(false)
+
+    // HOISTED DATA: Fetch reviews and comments at parent level to prevent tab flickering
+    const [reviews, setReviews] = useState<any[]>([])
+    const [reviewStats, setReviewStats] = useState<any>(null)
+    const [comments, setComments] = useState<any[]>([])
+    const [loadingReviews, setLoadingReviews] = useState(true)
+    const [loadingComments, setLoadingComments] = useState(true)
+
+    const isAdmin = userRole === 'admin' || userRole === 'superadmin'
 
     // Helper to get bilingual text based on current locale
     const getLocalizedText = (text: BilingualText | string | undefined): string => {
@@ -174,6 +189,68 @@ export function ViewApplicantDialog({
         }
     }
 
+    // Fetch reviews and stats when dialog opens
+    useEffect(() => {
+        if (open && applicant.id) {
+            fetchReviewsAndStats()
+        }
+    }, [open, applicant.id])
+
+    const fetchReviewsAndStats = async () => {
+        setLoadingReviews(true)
+        try {
+            const [statsRes, reviewsRes] = await Promise.all([
+                fetch(`/api/reviews/average/${applicant.id}`),
+                fetch(`/api/reviews/by-applicant/${applicant.id}`),
+            ])
+
+            const [statsData, reviewsData] = await Promise.all([
+                statsRes.json(),
+                reviewsRes.json(),
+            ])
+
+            if (statsData.success) setReviewStats(statsData.stats)
+            if (reviewsData.success) setReviews(reviewsData.reviews)
+        } catch (error) {
+            console.error("Failed to fetch review data:", error)
+        } finally {
+            setLoadingReviews(false)
+        }
+    }
+
+    // Fetch comments when dialog opens
+    useEffect(() => {
+        if (open && applicant.id) {
+            fetchComments()
+        }
+    }, [open, applicant.id])
+
+    const fetchComments = async () => {
+        setLoadingComments(true)
+        try {
+            const response = await fetch(`/api/comments/by-applicant/${applicant.id}`)
+            const data = await response.json()
+            if (data.success) {
+                setComments(data.comments)
+            }
+        } catch (error) {
+            console.error("Failed to fetch comments:", error)
+        } finally {
+            setLoadingComments(false)
+        }
+    }
+
+    // Callback to refresh comments after posting/editing/deleting
+    const handleCommentsChange = (updatedComments: any[]) => {
+        setComments(updatedComments)
+    }
+
+    // Callback to refresh reviews after submitting a manual review
+    const handleReviewSubmitted = () => {
+        fetchReviewsAndStats()
+        onStatusChange()
+    }
+
     // Fetch voice responses
     useEffect(() => {
         if (open) {
@@ -228,7 +305,7 @@ export function ViewApplicantDialog({
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "-"
-        return new Date(dateString).toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+        return new Date(dateString).toLocaleDateString(locale === 'ar' ? "ar-SA" : "en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
@@ -385,7 +462,7 @@ export function ViewApplicantDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogContent dir={dir} className="min-w-4xl max-h-[90vh] overflow-y-auto p-0 text-start">
                 {/* Header */}
                 <DialogHeader className="p-6 pb-4 border-b bg-muted/30">
                     <div className="flex items-center justify-between">
@@ -393,14 +470,26 @@ export function ViewApplicantDialog({
                             {t("applicants.candidateDetails")}
                         </DialogTitle>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" className="gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => window.open(`mailto:${applicant.personalData?.email}`, '_blank')}
+                            >
                                 <MessageSquare className="h-4 w-4" />
                                 {t("applicants.contact")}
                             </Button>
-                            <Button variant="default" size="sm" className="gap-2">
-                                <CalendarPlus className="h-4 w-4" />
-                                {t("applicants.scheduleInterview")}
-                            </Button>
+                            {isAdmin && (
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="gap-2"
+                                    onClick={() => setShowScheduleDialog(true)}
+                                >
+                                    <CalendarPlus className="h-4 w-4" />
+                                    {t("applicants.scheduleInterview")}
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -434,35 +523,49 @@ export function ViewApplicantDialog({
                     </div>
                 </DialogHeader>
 
-                <Tabs defaultValue="overview" className="flex-1">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1" dir={dir}>
                     <TabsList className="w-full justify-start px-6 bg-transparent border-b rounded-none h-auto py-0">
                         <TabsTrigger
                             value="overview"
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
-                            <User className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <User className="h-4 w-4 me-2" />
                             {t("applicants.overview")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="cv"
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
-                            <FileText className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <FileText className="h-4 w-4 me-2" />
                             {t("applicants.cv")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="voice"
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
-                            <Mic className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Mic className="h-4 w-4 me-2" />
                             {t("applicants.voiceResponse")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="evaluation"
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
-                            <Sparkles className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Sparkles className="h-4 w-4 me-2" />
                             {t("applicants.aiEvaluation")}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="review"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                        >
+                            <Star className="h-4 w-4 me-2" />
+                            {t("applicants.teamReview") || "Team Review"}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="notes"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                        >
+                            <MessageSquare className="h-4 w-4 me-2" />
+                            {t("applicants.teamNotes") || "Team Notes"}
                         </TabsTrigger>
                     </TabsList>
 
@@ -525,7 +628,7 @@ export function ViewApplicantDialog({
                             </CardContent>
                         </Card>
 
-                        {/* External Links */}
+                        {/* External Links - Enhanced LinkedIn Review */}
                         {(applicant.personalData?.linkedinUrl || applicant.cvUrl) && (
                             <Card>
                                 <CardHeader className="pb-3">
@@ -534,26 +637,46 @@ export function ViewApplicantDialog({
                                         {t("applicants.externalLinks")}
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="flex flex-wrap gap-3">
+                                <CardContent className="space-y-4">
+                                    <div className="flex flex-wrap gap-3">
+                                        {applicant.personalData?.linkedinUrl && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => window.open(applicant.personalData?.linkedinUrl, "_blank")}
+                                                className="gap-2 bg-[#0077B5]/5 hover:bg-[#0077B5]/10 border-[#0077B5]/20 hover:border-[#0077B5]/40"
+                                            >
+                                                <Linkedin className="h-4 w-4 text-[#0077B5]" />
+                                                {t("applicants.openLinkedIn")}
+                                            </Button>
+                                        )}
+                                        {applicant.cvUrl && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => window.open(applicant.cvUrl, "_blank")}
+                                                className="gap-2"
+                                            >
+                                                <FileText className="h-4 w-4" />
+                                                {t("applicants.viewCV")}
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* LinkedIn Review Notes - Only show if LinkedIn URL exists */}
                                     {applicant.personalData?.linkedinUrl && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => window.open(applicant.personalData?.linkedinUrl, "_blank")}
-                                            className="gap-2"
-                                        >
-                                            <Linkedin className="h-4 w-4 text-[#0077B5]" />
-                                            LinkedIn Profile
-                                        </Button>
-                                    )}
-                                    {applicant.cvUrl && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => window.open(applicant.cvUrl, "_blank")}
-                                            className="gap-2"
-                                        >
-                                            <FileText className="h-4 w-4" />
-                                            {t("applicants.viewCV")}
-                                        </Button>
+                                        <div className="pt-2 border-t">
+                                            <label className="text-sm font-medium text-muted-foreground mb-2 block flex items-center gap-2">
+                                                <MessageSquare className="h-3.5 w-3.5" />
+                                                {t("applicants.linkedinReviewNotes")}
+                                            </label>
+                                            <textarea
+                                                placeholder={t("applicants.linkedinReviewNotesPlaceholder")}
+                                                className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                                                defaultValue=""
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                                💡 {t("applicants.linkedinReviewNotesHint")}
+                                            </p>
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>
@@ -612,7 +735,7 @@ export function ViewApplicantDialog({
                                                         {isThisPlaying ? (
                                                             <Pause className="h-6 w-6" />
                                                         ) : (
-                                                            <Play className="h-6 w-6 ml-1" />
+                                                            <Play className="h-6 w-6 ms-1" />
                                                         )}
                                                     </Button>
 
@@ -719,18 +842,12 @@ export function ViewApplicantDialog({
                                             {getLocalizedArray(evaluation?.strengths).map((strength, index) => (
                                                 <div
                                                     key={`strength-${index}`}
-                                                    className={cn(
-                                                        "group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all",
-                                                        locale === 'ar' && 'flex-row-reverse'
-                                                    )}
+                                                    className="group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all"
                                                 >
                                                     <div className="mt-0.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                                     </div>
-                                                    <p className={cn(
-                                                        "text-sm leading-relaxed text-emerald-900 dark:text-emerald-100 whitespace-pre-line flex-1",
-                                                        locale === 'ar' && 'text-right'
-                                                    )}>
+                                                    <p className="text-sm leading-relaxed text-emerald-900 dark:text-emerald-100 whitespace-pre-line flex-1 text-start">
                                                         {strength}
                                                     </p>
                                                 </div>
@@ -758,18 +875,12 @@ export function ViewApplicantDialog({
                                             {getLocalizedArray(evaluation?.weaknesses).map((weakness, index) => (
                                                 <div
                                                     key={`weakness-${index}`}
-                                                    className={cn(
-                                                        "group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 hover:border-red-400 dark:hover:border-red-600 transition-all",
-                                                        locale === 'ar' && 'flex-row-reverse'
-                                                    )}
+                                                    className="group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 hover:border-red-400 dark:hover:border-red-600 transition-all"
                                                 >
                                                     <div className="mt-0.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
                                                     </div>
-                                                    <p className={cn(
-                                                        "text-sm leading-relaxed text-red-900 dark:text-red-100 whitespace-pre-line flex-1",
-                                                        locale === 'ar' && 'text-right'
-                                                    )}>
+                                                    <p className="text-sm leading-relaxed text-red-900 dark:text-red-100 whitespace-pre-line flex-1 text-start">
                                                         {weakness}
                                                     </p>
                                                 </div>
@@ -800,15 +911,12 @@ export function ViewApplicantDialog({
                                             .map((criteria, index) => (
                                                 <div
                                                     key={index}
-                                                    className={cn(
-                                                        "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50",
-                                                        locale === 'ar' && 'flex-row-reverse'
-                                                    )}
+                                                    className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50"
                                                 >
                                                     <div className="mt-0.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                                     </div>
-                                                    <div className={cn("flex-1 space-y-1", locale === 'ar' && 'text-right')}>
+                                                    <div className="flex-1 space-y-1 text-start">
                                                         <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
                                                             {criteria.criteriaName}
                                                         </p>
@@ -842,10 +950,7 @@ export function ViewApplicantDialog({
                             <CardContent className="space-y-6 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
                                 {/* Main Summary */}
                                 <div className="p-4 bg-white dark:bg-primary/5 rounded-lg border border-primary/20">
-                                    <p className={cn(
-                                        "text-base leading-relaxed text-foreground whitespace-pre-line",
-                                        locale === 'ar' && 'text-right'
-                                    )}>
+                                    <p className="text-base leading-relaxed text-foreground whitespace-pre-line text-start">
                                         {getLocalizedText(evaluation?.summary) || applicant.aiSummary || t("applicants.noAIRecommendation")}
                                     </p>
                                 </div>
@@ -853,10 +958,7 @@ export function ViewApplicantDialog({
                                 {/* Recommendation Reason */}
                                 {getLocalizedText(evaluation?.recommendationReason) && (
                                     <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                                        <p className={cn(
-                                            "text-sm leading-relaxed text-muted-foreground whitespace-pre-line",
-                                            locale === 'ar' && 'text-right'
-                                        )}>
+                                        <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line text-start">
                                             {getLocalizedText(evaluation?.recommendationReason)}
                                         </p>
                                     </div>
@@ -876,18 +978,12 @@ export function ViewApplicantDialog({
                                             {getLocalizedArray(evaluation?.suggestedQuestions).map((q, i) => (
                                                 <div
                                                     key={i}
-                                                    className={cn(
-                                                        "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-primary/5 border border-primary/20 hover:border-primary/40 transition-colors",
-                                                        locale === 'ar' && 'flex-row-reverse'
-                                                    )}
+                                                    className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-primary/5 border border-primary/20 hover:border-primary/40 transition-colors"
                                                 >
                                                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold shrink-0">
                                                         {i + 1}
                                                     </div>
-                                                    <p className={cn(
-                                                        "text-sm leading-relaxed text-foreground whitespace-pre-line flex-1",
-                                                        locale === 'ar' && 'text-right'
-                                                    )}>
+                                                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-line flex-1 text-start">
                                                         {q}
                                                     </p>
                                                 </div>
@@ -1011,10 +1107,7 @@ export function ViewApplicantDialog({
                                             {evaluation.socialProfileInsights.linkedin.highlights.length > 0 && (
                                                 <ul className="space-y-2">
                                                     {evaluation.socialProfileInsights.linkedin.highlights.slice(0, 5).map((highlight, i) => (
-                                                        <li key={i} className={cn(
-                                                            "text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2",
-                                                            locale === 'ar' && 'text-right flex-row-reverse'
-                                                        )}>
+                                                        <li key={i} className="text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2">
                                                             <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
                                                             <span>{highlight}</span>
                                                         </li>
@@ -1050,10 +1143,7 @@ export function ViewApplicantDialog({
                                             {evaluation.socialProfileInsights.github.highlights.length > 0 && (
                                                 <ul className="space-y-2">
                                                     {evaluation.socialProfileInsights.github.highlights.slice(0, 3).map((highlight, i) => (
-                                                        <li key={i} className={cn(
-                                                            "text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2",
-                                                            locale === 'ar' && 'text-right flex-row-reverse'
-                                                        )}>
+                                                        <li key={i} className="text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2">
                                                             <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
                                                             <span>{highlight}</span>
                                                         </li>
@@ -1131,24 +1221,15 @@ export function ViewApplicantDialog({
                                                 key={response.questionId}
                                                 className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200"
                                             >
-                                                <div className={cn(
-                                                    "flex items-start justify-between mb-2",
-                                                    locale === 'ar' && 'flex-row-reverse'
-                                                )}>
-                                                    <p className={cn(
-                                                        "text-sm font-medium text-indigo-900 dark:text-indigo-100",
-                                                        locale === 'ar' && 'text-right'
-                                                    )}>
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-start">
                                                         {response.questionText}
                                                     </p>
-                                                    <Badge variant="outline" className="text-xs shrink-0 ml-2">
+                                                    <Badge variant="outline" className="text-xs shrink-0 ms-2">
                                                         {response.wordCount} words
                                                     </Badge>
                                                 </div>
-                                                <p className={cn(
-                                                    "text-sm text-indigo-700 dark:text-indigo-300 line-clamp-3 whitespace-pre-line",
-                                                    locale === 'ar' && 'text-right'
-                                                )}>
+                                                <p className="text-sm text-indigo-700 dark:text-indigo-300 line-clamp-3 whitespace-pre-line text-start">
                                                     {response.answer}
                                                 </p>
                                             </div>
@@ -1211,7 +1292,7 @@ export function ViewApplicantDialog({
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1251,7 +1332,7 @@ export function ViewApplicantDialog({
                                                         </div>
                                                         <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
                                                             <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
                                                                 {getLocalizedText(resp.aiReasoning)}
                                                             </p>
                                                         </div>
@@ -1260,7 +1341,7 @@ export function ViewApplicantDialog({
                                             </div>
                                             <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
-                                                <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
@@ -1299,7 +1380,7 @@ export function ViewApplicantDialog({
                                                         </div>
                                                         <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
                                                             <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
                                                                 {getLocalizedText(resp.aiReasoning)}
                                                             </p>
                                                         </div>
@@ -1308,7 +1389,7 @@ export function ViewApplicantDialog({
                                             </div>
                                             <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
-                                                <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
@@ -1349,7 +1430,7 @@ export function ViewApplicantDialog({
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1385,7 +1466,7 @@ export function ViewApplicantDialog({
                                             </div>
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1427,7 +1508,7 @@ export function ViewApplicantDialog({
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1468,7 +1549,7 @@ export function ViewApplicantDialog({
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className={cn("text-sm text-violet-800 dark:text-violet-200 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.experienceAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1498,7 +1579,7 @@ export function ViewApplicantDialog({
                                                         <p className="text-xs text-violet-600 mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
                                                         <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
                                                             <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className={cn("text-xs text-violet-800 dark:text-violet-200", locale === 'ar' && 'text-right')}>
+                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
                                                                 {getLocalizedText(cw.aiReasoning)}
                                                             </p>
                                                         </div>
@@ -1512,7 +1593,7 @@ export function ViewApplicantDialog({
                                                 </div>
                                                 <div className="p-3 bg-white dark:bg-violet-950/20 rounded">
                                                     <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Summary:</p>
-                                                    <p className={cn("text-sm text-violet-900 dark:text-violet-100 leading-relaxed", locale === 'ar' && 'text-right')}>
+                                                    <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
                                                         {getLocalizedText(evaluation.aiAnalysisBreakdown.scoringBreakdown.aiSummary)}
                                                     </p>
                                                 </div>
@@ -1560,8 +1641,7 @@ export function ViewApplicantDialog({
                                                                     ? "bg-red-100 dark:bg-red-950/30 border-red-300 dark:border-red-700"
                                                                     : answer
                                                                         ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                                                                        : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
-                                                                locale === 'ar' && 'flex-row-reverse'
+                                                                        : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
                                                             )}
                                                         >
                                                             {isFailed ? (
@@ -1573,10 +1653,7 @@ export function ViewApplicantDialog({
                                                             )}
                                                             <div className="flex-1">
                                                                 <div className="flex items-start justify-between gap-2">
-                                                                    <p className={cn(
-                                                                        "text-sm font-medium flex-1",
-                                                                        locale === 'ar' && 'text-right'
-                                                                    )}>
+                                                                    <p className="text-sm font-medium flex-1 text-start">
                                                                         {question}
                                                                     </p>
                                                                     {isKnockout && (
@@ -1591,13 +1668,12 @@ export function ViewApplicantDialog({
                                                                     )}
                                                                 </div>
                                                                 <p className={cn(
-                                                                    "text-xs mt-1",
+                                                                    "text-xs mt-1 text-start",
                                                                     isFailed
                                                                         ? "text-red-800 dark:text-red-300 font-semibold"
                                                                         : answer
                                                                             ? "text-emerald-700 dark:text-emerald-300"
-                                                                            : "text-red-700 dark:text-red-300",
-                                                                    locale === 'ar' && 'text-right'
+                                                                            : "text-red-700 dark:text-red-300"
                                                                 )}>
                                                                     {isFailed
                                                                         ? `❌ ${t("common.no")} - ${t("applicants.knockoutFailed")}`
@@ -1651,13 +1727,12 @@ export function ViewApplicantDialog({
                                                         >
                                                             <div className="flex items-start justify-between gap-2 mb-2">
                                                                 <p className={cn(
-                                                                    "text-xs font-medium",
+                                                                    "text-xs font-medium text-start",
                                                                     hasGap
                                                                         ? "text-red-700 dark:text-red-300"
                                                                         : jobLanguage
                                                                             ? "text-emerald-700 dark:text-emerald-300"
-                                                                            : "text-orange-600 dark:text-orange-400",
-                                                                    locale === 'ar' && 'text-right'
+                                                                            : "text-orange-600 dark:text-orange-400"
                                                                 )}>
                                                                     {language}
                                                                 </p>
@@ -1680,11 +1755,10 @@ export function ViewApplicantDialog({
                                                                 </Badge>
                                                                 {jobLanguage && (
                                                                     <p className={cn(
-                                                                        "text-xs mt-1",
+                                                                        "text-xs mt-1 text-start",
                                                                         hasGap
                                                                             ? "text-red-600 dark:text-red-400"
-                                                                            : "text-emerald-600 dark:text-emerald-400",
-                                                                        locale === 'ar' && 'text-right'
+                                                                            : "text-emerald-600 dark:text-emerald-400"
                                                                     )}>
                                                                         {hasGap
                                                                             ? `⚠️ ${t("applicants.required")}: ${requiredLevel.toUpperCase()}`
@@ -1708,10 +1782,7 @@ export function ViewApplicantDialog({
                                                     {t("apply.additionalNotes")}
                                                 </p>
                                             </div>
-                                            <p className={cn(
-                                                "text-sm text-orange-800 dark:text-orange-200 whitespace-pre-line p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200",
-                                                locale === 'ar' && 'text-right'
-                                            )}>
+                                            <p className="text-sm text-orange-800 dark:text-orange-200 whitespace-pre-line p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200 text-start">
                                                 {applicant.notes}
                                             </p>
                                         </div>
@@ -1738,18 +1809,12 @@ export function ViewApplicantDialog({
                                     ).map((flag, index) => (
                                         <div
                                             key={index}
-                                            className={cn(
-                                                "flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-red-950/30 border-l-4 border-red-500 dark:border-red-600 shadow-sm",
-                                                locale === 'ar' && 'flex-row-reverse border-l-0 border-r-4'
-                                            )}
+                                            className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-red-950/30 border-s-4 border-red-500 dark:border-red-600 shadow-sm"
                                         >
                                             <div className="mt-0.5 shrink-0">
                                                 <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
                                             </div>
-                                            <p className={cn(
-                                                "text-sm leading-relaxed text-red-900 dark:text-red-200 whitespace-pre-line flex-1 font-medium",
-                                                locale === 'ar' && 'text-right'
-                                            )}>
+                                            <p className="text-sm leading-relaxed text-red-900 dark:text-red-200 whitespace-pre-line flex-1 font-medium text-start">
                                                 {flag}
                                             </p>
                                         </div>
@@ -1786,7 +1851,51 @@ export function ViewApplicantDialog({
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    {/* Team Review Tab */}
+                    <TabsContent value="review" className="p-6 space-y-6 mt-0">
+                        {/* Review Stats - Shows average rating from all reviewers */}
+                        <ReviewStats
+                            applicantId={applicant.id}
+                            aiScore={evaluation?.overallScore ?? applicant.aiScore}
+                            currentUserId={userId}
+                            currentUserRole={userRole}
+                            reviews={reviews}
+                            stats={reviewStats}
+                            loading={loadingReviews}
+                        />
+
+                        {/* Manual Review Form */}
+                        <ManualReviewForm
+                            applicantId={applicant.id}
+                            jobId={applicant.jobId?._id || ''}
+                            onReviewSubmitted={handleReviewSubmitted}
+                        />
+                    </TabsContent>
+
+                    {/* Team Notes Tab */}
+                    <TabsContent value="notes" className="p-6 space-y-6 mt-0">
+                        <TeamNotes
+                            applicantId={applicant.id}
+                            comments={comments}
+                            loading={loadingComments}
+                            onCommentsChange={handleCommentsChange}
+                        />
+                    </TabsContent>
                 </Tabs>
+
+                {/* Schedule Interview Dialog */}
+                {isAdmin && (
+                    <ScheduleInterviewDialog
+                        open={showScheduleDialog}
+                        onOpenChange={setShowScheduleDialog}
+                        applicantId={applicant.id}
+                        jobId={applicant.jobId?._id || ''}
+                        applicantName={applicant.personalData?.name || 'Candidate'}
+                        applicantEmail={applicant.personalData?.email || ''}
+                        onSuccess={onStatusChange}
+                    />
+                )}
             </DialogContent>
         </Dialog>
     )

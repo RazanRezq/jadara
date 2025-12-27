@@ -26,7 +26,6 @@ import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import { Pencil } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface User {
     id: string
@@ -51,7 +50,7 @@ export function EditUserDialog({
     onSuccess,
     currentUserRole,
 }: EditUserDialogProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
         name: user.name,
@@ -113,7 +112,7 @@ export function EditUserDialog({
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
                             <Pencil className="w-5 h-5 text-white" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
+                        <div className="text-start">
                             <DialogTitle>{t("users.editUser")}</DialogTitle>
                             <DialogDescription>
                                 {t("users.updateUserInfo")}
@@ -134,7 +133,7 @@ export function EditUserDialog({
                                 setFormData({ ...formData, name: e.target.value })
                             }
                             required
-                            className={isRTL ? "text-right" : ""}
+                            className="text-start"
                         />
                     </div>
 
@@ -150,7 +149,7 @@ export function EditUserDialog({
                                 setFormData({ ...formData, email: e.target.value })
                             }
                             required
-                            className={isRTL ? "text-right" : ""}
+                            className="text-start"
                         />
                     </div>
 
@@ -178,7 +177,7 @@ export function EditUserDialog({
                     </div>
 
                     <div className="flex items-center justify-between py-2">
-                        <div className={isRTL ? "text-right" : ""}>
+                        <div className="text-start">
                             <Label htmlFor="edit-active">
                                 {t("users.activeStatus")}
                             </Label>
@@ -210,7 +209,7 @@ export function EditUserDialog({
                         >
                             {loading ? (
                                 <>
-                                    <Spinner className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                    <Spinner className="h-4 w-4 me-2" />
                                     {t("users.saving")}
                                 </>
                             ) : (

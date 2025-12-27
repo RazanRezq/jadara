@@ -169,7 +169,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                         <TableHead>{t("common.role")}</TableHead>
                                         <TableHead>{t("common.status")}</TableHead>
                                         <TableHead>{t("users.lastLogin")}</TableHead>
-                                        <TableHead className="text-right">{t("common.actions")}</TableHead>
+                                        <TableHead className="text-end">{t("common.actions")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -202,7 +202,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                                     ? new Date(user.lastLogin).toLocaleDateString()
                                                     : t("users.never")}
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-end">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link href={`/dashboard/users/${user._id}`}>
                                                         <Button variant="ghost" size="sm">

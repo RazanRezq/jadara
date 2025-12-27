@@ -100,7 +100,7 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
                                         <TableHead>{t("dashboard.reviewer.candidateRef")}</TableHead>
                                         <TableHead>{t("dashboard.reviewer.jobTitle")}</TableHead>
                                         <TableHead>{t("dashboard.reviewer.dateAssigned")}</TableHead>
-                                        <TableHead className="text-right">{t("common.actions")}</TableHead>
+                                        <TableHead className="text-end">{t("common.actions")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -113,7 +113,7 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
                                             <TableCell>
                                                 {new Date(item.dateAssigned).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-end">
                                                 <Link href={`/dashboard/applicants/${item._id}`}>
                                                     <Button size="sm" className="gap-2">
                                                         <Play className="w-4 h-4" />

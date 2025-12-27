@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Brain, Zap } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslate } from "@/hooks/useTranslate"
 
 interface AISettingsProps {
     config: any
@@ -18,6 +19,7 @@ interface AISettingsProps {
 }
 
 export function AISettings({ config, onSave, saving }: AISettingsProps) {
+    const { t, dir } = useTranslate()
     const [formData, setFormData] = useState(config || {})
     const [testing, setTesting] = useState(false)
 
@@ -37,35 +39,36 @@ export function AISettings({ config, onSave, saving }: AISettingsProps) {
             const result = await response.json()
 
             if (result.success) {
-                toast.success(`AI configuration test successful (${result.provider}, ${result.model})`)
+                toast.success(`${t("settings.system.ai.testSuccess")} (${result.provider}, ${result.model})`)
             } else {
-                toast.error(result.error || "AI test failed")
+                toast.error(result.error || t("settings.system.ai.testError"))
             }
         } catch (error) {
-            toast.error("Error testing AI configuration")
+            toast.error(t("settings.system.ai.testErrorConfig"))
         } finally {
             setTesting(false)
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" dir={dir}>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Brain className="h-5 w-5" />
-                        AI Configuration
+                        {t("settings.system.ai.title")}
                     </CardTitle>
-                    <CardDescription>
-                        Configure AI service for candidate evaluation and analysis
+                    <CardDescription className="text-start">
+                        {t("settings.system.ai.description")}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Enable/Disable AI */}
                     <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label>Enable AI Evaluation</Label>
+                        <div className="space-y-0.5 text-start">
+                            <Label>{t("settings.system.ai.enableEvaluation")}</Label>
                             <p className="text-sm text-muted-foreground">
-                                Turn on AI-powered candidate evaluation
+                                {t("settings.system.ai.enableDescription")}
                             </p>
                         </div>
                         <Switch
@@ -74,9 +77,10 @@ export function AISettings({ config, onSave, saving }: AISettingsProps) {
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>AI Provider</Label>
-                        <Select value={formData.provider} onValueChange={(value) => handleChange("provider", value)}>
+                    {/* AI Provider */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.provider")}</Label>
+                        <Select value={formData.provider} onValueChange={(value) => handleChange("provider", value)} dir={dir}>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -88,27 +92,32 @@ export function AISettings({ config, onSave, saving }: AISettingsProps) {
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>API Key</Label>
+                    {/* API Key */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.apiKey")}</Label>
                         <Input
                             type="password"
                             value={formData.apiKey || ""}
                             onChange={(e) => handleChange("apiKey", e.target.value)}
-                            placeholder="Enter API key"
+                            placeholder={t("settings.system.ai.apiKeyPlaceholder")}
+                            dir="ltr"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Model</Label>
+                    {/* Model */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.model")}</Label>
                         <Input
                             value={formData.model || ""}
                             onChange={(e) => handleChange("model", e.target.value)}
-                            placeholder="e.g., gemini-2.0-flash-exp"
+                            placeholder={t("settings.system.ai.modelPlaceholder")}
+                            dir="ltr"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Temperature: {formData.temperature?.toFixed(1) || 0.7}</Label>
+                    {/* Temperature */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.temperature")}: {formData.temperature?.toFixed(1) || 0.7}</Label>
                         <Slider
                             min={0}
                             max={2}
@@ -117,36 +126,42 @@ export function AISettings({ config, onSave, saving }: AISettingsProps) {
                             onValueChange={([value]) => handleChange("temperature", value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Lower = More consistent, Higher = More creative
+                            {t("settings.system.ai.temperatureHint")}
                         </p>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Max Tokens</Label>
+                    {/* Max Tokens */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.maxTokens")}</Label>
                         <Input
                             type="number"
                             value={formData.maxTokens || 8000}
                             onChange={(e) => handleChange("maxTokens", parseInt(e.target.value))}
+                            dir="ltr"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Fallback Model (Optional)</Label>
+                    {/* Fallback Model */}
+                    <div className="space-y-2 text-start">
+                        <Label>{t("settings.system.ai.fallbackModel")}</Label>
                         <Input
                             value={formData.fallbackModel || ""}
                             onChange={(e) => handleChange("fallbackModel", e.target.value)}
-                            placeholder="Model to use if primary fails"
+                            placeholder={t("settings.system.ai.fallbackModelPlaceholder")}
+                            dir="ltr"
                         />
                     </div>
                 </CardContent>
             </Card>
 
+            {/* Action Buttons */}
             <div className="flex justify-between">
                 <Button type="button" variant="outline" onClick={handleTest} disabled={!formData.enabled || testing}>
-                    {testing ? "Testing..." : <><Zap className="h-4 w-4 mr-2" />Test AI Configuration</>}
+                    <Zap className="h-4 w-4 me-2" />
+                    {testing ? t("settings.system.ai.testing") : t("settings.system.ai.testConfig")}
                 </Button>
                 <Button type="submit" disabled={saving}>
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? t("settings.system.ai.saving") : t("settings.system.ai.saveChanges")}
                 </Button>
             </div>
         </form>

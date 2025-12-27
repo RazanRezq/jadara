@@ -25,7 +25,6 @@ import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import { Eye, EyeOff, UserPlus } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface AddUserDialogProps {
     open: boolean
@@ -40,7 +39,7 @@ export function AddUserDialog({
     onSuccess,
     currentUserRole,
 }: AddUserDialogProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [formData, setFormData] = useState({
@@ -95,7 +94,7 @@ export function AddUserDialog({
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center">
                             <UserPlus className="w-5 h-5 text-white" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
+                        <div className="text-start">
                             <DialogTitle>{t("users.addNewUser")}</DialogTitle>
                             <DialogDescription>
                                 {t("users.createTeamMember")}
@@ -117,7 +116,7 @@ export function AddUserDialog({
                             }
                             placeholder="John Doe"
                             required
-                            className={isRTL ? "text-right" : ""}
+                            className="text-start"
                         />
                     </div>
 
@@ -134,7 +133,7 @@ export function AddUserDialog({
                             }
                             placeholder="john@goielts.com"
                             required
-                            className={isRTL ? "text-right" : ""}
+                            className="text-start"
                         />
                     </div>
 
@@ -153,15 +152,12 @@ export function AddUserDialog({
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
-                                className={isRTL ? "pl-10 text-right" : "pr-10"}
+                                className="pe-10 text-start"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className={cn(
-                                    "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground",
-                                    isRTL ? "left-3" : "right-3"
-                                )}
+                                className="absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground end-3"
                             >
                                 {showPassword ? (
                                     <EyeOff className="h-4 w-4" />
@@ -210,7 +206,7 @@ export function AddUserDialog({
                         >
                             {loading ? (
                                 <>
-                                    <Spinner className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                    <Spinner className="h-4 w-4 me-2" />
                                     {t("users.creating")}
                                 </>
                             ) : (

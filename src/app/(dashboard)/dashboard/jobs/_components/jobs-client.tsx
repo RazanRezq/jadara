@@ -97,7 +97,7 @@ const statusColors: Record<JobStatus, string> = {
 }
 
 export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
-    const { t, isRTL } = useTranslate()
+    const { t, locale } = useTranslate()
     const router = useRouter()
     const [jobs, setJobs] = useState<Job[]>([])
     const [loading, setLoading] = useState(true)
@@ -251,7 +251,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "-"
-        return new Date(dateString).toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+        return new Date(dateString).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -309,10 +309,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                             <Link key={index} href={card.href}>
                                 <Card className="relative overflow-hidden transition-all hover:shadow-lg cursor-pointer">
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className={cn(
-                                            "text-sm font-medium text-muted-foreground",
-                                            isRTL && "text-right"
-                                        )}>
+                                        <CardTitle className="text-sm font-medium text-muted-foreground">
                                             {t(card.labelKey)}
                                         </CardTitle>
                                         <div
@@ -327,10 +324,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className={cn(
-                                            "text-2xl font-bold",
-                                            isRTL && "text-right"
-                                        )}>
+                                        <div className="text-2xl font-bold">
                                             {statsLoading ? (
                                                 <Spinner className="h-6 w-6 text-muted-foreground" />
                                             ) : (
@@ -350,10 +344,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                             className="relative overflow-hidden transition-all hover:shadow-lg cursor-pointer"
                         >
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className={cn(
-                                    "text-sm font-medium text-muted-foreground",
-                                    isRTL && "text-right"
-                                )}>
+                                <CardTitle className="text-sm font-medium text-muted-foreground">
                                     {t(card.labelKey)}
                                 </CardTitle>
                                 <div
@@ -368,10 +359,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className={cn(
-                                    "text-2xl font-bold",
-                                    isRTL && "text-right"
-                                )}>
+                                <div className="text-2xl font-bold">
                                     {statsLoading ? (
                                         <Spinner className="h-6 w-6" />
                                     ) : (
@@ -388,17 +376,12 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
             <div className="flex flex-col sm:flex-row gap-4">
                 {/* Search */}
                 <div className="relative flex-1">
-                    <Search className={cn(
-                        "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
-                        isRTL ? "right-3" : "left-3"
-                    )} />
+                    <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
                     <Input
                         placeholder={t("jobs.searchPlaceholder")}
                         value={searchTerm}
                         onChange={(e) => handleSearch(e.target.value)}
-                        className={cn(
-                            isRTL ? "pr-10 text-right" : "pl-10"
-                        )}
+                        className="ps-10"
                     />
                 </div>
 
@@ -432,7 +415,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         onClick={() => setAddDialogOpen(true)}
                         className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
                     >
-                        <Plus className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                        <Plus className="h-4 w-4 me-2" />
                         {t("jobs.addJob")}
                     </Button>
                 )}
@@ -455,12 +438,12 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.jobTitle")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.department")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.applicants")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("common.status")}</TableHead>
-                                    <TableHead className={isRTL ? "text-right" : ""}>{t("jobs.created")}</TableHead>
-                                    <TableHead className={isRTL ? "text-left" : "text-right"}>{t("common.actions")}</TableHead>
+                                    <TableHead>{t("jobs.jobTitle")}</TableHead>
+                                    <TableHead>{t("jobs.department")}</TableHead>
+                                    <TableHead>{t("jobs.applicants")}</TableHead>
+                                    <TableHead>{t("common.status")}</TableHead>
+                                    <TableHead>{t("jobs.created")}</TableHead>
+                                    <TableHead className="text-end">{t("common.actions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -488,7 +471,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                     variant="outline"
                                                     className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
                                                 >
-                                                    <Users className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1")} />
+                                                    <Users className="h-3 w-3 me-1" />
                                                     {job.applicantsCount || 0}
                                                 </Badge>
                                             </Link>
@@ -508,7 +491,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                         <TableCell className="text-muted-foreground">
                                             {formatDate(job.createdAt)}
                                         </TableCell>
-                                        <TableCell className={isRTL ? "text-left" : "text-right"}>
+                                        <TableCell className="text-end">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="icon">
@@ -521,7 +504,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         onClick={() => handleCopyApplicationLink(job.id)}
                                                         className="cursor-pointer font-medium"
                                                     >
-                                                        <LinkIcon className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <LinkIcon className="h-4 w-4 me-2" />
                                                         {t("jobs.copyApplicationLink")}
                                                     </DropdownMenuItem>
 
@@ -530,14 +513,14 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         onClick={() => window.open(`/apply/${job.id}`, "_blank")}
                                                         className="cursor-pointer"
                                                     >
-                                                        <ExternalLink className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <ExternalLink className="h-4 w-4 me-2" />
                                                         {t("jobs.previewPage")}
                                                     </DropdownMenuItem>
 
                                                     {/* Questions Builder */}
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/jobs/${job.id}/questions`} className="cursor-pointer">
-                                                            <FileQuestion className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                            <FileQuestion className="h-4 w-4 me-2" />
                                                             {t("jobs.questions")}
                                                         </Link>
                                                     </DropdownMenuItem>
@@ -549,7 +532,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         onClick={() => handleEditJob(job)}
                                                         className="cursor-pointer"
                                                     >
-                                                        <Pencil className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <Pencil className="h-4 w-4 me-2" />
                                                         {t("common.edit")}
                                                     </DropdownMenuItem>
 
@@ -560,7 +543,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                         onClick={() => handleDeleteJob(job)}
                                                         className="text-destructive focus:text-destructive cursor-pointer"
                                                     >
-                                                        <Trash2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                        <Trash2 className="h-4 w-4 me-2" />
                                                         {t("common.delete")}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>

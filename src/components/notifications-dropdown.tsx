@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Bell, Check, Trash2, X } from "lucide-react"
+import { useEffect, useState, useCallback } from "react"
+import { Bell, Check, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -40,7 +39,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isOpen, setIsOpen] = useState(false)
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
             const response = await fetch(`/api/notifications?userId=${userId}&limit=10`)
             const result = await response.json()
@@ -54,7 +53,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [userId])
 
     useEffect(() => {
         if (userId) {
@@ -63,7 +62,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
             const interval = setInterval(fetchNotifications, 30000)
             return () => clearInterval(interval)
         }
-    }, [userId])
+    }, [userId, fetchNotifications])
 
     const markAsRead = async (notificationId: string) => {
         try {
@@ -157,7 +156,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
                             onClick={markAllAsRead}
                             className="text-xs"
                         >
-                            <Check className="w-3 h-3 mr-1" />
+                            <Check className="w-3 h-3 me-1" />
                             {t("notifications.markAllRead")}
                         </Button>
                     )}

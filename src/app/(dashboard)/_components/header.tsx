@@ -14,7 +14,8 @@ import { getRoleColor, type SessionPayload } from "@/lib/auth"
 import { logoutAction } from "@/app/(auth)/login/actions"
 import { useTranslate } from "@/hooks/useTranslate"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { Bell, LogOut, Menu, Settings, User } from "lucide-react"
+import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { LogOut, Menu, Settings, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface DashboardHeaderProps {
@@ -23,7 +24,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
     const router = useRouter()
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
 
     async function handleLogout() {
         await logoutAction()
@@ -53,17 +54,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 <LanguageSwitcher />
 
                 {/* Notifications */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-slate-400 hover:text-white hover:bg-white/5"
-                >
-                    <Bell className="h-5 w-5" />
-                    <span className={cn(
-                        "absolute top-1.5 w-2 h-2 bg-cyan-400 rounded-full",
-                        isRTL ? "left-1.5" : "right-1.5"
-                    )} />
-                </Button>
+                <NotificationsDropdown userId={user.userId} />
 
                 {/* User dropdown */}
                 <DropdownMenu>
@@ -75,7 +66,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center text-white font-semibold text-sm">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className={cn("hidden md:block", isRTL ? "text-right" : "text-left")}>
+                            <div className="hidden md:block text-start">
                                 <p className="text-sm font-medium text-white">
                                     {user.name}
                                 </p>
@@ -103,11 +94,11 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-white/10" />
                         <DropdownMenuItem className="text-slate-300 focus:text-white focus:bg-white/5 cursor-pointer">
-                            <User className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <User className="h-4 w-4 me-2" />
                             {t("header.profile")}
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-slate-300 focus:text-white focus:bg-white/5 cursor-pointer">
-                            <Settings className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <Settings className="h-4 w-4 me-2" />
                             {t("header.settings")}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-white/10" />
@@ -115,7 +106,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                             onClick={handleLogout}
                             className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
                         >
-                            <LogOut className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                            <LogOut className="h-4 w-4 me-2" />
                             {t("header.logout")}
                         </DropdownMenuItem>
                     </DropdownMenuContent>

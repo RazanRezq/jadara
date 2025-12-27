@@ -108,7 +108,6 @@ export function hasGranularPermission(
             'users.view',
             'users.create',
             'users.edit',
-            'users.delete',
             'users.export',
             'users.import',
             'jobs.view',
@@ -130,6 +129,8 @@ export function hasGranularPermission(
             'questions.delete',
             'company.view',
             'company.edit',
+            'notifications.view',
+            'notifications.manage',
         ],
         reviewer: [
             'applicants.view',
@@ -137,6 +138,8 @@ export function hasGranularPermission(
             'evaluations.create',
             'evaluations.edit',
             'jobs.view',
+            'questions.view',
+            'notifications.view',
         ],
     }
 

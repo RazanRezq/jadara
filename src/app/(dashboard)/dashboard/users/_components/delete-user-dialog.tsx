@@ -71,7 +71,7 @@ export function DeleteUserDialog({
                         <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
                             <AlertTriangle className="w-5 h-5 text-destructive" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
+                        <div className="text-start">
                             <DialogTitle>{t("users.deleteUser")}</DialogTitle>
                             <DialogDescription>
                                 {t("users.deleteWarning")}
@@ -80,7 +80,7 @@ export function DeleteUserDialog({
                     </div>
                 </DialogHeader>
 
-                <div className={cn("py-4", isRTL && "text-right")}>
+                <div className="py-4 text-start">
                     <p>
                         {t("users.confirmDelete")}{" "}
                         <span className="font-semibold">{user.name}</span>؟
@@ -105,7 +105,7 @@ export function DeleteUserDialog({
                     >
                         {loading ? (
                             <>
-                                <Spinner className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                <Spinner className="h-4 w-4 me-2" />
                                 {t("users.deleting")}
                             </>
                         ) : (

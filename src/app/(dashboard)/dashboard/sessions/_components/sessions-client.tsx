@@ -12,7 +12,6 @@ import { Monitor, Smartphone, Tablet, MapPin, Chrome, AlertCircle, Loader2, Tras
 import { format, formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import { useTranslate } from "@/hooks/useTranslate"
-import { cn } from "@/lib/utils"
 
 interface Session {
     _id: string
@@ -35,7 +34,7 @@ interface Session {
 }
 
 export function SessionsClient() {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
     const [sessions, setSessions] = useState<Session[]>([])
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState<any>(null)
@@ -215,7 +214,7 @@ export function SessionsClient() {
                     </p>
                 </div>
                 <Button variant="outline" onClick={handleCleanup}>
-                    <Trash2 className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                    <Trash2 className="h-4 w-4 me-2" />
                     {t("sessions.cleanupOld")}
                 </Button>
             </div>
@@ -270,15 +269,12 @@ export function SessionsClient() {
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
-                            <Search className={cn(
-                                "absolute top-3 h-4 w-4 text-muted-foreground",
-                                isRTL ? "right-3" : "left-3"
-                            )} />
+                            <Search className="absolute top-3 start-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder={t("sessions.searchPlaceholder")}
                                 value={searchEmail}
                                 onChange={(e) => setSearchEmail(e.target.value)}
-                                className={cn(isRTL ? "pr-9 text-right" : "pl-9")}
+                                className="ps-9 text-start"
                             />
                         </div>
                         <Select value={filterActive} onValueChange={setFilterActive}>
@@ -319,12 +315,12 @@ export function SessionsClient() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("auditLogs.user")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("sessions.device")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("sessions.location")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("sessions.lastActivity")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-right")}>{t("common.status")}</TableHead>
-                                        <TableHead className={cn(isRTL && "text-left", !isRTL && "text-right")}>{t("common.actions")}</TableHead>
+                                        <TableHead className="text-start">{t("auditLogs.user")}</TableHead>
+                                        <TableHead className="text-start">{t("sessions.device")}</TableHead>
+                                        <TableHead className="text-start">{t("sessions.location")}</TableHead>
+                                        <TableHead className="text-start">{t("sessions.lastActivity")}</TableHead>
+                                        <TableHead className="text-start">{t("common.status")}</TableHead>
+                                        <TableHead className="text-end">{t("common.actions")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

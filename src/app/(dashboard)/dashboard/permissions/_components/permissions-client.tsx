@@ -178,7 +178,7 @@ export function PermissionsClient() {
                     onClick={fetchData}
                     disabled={loading}
                 >
-                    <RefreshCw className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2", loading && "animate-spin")} />
+                    <RefreshCw className={cn("h-4 w-4 me-2", loading && "animate-spin")} />
                     {t("common.refresh")}
                 </Button>
             </div>
@@ -250,14 +250,14 @@ export function PermissionsClient() {
                                                     onClick={() => handleReset(set.role)}
                                                     disabled={saving || !set.isCustom}
                                                 >
-                                                    <RotateCcw className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                    <RotateCcw className="h-4 w-4 me-2" />
                                                     {locale === "ar" ? "إعادة تعيين" : "Reset"}
                                                 </Button>
                                                 <Button
                                                     onClick={() => handleSave(set.role)}
                                                     disabled={saving || !hasChanges}
                                                 >
-                                                    <Save className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                                                    <Save className="h-4 w-4 me-2" />
                                                     {locale === "ar" ? "حفظ" : "Save"}
                                                 </Button>
                                             </div>

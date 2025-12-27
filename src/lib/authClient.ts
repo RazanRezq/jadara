@@ -28,22 +28,60 @@ export function hasGranularPermission(
 
     // Default permission sets (fallback when database is not accessible)
     const defaultPermissions: Record<UserRole, string[]> = {
-        superadmin: [],
+        superadmin: [], // Superadmin has all permissions (checked above)
         admin: [
-            'users.view', 'users.create', 'users.edit', 'users.delete', 'users.export', 'users.import',
-            'jobs.view', 'jobs.create', 'jobs.edit', 'jobs.delete', 'jobs.publish',
-            'applicants.view', 'applicants.edit', 'applicants.delete', 'applicants.export',
-            'evaluations.view', 'evaluations.create', 'evaluations.edit', 'evaluations.delete',
-            'questions.view', 'questions.create', 'questions.edit', 'questions.delete',
-            'company.view', 'company.edit',
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.export',
+            'users.import',
+            'jobs.view',
+            'jobs.create',
+            'jobs.edit',
+            'jobs.delete',
+            'jobs.publish',
+            'applicants.view',
+            'applicants.edit',
+            'applicants.delete',
+            'applicants.export',
+            'evaluations.view',
+            'evaluations.create',
+            'evaluations.edit',
+            'evaluations.delete',
+            'questions.view',
+            'questions.create',
+            'questions.edit',
+            'questions.delete',
+            'company.view',
+            'company.edit',
+            'notifications.view',
+            'notifications.manage',
         ],
         reviewer: [
-            'applicants.view', 'evaluations.view', 'evaluations.create', 'evaluations.edit', 'jobs.view',
+            'applicants.view',
+            'evaluations.view',
+            'evaluations.create',
+            'evaluations.edit',
+            'jobs.view',
+            'questions.view',
+            'notifications.view',
         ],
     }
 
     return defaultPermissions[userRole]?.includes(permission) || false
 }
 
-// Re-export hasPermission for backward compatibility
+// Role hierarchy for role-based permission checking
+export const roleHierarchy: Record<UserRole, number> = {
+    superadmin: 3,
+    admin: 2,
+    reviewer: 1,
+}
+
+// Role-based permission check (checks if userRole >= requiredRole in hierarchy)
+export function hasRolePermission(userRole: UserRole, requiredRole: UserRole): boolean {
+    return roleHierarchy[userRole] >= roleHierarchy[requiredRole]
+}
+
+// Re-export hasGranularPermission as hasPermission for backward compatibility
 export const hasPermission = hasGranularPermission
