@@ -29,7 +29,21 @@ export default function RootLayout({
     children: React.ReactNode
 }>) {
     return (
-        <html lang="ar" dir="rtl" suppressHydrationWarning>
+        <html suppressHydrationWarning>
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            (function() {
+                                const savedLocale = localStorage.getItem('locale');
+                                const locale = (savedLocale === 'ar' || savedLocale === 'en') ? savedLocale : 'ar';
+                                document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+                                document.documentElement.lang = locale;
+                            })();
+                        `,
+                    }}
+                />
+            </head>
             <body
                 className={`${outfit.variable} ${ibmPlexArabic.variable} font-sans antialiased`}
                 suppressHydrationWarning

@@ -66,20 +66,26 @@ export function LanguageProvider({
     const [locale, setLocaleState] = useState<Locale>(defaultLocale)
     const [mounted, setMounted] = useState(false)
 
+    // Set initial direction immediately to avoid flash
     useEffect(() => {
         const savedLocale = localStorage.getItem("locale") as Locale | null
+        const initialLocale = (savedLocale === "ar" || savedLocale === "en") ? savedLocale : defaultLocale
+
+        // Set direction immediately
+        document.documentElement.dir = initialLocale === "ar" ? "rtl" : "ltr"
+        document.documentElement.lang = initialLocale
+
         if (savedLocale && (savedLocale === "ar" || savedLocale === "en")) {
             setLocaleState(savedLocale)
         }
         setMounted(true)
-    }, [])
+    }, [defaultLocale])
 
+    // Update direction when locale changes
     useEffect(() => {
-        if (mounted) {
-            document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
-            document.documentElement.lang = locale
-        }
-    }, [locale, mounted])
+        document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
+        document.documentElement.lang = locale
+    }, [locale])
 
     const setLocale = (newLocale: Locale) => {
         setLocaleState(newLocale)

@@ -128,6 +128,44 @@ export function VoiceQuestion({
     const ArrowPrev = isRTL ? ArrowRight : ArrowLeft
     const timeLimitSeconds = parseTimeLimit(question.timeLimit)
 
+    // Check if site is secure (HTTPS or localhost/development)
+    const [isSecure, setIsSecure] = useState(true)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const isHttps = window.location.protocol === 'https:'
+            const hostname = window.location.hostname
+
+            // Allow localhost, 127.0.0.1, and local network IPs for development
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+            const isLocalIP = /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) || // 192.168.x.x
+                               /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) || // 10.x.x.x
+                               /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname) // 172.16-31.x.x
+
+            const isDevelopment = process.env.NODE_ENV === 'development'
+
+            const secure = isHttps || isLocalhost || isLocalIP || isDevelopment
+            setIsSecure(secure)
+
+            // Detailed logging for debugging
+            console.log('[Voice Security] Environment check:', {
+                hostname,
+                protocol: window.location.protocol,
+                isHttps,
+                isLocalhost,
+                isLocalIP,
+                isDevelopment,
+                secure,
+            })
+
+            if (!secure) {
+                console.warn('[Voice Security] ⚠️ Site is not secure (not HTTPS). Microphone access may be blocked.')
+            } else if (isLocalIP || isDevelopment) {
+                console.log('[Voice Security] ✅ Development mode detected - HTTPS check bypassed')
+            }
+        }
+    }, [])
+
     // Set initial stage based on readOnly
     useEffect(() => {
         if (readOnly && existingResponse?.audioUrl) {
@@ -180,20 +218,88 @@ export function VoiceQuestion({
     // Request microphone permission
     const requestPermission = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            console.log('[Voice Permission] Requesting microphone access...')
+            console.log('[Voice Permission] User agent:', navigator.userAgent)
+            console.log('[Voice Permission] Protocol:', window.location.protocol)
+            console.log('[Voice Permission] Hostname:', window.location.hostname)
+
+            // Check if getUserMedia is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('[Voice Permission] getUserMedia not supported')
+
+                // Provide helpful error message based on context
+                const hostname = window.location.hostname
+                const isLocalIP = /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+                                  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)
+
+                if (window.location.protocol !== 'https:' && isLocalIP) {
+                    toast.error(
+                        isRTL
+                            ? "يتطلب تسجيل الصوت HTTPS. استخدم localhost أو ngrok للتطوير على الهاتف المحمول."
+                            : "Voice recording requires HTTPS. Use localhost or ngrok for mobile development.",
+                        { duration: 8000 }
+                    )
+                } else {
+                    toast.error(
+                        isRTL
+                            ? "متصفحك لا يدعم تسجيل الصوت. استخدم Chrome أو Safari أو Firefox."
+                            : "Your browser doesn't support audio recording. Please use Chrome, Safari, or Firefox.",
+                        { duration: 6000 }
+                    )
+                }
+                return
+            }
+
+            // Request with specific constraints for better mobile compatibility
+            const constraints = {
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                }
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints)
+            console.log('[Voice Permission] ✅ Microphone access granted')
+
             streamRef.current = stream
             setHasPermission(true)
             setStage("ready")
 
             // Setup audio analyser for visualization
-            const audioContext = new AudioContext()
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+            // iOS Safari requires AudioContext to be resumed after user interaction
+            if (audioContext.state === 'suspended') {
+                console.log('[Voice Permission] Resuming suspended AudioContext (iOS fix)')
+                await audioContext.resume()
+            }
+
             const source = audioContext.createMediaStreamSource(stream)
             const analyser = audioContext.createAnalyser()
             analyser.fftSize = 64
             source.connect(analyser)
             analyserRef.current = analyser
-        } catch {
-            toast.error(t("apply.microphoneError"))
+
+            console.log('[Voice Permission] Audio context and analyser setup complete')
+        } catch (error: any) {
+            console.error('[Voice Permission] ❌ Error:', error)
+
+            let errorMessage = t("apply.microphoneError")
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage = "Microphone access denied. Please allow microphone access in your browser settings."
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage = "No microphone found. Please connect a microphone and try again."
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                errorMessage = "Microphone is already in use by another application."
+            } else if (error.name === 'OverconstrainedError') {
+                errorMessage = "Unable to access microphone with the requested settings."
+            } else if (error.name === 'SecurityError') {
+                errorMessage = "Microphone access blocked. Make sure you're using HTTPS."
+            }
+
+            toast.error(errorMessage)
         }
     }
 
@@ -809,6 +915,49 @@ export function VoiceQuestion({
                                 <p className="text-sm text-muted-foreground">{t("apply.microphoneAccessDescription")}</p>
                             </div>
                         </div>
+
+                        {/* HTTPS Security Warning - Only show on production or non-local IPs */}
+                        {!isSecure && typeof window !== 'undefined' && window.location.protocol !== 'https:' && (
+                            <Alert className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                                <AlertTriangle className="h-4 w-4 text-red-600" />
+                                <AlertDescription className="text-sm text-red-700 dark:text-red-300">
+                                    {isRTL ? (
+                                        <>
+                                            <strong>تحذير:</strong> يتطلب تسجيل الصوت HTTPS. للتطوير استخدم:
+                                            <br />
+                                            • localhost (http://localhost:3000)
+                                            <br />
+                                            • ngrok للاختبار على الهاتف
+                                        </>
+                                    ) : (
+                                        <>
+                                            <strong>Warning:</strong> Voice recording requires HTTPS. For development use:
+                                            <br />
+                                            • localhost (http://localhost:3000)
+                                            <br />
+                                            • ngrok for mobile testing
+                                        </>
+                                    )}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {/* Mobile-specific instructions */}
+                        <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                            <AlertTriangle className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-sm text-blue-700 dark:text-blue-300">
+                                {isRTL ? (
+                                    <>
+                                        <strong>للأجهزة المحمولة:</strong> عند النقر على "السماح بالميكروفون"، ستظهر نافذة منبثقة من المتصفح. يرجى النقر على "السماح" أو "Allow" لمنح الإذن.
+                                    </>
+                                ) : (
+                                    <>
+                                        <strong>For mobile users:</strong> When you tap "Allow Microphone", your browser will show a popup. Please tap "Allow" to grant permission.
+                                    </>
+                                )}
+                            </AlertDescription>
+                        </Alert>
+
                         <div className="flex gap-3">
                             {onBack && (
                                 <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
@@ -816,7 +965,11 @@ export function VoiceQuestion({
                                     {t("common.back")}
                                 </Button>
                             )}
-                            <Button onClick={requestPermission} size="lg" className="flex-1 h-12 text-base gap-2">
+                            <Button
+                                onClick={requestPermission}
+                                size="lg"
+                                className="flex-1 h-12 text-base gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                            >
                                 <Mic className="size-4" />
                                 {t("apply.allowMicrophone")}
                             </Button>
