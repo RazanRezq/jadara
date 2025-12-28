@@ -172,31 +172,24 @@ app.post('/submit', authenticate, async (c) => {
                     console.log('  → Applicant:', applicantName)
                     console.log('  → Job:', jobTitle)
 
-                    // Find all recipients: Job Creator (Admin) + All Superadmins
+                    // --- TEAM BROADCAST LOGIC ---
+                    console.log('[Notification] Starting Team Broadcast...')
                     const recipients = new Set<string>()
 
-                    // ROBUST ADMIN RESOLUTION - Add job creator
-                    console.log('  → Finding notification recipients...')
-                    if (job.createdBy) {
-                        const creatorId = job.createdBy.toString() // Works for both ObjectId and populated doc
-                        if (creatorId !== user.id) {
-                            recipients.add(creatorId)
-                            console.log('    ✅ Added job creator:', creatorId)
-                        } else {
-                            console.log('    ℹ️  Skipping job creator (same as reviewer)')
-                        }
-                    } else {
-                        console.warn('    ⚠️  Job.createdBy is null/undefined - Admin won\'t be notified!')
-                    }
+                    // Fetch ALL Active Team Members (Super Admin, Admin, Reviewer)
+                    // Exclude the current sender ($ne: user.id) directly in DB query for efficiency
+                    const teamMembers = await User.find({
+                        role: { $in: ['superadmin', 'admin', 'reviewer'] },
+                        isActive: true,
+                        _id: { $ne: user.id } // Don't notify self
+                    }).select('_id email role')
 
-                    // Add all superadmins
-                    const superadmins = await User.find({ role: 'superadmin', isActive: true }).lean()
-                    console.log('    ✅ Found', superadmins.length, 'active superadmins')
-                    superadmins.forEach(sa => {
-                        if (sa._id.toString() !== user.id) {
-                            recipients.add(sa._id.toString())
-                        }
+                    teamMembers.forEach(member => {
+                        recipients.add(member._id.toString())
                     })
+
+                    console.log(`[Notification] Broadcast target: ${recipients.size} members (Roles: SuperAdmin, Admin, Reviewer)`)
+                    // ----------------------------
 
                     // Convert to ObjectId array
                     const uniqueRecipientIds = Array.from(recipients).map(
@@ -213,7 +206,7 @@ app.post('/submit', authenticate, async (c) => {
                             priority: 'high' as const,
                             title: 'New Review Submitted',
                             message: `${user.name} has evaluated ${applicantName} for ${jobTitle}. Rating: ${validatedData.rating}/5`,
-                            actionUrl: `/dashboard/applicants/${validatedData.applicantId}`,
+                            actionUrl: `/dashboard/applicants?open=${validatedData.applicantId}&tab=review`,
                             relatedId: new mongoose.Types.ObjectId(validatedData.applicantId),
                         }))
 

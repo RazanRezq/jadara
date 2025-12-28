@@ -4,6 +4,7 @@ export type NotificationType =
     | 'new_applicant'
     | 'review_assigned'
     | 'review_completed'
+    | 'comment_added'
     | 'applicant_hired'
     | 'job_expired'
     | 'system_alert'
@@ -35,7 +36,7 @@ const notificationSchema = new Schema<INotification>(
         },
         type: {
             type: String,
-            enum: ['new_applicant', 'review_assigned', 'review_completed', 'applicant_hired', 'job_expired', 'system_alert'],
+            enum: ['new_applicant', 'review_assigned', 'review_completed', 'comment_added', 'applicant_hired', 'job_expired', 'system_alert'],
             required: true,
         },
         priority: {
@@ -79,7 +80,11 @@ notificationSchema.index({ userId: 1, type: 1 }) // For filtering by type
 notificationSchema.index({ createdAt: -1 }) // For sorting by date
 notificationSchema.index({ userId: 1, createdAt: -1 }) // For user timeline
 
-const Notification: Model<INotification> =
-    mongoose.models.Notification || mongoose.model<INotification>('Notification', notificationSchema)
+// Handle model caching properly - delete cached model if schema changed
+if (mongoose.models.Notification) {
+    delete mongoose.models.Notification
+}
+
+const Notification: Model<INotification> = mongoose.model<INotification>('Notification', notificationSchema)
 
 export default Notification

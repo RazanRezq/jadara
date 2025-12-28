@@ -1,31 +1,66 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useTranslate } from "@/hooks/useTranslate"
 import {
     Users,
+    Briefcase,
     Calendar,
+    UserCheck,
     TrendingUp,
-    AlertCircle,
-    ArrowUpRight,
-    ArrowDownRight,
+    TrendingDown,
+    Star,
+    MoreHorizontal,
+    Plus,
+    ExternalLink,
+    Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
+// Types
 interface AdminStats {
-    actionRequired: number
-    interviewsScheduled: number
-    totalHired: number
+    totalApplicants: number
+    totalApplicantsTrend: number
     activeJobs: number
-    applicationsLast30Days: Array<{ date: string; count: number }>
-    funnelData: Array<{ stage: string; count: number }>
-    recentApplicants: Array<{
+    activeJobsTrend: number
+    upcomingInterviewsCount: number
+    upcomingInterviewsTrend: number
+    totalHired: number
+    totalHiredTrend: number
+    actionCenter: Array<{
         _id: string
         name: string
+        email: string
         jobTitle: string
+        jobId: string
+        avgRating: number
+        reviewCount: number
+        submittedAt: Date
+    }>
+    upcomingInterviews: Array<{
+        _id: string
+        candidateName: string
+        jobTitle: string
+        scheduledTime: string
+        meetingLink: string
+        applicantId: string
+        isToday: boolean
+        isTomorrow: boolean
+    }>
+    recentCandidates: Array<{
+        _id: string
+        name: string
+        email: string
+        jobTitle: string
+        jobId: string
+        status: string
         aiScore: number
+        avgRating: number | null
+        reviewCount: number
         submittedAt: Date
     }>
 }
@@ -34,45 +69,490 @@ interface AdminViewProps {
     stats: AdminStats
 }
 
+// Stat Card Component
+function StatCard({
+    title,
+    value,
+    trend,
+    icon: Icon,
+    iconBgColor,
+    href,
+}: {
+    title: string
+    value: number
+    trend: number
+    icon: React.ElementType
+    iconBgColor: string
+    href: string
+}) {
+    const { t } = useTranslate()
+    const isPositive = trend >= 0
+
+    return (
+        <Link href={href}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-card">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+                            <p className="text-3xl font-bold tracking-tight">{value.toLocaleString()}</p>
+                            {trend !== 0 && (
+                                <div className="flex items-center gap-1">
+                                    {isPositive ? (
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                    ) : (
+                                        <TrendingDown className="w-4 h-4 text-red-500" />
+                                    )}
+                                    <span
+                                        className={cn(
+                                            "text-sm font-medium",
+                                            isPositive ? "text-emerald-500" : "text-red-500"
+                                        )}
+                                    >
+                                        {isPositive ? "+" : ""}
+                                        {trend}%
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <div
+                            className={cn(
+                                "w-14 h-14 rounded-xl flex items-center justify-center",
+                                iconBgColor
+                            )}
+                        >
+                            <Icon className="w-7 h-7 text-white" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </Link>
+    )
+}
+
+// Star Rating Component
+function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 >= 0.5
+    const starSize = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"
+
+    return (
+        <div className="flex items-center gap-0.5">
+            {[...Array(5)].map((_, i) => (
+                <Star
+                    key={i}
+                    className={cn(
+                        starSize,
+                        i < fullStars
+                            ? "fill-amber-400 text-amber-400"
+                            : i === fullStars && hasHalfStar
+                            ? "fill-amber-400/50 text-amber-400"
+                            : "fill-muted text-muted"
+                    )}
+                />
+            ))}
+        </div>
+    )
+}
+
+// Action Center Component
+function ActionCenter({
+    candidates,
+}: {
+    candidates: AdminStats["actionCenter"]
+}) {
+    const { t } = useTranslate()
+
+    return (
+        <Card className="col-span-2 bg-white dark:bg-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                    <CardTitle className="text-lg font-semibold">
+                        {t("dashboard.admin.actionCenter")}
+                    </CardTitle>
+                    <CardDescription>
+                        {t("dashboard.admin.actionCenterDesc")}
+                    </CardDescription>
+                </div>
+                <Button variant="ghost" size="icon">
+                    <Plus className="w-4 h-4" />
+                </Button>
+            </CardHeader>
+            <CardContent>
+                {candidates.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                        {t("dashboard.admin.noActionRequired")}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-xs text-muted-foreground border-b">
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.candidateName")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.jobTitle")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.teamRating")}
+                                    </th>
+                                    <th className="text-end pb-3 font-medium">
+                                        {t("dashboard.admin.actions")}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {candidates.map((candidate) => (
+                                    <tr key={candidate._id} className="group">
+                                        <td className="py-4">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="w-9 h-9">
+                                                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                                                        {candidate.name
+                                                            .split(" ")
+                                                            .map((n) => n[0])
+                                                            .join("")
+                                                            .slice(0, 2)
+                                                            .toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="font-medium text-sm">
+                                                    {candidate.name}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 text-sm text-muted-foreground">
+                                            {candidate.jobTitle}
+                                        </td>
+                                        <td className="py-4">
+                                            <div className="flex items-center gap-2">
+                                                <StarRating rating={candidate.avgRating} />
+                                                <span className="text-xs text-muted-foreground">
+                                                    ({candidate.reviewCount})
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 text-end">
+                                            <Link href={`/dashboard/applicants/${candidate._id}`}>
+                                                <Button size="sm" variant="outline">
+                                                    {t("dashboard.admin.review")}
+                                                </Button>
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// Upcoming Schedule Component
+function UpcomingSchedule({
+    interviews,
+}: {
+    interviews: AdminStats["upcomingInterviews"]
+}) {
+    const { t } = useTranslate()
+
+    const todayInterviews = interviews.filter((i) => i.isToday)
+    const tomorrowInterviews = interviews.filter((i) => i.isTomorrow)
+
+    return (
+        <Card className="bg-white dark:bg-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                    <CardTitle className="text-lg font-semibold">
+                        {t("dashboard.admin.upcomingSchedule")}
+                    </CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {interviews.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                        {t("dashboard.admin.noUpcomingInterviews")}
+                    </div>
+                ) : (
+                    <>
+                        {todayInterviews.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    {t("dashboard.admin.priority")}
+                                </p>
+                                {todayInterviews.map((interview) => (
+                                    <div
+                                        key={interview._id}
+                                        className="p-3 rounded-lg bg-primary/5 border border-primary/10"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <p className="font-medium text-sm">
+                                                    {interview.candidateName}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {t("dashboard.admin.today")} - {interview.scheduledTime}
+                                                </p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {tomorrowInterviews.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    {t("dashboard.admin.other")}
+                                </p>
+                                {tomorrowInterviews.map((interview) => (
+                                    <div
+                                        key={interview._id}
+                                        className="p-3 rounded-lg bg-muted/50 border"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <p className="font-medium text-sm">
+                                                    {interview.candidateName}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {t("dashboard.admin.tomorrow")} - {interview.scheduledTime}
+                                                </p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <Button
+                            variant="ghost"
+                            className="w-full text-primary hover:text-primary/80 hover:bg-primary/5"
+                        >
+                            <Plus className="w-4 h-4 me-2" />
+                            {t("dashboard.admin.createNewSchedule")}
+                        </Button>
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// Status Badge Component
+function StatusBadge({ status }: { status: string }) {
+    const { t } = useTranslate()
+
+    const statusConfig: Record<string, { color: string; bg: string }> = {
+        new: { color: "text-blue-700", bg: "bg-blue-100" },
+        screening: { color: "text-amber-700", bg: "bg-amber-100" },
+        interviewing: { color: "text-purple-700", bg: "bg-purple-100" },
+        evaluated: { color: "text-cyan-700", bg: "bg-cyan-100" },
+        shortlisted: { color: "text-emerald-700", bg: "bg-emerald-100" },
+        hired: { color: "text-green-700", bg: "bg-green-100" },
+        rejected: { color: "text-red-700", bg: "bg-red-100" },
+        withdrawn: { color: "text-gray-700", bg: "bg-gray-100" },
+    }
+
+    const config = statusConfig[status] || { color: "text-gray-700", bg: "bg-gray-100" }
+
+    return (
+        <Badge variant="secondary" className={cn("font-medium", config.bg, config.color)}>
+            {t(`applicants.status.${status}`)}
+        </Badge>
+    )
+}
+
+// Recent Candidates Table Component
+function RecentCandidatesTable({
+    candidates,
+}: {
+    candidates: AdminStats["recentCandidates"]
+}) {
+    const { t } = useTranslate()
+
+    return (
+        <Card className="bg-white dark:bg-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                    <CardTitle className="text-lg font-semibold">
+                        {t("dashboard.admin.recentCandidates")}
+                    </CardTitle>
+                    <CardDescription>
+                        {t("dashboard.admin.recentCandidatesDesc")}
+                    </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4 me-2" />
+                        {t("dashboard.admin.export")}
+                    </Button>
+                    <Link href="/dashboard/applicants">
+                        <Button size="sm">
+                            <Plus className="w-4 h-4 me-2" />
+                            {t("dashboard.admin.viewAll")}
+                        </Button>
+                    </Link>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {candidates.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                        {t("dashboard.admin.noRecentActivity")}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-xs text-muted-foreground border-b">
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.candidateName")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.jobTitle")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.status")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.aiMatchScore")}
+                                    </th>
+                                    <th className="text-start pb-3 font-medium">
+                                        {t("dashboard.admin.teamRating")}
+                                    </th>
+                                    <th className="text-end pb-3 font-medium">
+                                        {t("dashboard.admin.actions")}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {candidates.map((candidate) => (
+                                    <tr key={candidate._id} className="group hover:bg-muted/30">
+                                        <td className="py-4">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="w-9 h-9">
+                                                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                                                        {candidate.name
+                                                            .split(" ")
+                                                            .map((n) => n[0])
+                                                            .join("")
+                                                            .slice(0, 2)
+                                                            .toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-medium text-sm">
+                                                        {candidate.name}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {candidate.email}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 text-sm text-muted-foreground">
+                                            {candidate.jobTitle}
+                                        </td>
+                                        <td className="py-4">
+                                            <StatusBadge status={candidate.status} />
+                                        </td>
+                                        <td className="py-4">
+                                            <div
+                                                className={cn(
+                                                    "inline-flex items-center justify-center w-12 h-8 rounded-md text-sm font-semibold",
+                                                    candidate.aiScore >= 70
+                                                        ? "bg-emerald-100 text-emerald-700"
+                                                        : candidate.aiScore >= 50
+                                                        ? "bg-amber-100 text-amber-700"
+                                                        : "bg-red-100 text-red-700"
+                                                )}
+                                            >
+                                                {candidate.aiScore}
+                                            </div>
+                                        </td>
+                                        <td className="py-4">
+                                            {candidate.avgRating !== null ? (
+                                                <div className="flex items-center gap-2">
+                                                    <StarRating rating={candidate.avgRating} />
+                                                    <span className="text-xs text-muted-foreground">
+                                                        ({candidate.reviewCount})
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {t("dashboard.admin.noRating")}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="py-4">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Link href={`/dashboard/applicants/${candidate._id}`}>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 text-primary"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// Main AdminView Component
 export function AdminView({ stats }: AdminViewProps) {
-    const { t, isRTL } = useTranslate()
+    const { t } = useTranslate()
 
     const statCards = [
         {
-            titleKey: "dashboard.admin.actionRequired",
-            value: stats.actionRequired,
-            icon: AlertCircle,
-            color: "from-orange-500 to-red-500",
-            shadowColor: "shadow-orange-500/20",
-            href: "/dashboard/applicants?status=new",
-            trend: null,
-        },
-        {
-            titleKey: "dashboard.admin.interviewsScheduled",
-            value: stats.interviewsScheduled,
-            icon: Calendar,
-            color: "from-blue-500 to-indigo-500",
-            shadowColor: "shadow-blue-500/20",
-            href: "/dashboard/applicants?status=interview_scheduled",
-            trend: null,
-        },
-        {
-            titleKey: "dashboard.admin.totalHired",
-            value: stats.totalHired,
+            title: t("dashboard.admin.totalApplicants"),
+            value: stats.totalApplicants,
+            trend: stats.totalApplicantsTrend,
             icon: Users,
-            color: "from-emerald-500 to-green-500",
-            shadowColor: "shadow-emerald-500/20",
-            href: "/dashboard/applicants?status=hired",
-            trend: null,
+            iconBgColor: "bg-gradient-to-br from-teal-400 to-teal-600",
+            href: "/dashboard/applicants",
         },
         {
-            titleKey: "dashboard.admin.activeJobs",
+            title: t("dashboard.admin.activeJobs"),
             value: stats.activeJobs,
-            icon: TrendingUp,
-            color: "from-purple-500 to-pink-500",
-            shadowColor: "shadow-purple-500/20",
+            trend: stats.activeJobsTrend,
+            icon: Briefcase,
+            iconBgColor: "bg-gradient-to-br from-blue-400 to-blue-600",
             href: "/dashboard/jobs?status=active",
-            trend: null,
+        },
+        {
+            title: t("dashboard.admin.interviewsScheduled"),
+            value: stats.upcomingInterviewsCount,
+            trend: stats.upcomingInterviewsTrend,
+            icon: Calendar,
+            iconBgColor: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+            href: "/dashboard/calendar",
+        },
+        {
+            title: t("dashboard.admin.totalHired"),
+            value: stats.totalHired,
+            trend: stats.totalHiredTrend,
+            icon: UserCheck,
+            iconBgColor: "bg-gradient-to-br from-orange-400 to-orange-600",
+            href: "/dashboard/applicants?status=hired",
         },
     ]
 
@@ -80,151 +560,37 @@ export function AdminView({ stats }: AdminViewProps) {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.admin.title")}</h1>
-                <p className="text-muted-foreground mt-1">{t("dashboard.admin.subtitle")}</p>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    {t("dashboard.admin.title")}
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                    {t("dashboard.admin.subtitle")}
+                </p>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 {statCards.map((stat, index) => (
-                    <Link href={stat.href} key={index}>
-                        <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                    {t(stat.titleKey)}
-                                </CardTitle>
-                                <div
-                                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg ${stat.shadowColor}`}
-                                >
-                                    <stat.icon className="w-5 h-5 text-white" />
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stat.value}</div>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                    <StatCard
+                        key={index}
+                        title={stat.title}
+                        value={stat.value}
+                        trend={stat.trend}
+                        icon={stat.icon}
+                        iconBgColor={stat.iconBgColor}
+                        href={stat.href}
+                    />
                 ))}
             </div>
 
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {/* Hiring Funnel */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t("dashboard.admin.hiringFunnel")}</CardTitle>
-                        <CardDescription>{t("dashboard.admin.hiringFunnelDesc")}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={stats.funnelData} layout={isRTL ? "horizontal" : "vertical"}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis
-                                    dataKey="stage"
-                                    tick={{ fontSize: 12 }}
-                                    angle={-45}
-                                    textAnchor="end"
-                                    height={80}
-                                />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                {/* Application Trend */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t("dashboard.admin.applicationTrend")}</CardTitle>
-                        <CardDescription>{t("dashboard.admin.applicationTrendDesc")}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={stats.applicationsLast30Days}>
-                                <defs>
-                                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis
-                                    dataKey="date"
-                                    tick={{ fontSize: 12 }}
-                                    angle={-45}
-                                    textAnchor="end"
-                                    height={80}
-                                />
-                                <YAxis />
-                                <Tooltip />
-                                <Area
-                                    type="monotone"
-                                    dataKey="count"
-                                    stroke="hsl(var(--primary))"
-                                    fillOpacity={1}
-                                    fill="url(#colorCount)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+            {/* Middle Section: Action Center + Upcoming Schedule */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <ActionCenter candidates={stats.actionCenter} />
+                <UpcomingSchedule interviews={stats.upcomingInterviews} />
             </div>
 
-            {/* Recent Activity */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t("dashboard.admin.recentActivity")}</CardTitle>
-                    <CardDescription>{t("dashboard.admin.recentActivityDesc")}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {stats.recentApplicants.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            {t("dashboard.admin.noRecentActivity")}
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {stats.recentApplicants.map((applicant) => (
-                                <Link
-                                    key={applicant._id}
-                                    href={`/dashboard/applicants/${applicant._id}`}
-                                    className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{applicant.name}</p>
-                                        <p className="text-sm text-muted-foreground truncate">
-                                            {applicant.jobTitle}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-end">
-                                            <p className="text-sm font-medium">
-                                                {t("dashboard.admin.aiMatchScore")}
-                                            </p>
-                                            <p
-                                                className={cn(
-                                                    "text-sm font-bold",
-                                                    applicant.aiScore >= 70
-                                                        ? "text-emerald-500"
-                                                        : applicant.aiScore >= 50
-                                                        ? "text-amber-500"
-                                                        : "text-red-500"
-                                                )}
-                                            >
-                                                {applicant.aiScore}%
-                                            </p>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            {new Date(applicant.submittedAt).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            {/* Bottom Section: Recent Candidates Table */}
+            <RecentCandidatesTable candidates={stats.recentCandidates} />
         </div>
     )
 }

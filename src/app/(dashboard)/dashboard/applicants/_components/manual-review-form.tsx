@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -25,6 +26,7 @@ import {
     Loader2,
     CheckCircle,
     Edit,
+    ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +34,7 @@ interface ManualReviewFormProps {
     applicantId: string
     jobId: string
     onReviewSubmitted?: () => void
+    nextApplicantId?: string | null
 }
 
 type ReviewDecision = "strong_hire" | "recommended" | "neutral" | "not_recommended" | "strong_no"
@@ -52,8 +55,10 @@ export function ManualReviewForm({
     applicantId,
     jobId,
     onReviewSubmitted,
+    nextApplicantId,
 }: ManualReviewFormProps) {
     const { t, dir, locale } = useTranslate()
+    const router = useRouter()
 
     // Decision options with translations
     const decisionOptions: { value: ReviewDecision; label: string; color: string; icon: React.ReactNode }[] = [
@@ -152,7 +157,7 @@ export function ManualReviewForm({
         setCons(cons.filter((_, i) => i !== index))
     }
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (saveAndNext: boolean = false) => {
         if (rating === 0) {
             toast.error(t("applicants.review.pleaseProvideRating"))
             return
@@ -194,7 +199,15 @@ export function ManualReviewForm({
                     updatedAt: new Date().toISOString(),
                 })
                 setIsEditing(false)
-                onReviewSubmitted?.()
+
+                // Handle Save & Next workflow
+                if (saveAndNext && nextApplicantId) {
+                    // Navigate to next applicant without closing dialog
+                    router.push(`/dashboard/applicants?open=${nextApplicantId}&tab=review`)
+                } else {
+                    // Standard flow: call callback (which typically closes dialog)
+                    onReviewSubmitted?.()
+                }
             } else {
                 toast.error(data.error || t("applicants.review.failedToSubmitReview"))
             }
@@ -478,7 +491,31 @@ export function ManualReviewForm({
                             {t("applicants.review.cancel")}
                         </Button>
                     )}
-                    <Button onClick={handleSubmit} disabled={submitting}>
+
+                    {/* Save & Next Button - Only show if there's a next applicant */}
+                    {nextApplicantId && (
+                        <Button
+                            variant="outline"
+                            onClick={() => handleSubmit(true)}
+                            disabled={submitting}
+                            className="gap-2"
+                        >
+                            {submitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {t("applicants.review.submitting")}
+                                </>
+                            ) : (
+                                <>
+                                    {t("applicants.review.saveAndNext")}
+                                    <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+                                </>
+                            )}
+                        </Button>
+                    )}
+
+                    {/* Standard Submit Button */}
+                    <Button onClick={() => handleSubmit(false)} disabled={submitting}>
                         {submitting && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                         {submitting
                             ? t("applicants.review.submitting")

@@ -9,7 +9,29 @@ import { cn } from "@/lib/utils"
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+  // Automatically inherit dir attribute from document root
+  const [dir, setDir] = React.useState<"ltr" | "rtl">("ltr")
+
+  React.useEffect(() => {
+    const htmlDir = document.documentElement.getAttribute("dir")
+    setDir(htmlDir === "rtl" ? "rtl" : "ltr")
+
+    // Watch for dir changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === "dir") {
+          const newDir = document.documentElement.getAttribute("dir")
+          setDir(newDir === "rtl" ? "rtl" : "ltr")
+        }
+      })
+    })
+
+    observer.observe(document.documentElement, { attributes: true })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return <SelectPrimitive.Root data-slot="select" dir={dir} {...props} />
 }
 
 function SelectGroup({

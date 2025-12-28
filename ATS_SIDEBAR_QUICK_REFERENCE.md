@@ -5,7 +5,7 @@
 ### Operations (العمليات)
 | Icon | Item | Path | Arabic |
 |------|------|------|--------|
-| 📊 | Dashboard | `/dashboard` | لوحة القيادة |
+| 📊 | Dashboard | `/dashboard` | لوحة التحكم|
 | 💼 | Jobs | `/dashboard/jobs` | الوظائف |
 | 👥 | Candidates | `/dashboard/candidates` | المرشحين |
 | 📅 | Calendar | `/dashboard/calendar` | التقويم |

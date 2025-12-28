@@ -158,7 +158,7 @@ All these pages now show the `<UnderConstruction />` component instead of 404:
     "feature3": "آمن وموثوق",
     "feature4": "مدعوم بالذكاء الاصطناعي",
     "progress": "تقدم التطوير",
-    "backToDashboard": "العودة للوحة القيادة",
+    "backToDashboard": "العودة للوحة التحكم",
     "viewJobs": "عرض الوظائف",
     "estimate": "الإكمال المتوقع: قريباً"
 }

@@ -183,6 +183,76 @@
     font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   }
 
+  /* ========================================
+     GLOBAL FIX: Font Inheritance for ALL Form Elements
+     ======================================== */
+
+  /* Force font inheritance on all interactive elements */
+  button,
+  input,
+  select,
+  textarea,
+  optgroup,
+  [role="button"],
+  [role="combobox"],
+  [role="listbox"],
+  [role="option"],
+  [data-slot="select-trigger"],
+  [data-slot="select-value"],
+  [data-slot="select-content"],
+  [data-slot="select-item"],
+  [data-slot="input"] {
+    font-family: inherit !important;
+  }
+
+  /* Ensure RTL elements use IBM Plex Sans Arabic */
+  [dir="rtl"] button,
+  [dir="rtl"] input,
+  [dir="rtl"] select,
+  [dir="rtl"] textarea,
+  [dir="rtl"] optgroup,
+  [dir="rtl"] [role="button"],
+  [dir="rtl"] [role="combobox"],
+  [dir="rtl"] [role="listbox"],
+  [dir="rtl"] [role="option"],
+  [dir="rtl"] [data-slot="select-trigger"],
+  [dir="rtl"] [data-slot="select-value"],
+  [dir="rtl"] [data-slot="select-content"],
+  [dir="rtl"] [data-slot="select-item"],
+  [dir="rtl"] [data-slot="input"] {
+    font-family: var(--font-ibm-arabic), system-ui, sans-serif !important;
+  }
+
+  /* LTR elements use Outfit */
+  [dir="ltr"] button,
+  [dir="ltr"] input,
+  [dir="ltr"] select,
+  [dir="ltr"] textarea,
+  [dir="ltr"] optgroup,
+  [dir="ltr"] [role="button"],
+  [dir="ltr"] [role="combobox"],
+  [dir="ltr"] [role="listbox"],
+  [dir="ltr"] [role="option"],
+  [dir="ltr"] [data-slot="select-trigger"],
+  [dir="ltr"] [data-slot="select-value"],
+  [dir="ltr"] [data-slot="select-content"],
+  [dir="ltr"] [data-slot="select-item"],
+  [dir="ltr"] [data-slot="input"] {
+    font-family: var(--font-outfit), system-ui, sans-serif !important;
+  }
+
+  /* Fix text alignment for Select triggers in RTL */
+  [dir="rtl"] [data-slot="select-trigger"],
+  [dir="rtl"] [role="combobox"] {
+    text-align: start;
+  }
+
+  /* Fix text alignment for Select triggers in LTR */
+  [dir="ltr"] [data-slot="select-trigger"],
+  [dir="ltr"] [role="combobox"] {
+    text-align: start;
+  }
+
   /* Apply IBM Plex Arabic to all Radix portaled content in RTL mode */
   :root[dir="rtl"] [data-radix-popper-content-wrapper],
   :root[dir="rtl"] [data-radix-portal],

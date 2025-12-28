@@ -320,6 +320,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     // Dialog states
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
+    const [selectedTab, setSelectedTab] = useState<string>("overview")
 
     // View mode state (grid or kanban)
     const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid')
@@ -453,6 +454,25 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }, [jobIdFromUrl, statusFromUrl, minScoreFromUrl])
 
+    // Deep linking: Auto-open applicant dialog from notification
+    // CRITICAL: Runs whenever URL changes (searchParams) or data loads (applicants)
+    useEffect(() => {
+        const openApplicantId = searchParams.get("open")
+        const initialTab = searchParams.get("tab") || "overview"
+
+        if (openApplicantId && applicants.length > 0) {
+            const applicant = applicants.find(a => a.id === openApplicantId)
+            if (applicant) {
+                console.log('[Deep Link] Opening applicant:', applicant.id, 'Tab:', initialTab)
+                setSelectedApplicant(applicant)
+                setSelectedTab(initialTab)
+                setViewDialogOpen(true)
+            } else {
+                console.warn('[Deep Link] Applicant not found in current list:', openApplicantId)
+            }
+        }
+    }, [searchParams, applicants]) // Re-run when URL changes OR applicants load
+
     // Filter handlers
     const handleSearch = (value: string) => {
         setSearchTerm(value)
@@ -492,6 +512,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
     const handleViewApplicant = (applicant: Applicant) => {
         setSelectedApplicant(applicant)
+        setSelectedTab("overview") // Reset to overview when manually clicked
         setViewDialogOpen(true)
     }
 
@@ -878,17 +899,27 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             </div>
 
             {/* View Dialog */}
-            {selectedApplicant && (
-                <ViewApplicantDialog
-                    open={viewDialogOpen}
-                    onOpenChange={setViewDialogOpen}
-                    applicant={selectedApplicant}
-                    evaluation={evaluations.get(selectedApplicant.id)}
-                    userRole={currentUserRole}
-                    userId={userId}
-                    onStatusChange={fetchApplicants}
-                />
-            )}
+            {selectedApplicant && (() => {
+                // Compute nextApplicantId from filteredApplicants list
+                const currentIndex = filteredApplicants.findIndex(app => app.id === selectedApplicant.id)
+                const nextApplicantId = currentIndex >= 0 && currentIndex < filteredApplicants.length - 1
+                    ? filteredApplicants[currentIndex + 1].id
+                    : null
+
+                return (
+                    <ViewApplicantDialog
+                        open={viewDialogOpen}
+                        onOpenChange={setViewDialogOpen}
+                        applicant={selectedApplicant}
+                        evaluation={evaluations.get(selectedApplicant.id)}
+                        userRole={currentUserRole}
+                        userId={userId}
+                        onStatusChange={fetchApplicants}
+                        initialTab={selectedTab}
+                        nextApplicantId={nextApplicantId}
+                    />
+                )
+            })()}
         </div>
     )
 }

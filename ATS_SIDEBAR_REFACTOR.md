@@ -12,7 +12,7 @@ Successfully refactored the Sidebar navigation to match a dedicated ATS (Applica
 
 | Item | Path | Icon | Required Role |
 |------|------|------|---------------|
-| **Dashboard** (لوحة القيادة) | `/dashboard` | `LayoutDashboard` | Reviewer |
+| **Dashboard** (لوحة التحكم) | `/dashboard` | `LayoutDashboard` | Reviewer |
 | **Jobs** (الوظائف) | `/dashboard/jobs` | `Briefcase` | Reviewer |
 | **Candidates** (المرشحين) | `/dashboard/candidates` | `Users` | Reviewer |
 | **Calendar** (التقويم) | `/dashboard/calendar` | `Calendar` | Reviewer |
@@ -63,7 +63,7 @@ Successfully refactored the Sidebar navigation to match a dedicated ATS (Applica
 #### Arabic (`src/i18n/locales/ar.json`)
 ```json
 "sidebar": {
-    "dashboard": "لوحة القيادة",
+    "dashboard": "لوحة التحكم",
     "jobs": "الوظائف",
     "candidates": "المرشحين",
     "calendar": "التقويم",

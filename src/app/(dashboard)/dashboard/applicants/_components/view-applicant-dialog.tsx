@@ -76,6 +76,8 @@ interface ViewApplicantDialogProps {
     userRole: UserRole
     userId: string
     onStatusChange: () => void
+    initialTab?: string
+    nextApplicantId?: string | null
 }
 
 const statusColors: Record<ApplicantStatus, string> = {
@@ -97,11 +99,20 @@ export function ViewApplicantDialog({
     userRole,
     userId,
     onStatusChange,
+    initialTab = "overview",
+    nextApplicantId,
 }: ViewApplicantDialogProps) {
     const { t, locale, dir } = useTranslate()
-    const [activeTab, setActiveTab] = useState("overview")
+    const [activeTab, setActiveTab] = useState(initialTab)
     const [updating, setUpdating] = useState(false)
     const [currentStatus, setCurrentStatus] = useState<ApplicantStatus>(applicant.status)
+
+    // Reset active tab when initialTab changes (deep linking)
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab)
+        }
+    }, [initialTab])
     const [voiceResponses, setVoiceResponses] = useState<VoiceResponse[]>([])
     const [loadingResponses, setLoadingResponses] = useState(false)
     const [jobData, setJobData] = useState<{
@@ -558,14 +569,14 @@ export function ViewApplicantDialog({
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
                             <Star className="h-4 w-4 me-2" />
-                            {t("applicants.teamReview") || "Team Review"}
+                            {t("applicants.teamReview")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="notes"
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
                         >
                             <MessageSquare className="h-4 w-4 me-2" />
-                            {t("applicants.teamNotes") || "Team Notes"}
+                            {t("applicants.teamNotes")}
                         </TabsTrigger>
                     </TabsList>
 
@@ -1870,6 +1881,7 @@ export function ViewApplicantDialog({
                             applicantId={applicant.id}
                             jobId={applicant.jobId?._id || ''}
                             onReviewSubmitted={handleReviewSubmitted}
+                            nextApplicantId={nextApplicantId}
                         />
                     </TabsContent>
 

@@ -12,7 +12,7 @@ Full Arabic (RTL) and English (LTR) bilingual support has been implemented acros
 **Arabic (`ar.json`)**:
 ```json
 "sidebar": {
-    "dashboard": "لوحة القيادة",
+    "dashboard": "لوحة التحكم",
     "jobs": "الوظائف",
     "candidates": "المرشحين",
     "calendar": "التقويم",
@@ -196,7 +196,7 @@ className={cn("text-left", isRTL && "text-right")}
 Breadcrumbs automatically reverse order in RTL:
 ```
 English (LTR): Dashboard > System > Audit Logs
-Arabic (RTL):  سجلات المراجعة < النظام < لوحة القيادة
+Arabic (RTL):  سجلات المراجعة < النظام < لوحة التحكم 
 ```
 
 ---

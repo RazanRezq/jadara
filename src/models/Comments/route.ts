@@ -5,6 +5,7 @@ import dbConnect from '@/lib/mongodb'
 import Comment from './commentSchema'
 import User from '@/models/Users/userSchema'
 import Applicant from '@/models/Applicants/applicantSchema'
+import Notification from '@/models/Notifications/notificationSchema'
 import { authenticate, getAuthUser } from '@/lib/authMiddleware'
 import { logUserAction } from '@/lib/auditLogger'
 
@@ -55,6 +56,54 @@ app.post('/create', authenticate, async (c) => {
         console.log('[Comment Create] Step 4: Saving comment to database...')
         await comment.save()
         console.log('[Comment Create] Step 5: Comment saved successfully:', comment._id.toString())
+
+        // --- TEAM BROADCAST NOTIFICATION LOGIC ---
+        try {
+            console.log('[Comment Notification] Starting Team Broadcast...')
+
+            // 1. Fetch Applicant Name
+            const applicant = await Applicant.findById(applicantId).select('personalData').lean()
+            console.log('[Comment Notification] Applicant lookup result:', applicant ? 'Found' : 'Not found')
+
+            if (applicant) {
+                const applicantName = applicant.personalData?.name || 'Unknown Candidate'
+                console.log('[Comment Notification] Applicant name:', applicantName)
+
+                // 2. Find Team Members (Broadcast) - Convert user.id to ObjectId for proper comparison
+                const currentUserId = new mongoose.Types.ObjectId(user.id)
+                const teamMembers = await User.find({
+                    role: { $in: ['superadmin', 'admin', 'reviewer'] },
+                    isActive: true,
+                    _id: { $ne: currentUserId } // Exclude sender (proper ObjectId comparison)
+                }).select('_id')
+
+                console.log(`[Comment Notification] Targeting ${teamMembers.length} team members`)
+
+                if (teamMembers.length > 0) {
+                    const notifications = teamMembers.map(member => ({
+                        userId: member._id,
+                        type: 'comment_added' as const,
+                        priority: 'medium' as const,
+                        title: 'New Team Note',
+                        message: `${user.name} added a note for ${applicantName}`,
+                        actionUrl: `/dashboard/applicants?open=${applicantId}&tab=notes`,
+                        relatedId: new mongoose.Types.ObjectId(applicantId),
+                    }))
+
+                    const createdNotifications = await Notification.insertMany(notifications)
+                    console.log('[Comment Notification] ✅ Sent', createdNotifications.length, 'notifications successfully!')
+                } else {
+                    console.warn('[Comment Notification] ⚠️ No team members found to notify')
+                }
+            } else {
+                console.warn('[Comment Notification] ⚠️ Applicant not found, skipping notifications')
+            }
+        } catch (notifError) {
+            // CRITICAL: Notification failure doesn't crash comment creation
+            console.error('[Comment Notification] ❌ Failed to send notifications:', notifError)
+            console.error('[Comment Notification] Error details:', notifError instanceof Error ? notifError.message : 'Unknown error')
+        }
+        // -------------------------------------------
 
         await logUserAction(
             user,
