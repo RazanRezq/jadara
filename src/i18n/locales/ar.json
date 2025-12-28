@@ -163,7 +163,21 @@
             "status": "الحالة",
             "actions": "الإجراءات",
             "export": "تصدير",
-            "addCandidate": "إضافة مرشح"
+            "addCandidate": "إضافة مرشح",
+            "makeDecision": "اتخاذ قرار",
+            "appliedDate": "تاريخ التقديم",
+            "upcomingInterviews": "المقابلات القادمة",
+            "viewProfile": "عرض الملف الشخصي",
+            "quickHire": "توظيف سريع",
+            "quickReject": "رفض سريع",
+            "confirmHire": "تأكيد التوظيف",
+            "confirmReject": "تأكيد الرفض",
+            "hireConfirmMessage": "هل أنت متأكد من توظيف هذا المرشح؟",
+            "rejectConfirmMessage": "هل أنت متأكد من رفض هذا المرشح؟",
+            "candidateHired": "تم توظيف المرشح بنجاح",
+            "candidateRejected": "تم رفض المرشح",
+            "scheduleInterview": "جدولة مقابلة",
+            "reviews": "مراجعات"
         },
         "reviewer": {
             "title": "قائمة التقييم",

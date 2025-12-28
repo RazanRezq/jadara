@@ -1,10 +1,10 @@
 "use client"
 
 import { useTranslate } from "@/hooks/useTranslate"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import {
     Clock,
     Mail,
@@ -53,12 +53,12 @@ export function ThankYouPage({ jobTitle }: ThankYouPageProps) {
     }, [])
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/40">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                        <div className="size-10 rounded-lg bg-primary flex items-center justify-center">
                             <Sparkles className="size-5 text-primary-foreground" />
                         </div>
                         <span className="font-bold text-lg">SmartRecruit</span>
@@ -71,80 +71,81 @@ export function ThankYouPage({ jobTitle }: ThankYouPageProps) {
             </header>
 
             {/* Main Content */}
-            <main className="pt-24 pb-16 px-4">
+            <main className="pt-10 pb-16 px-4">
                 <div className="container mx-auto max-w-2xl">
-                    <Card className="border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-500">
-                        <CardContent className="pt-12 pb-8 text-center">
-                            {/* Success Animation */}
-                            <div className="relative mb-4">
-                                <div className="w-48 h-48 mx-auto">
-                                    <Lottie
-                                        animationData={successAnimation}
-                                        loop={false}
-                                        autoplay={true}
-                                    />
+                    <Card className="p-8 md:p-12">
+                        <CardContent className="p-0">
+                            <div className="text-center">
+                                {/* Success Animation */}
+                                <div className="relative mb-4">
+                                    <div className="w-48 h-48 mx-auto">
+                                        <Lottie
+                                            animationData={successAnimation}
+                                            loop={false}
+                                            autoplay={true}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Title */}
-                            <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                                {t("apply.thankYou")}
-                            </h1>
-                            <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
-                                {t("apply.applicationReceived")}
-                            </p>
-
-                            {/* Job Info */}
-                            <div className="p-4 rounded-xl bg-muted/50 border border-border/50 mb-8">
-                                <p className="text-sm text-muted-foreground mb-1">
-                                    {t("apply.appliedFor")}
+                                {/* Title */}
+                                <h1 className="text-3xl md:text-4xl font-bold mb-4">
+                                    {t("apply.thankYou")}
+                                </h1>
+                                <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
+                                    {t("apply.applicationReceived")}
                                 </p>
-                                <p className="font-semibold text-lg">{jobTitle}</p>
-                            </div>
 
-                            {/* Next Steps */}
-                            <div className="space-y-4 text-start max-w-md mx-auto mb-8">
-                                <h3 className="font-semibold text-center mb-4">
-                                    {t("apply.whatHappensNext")}
-                                </h3>
-                                <div className="flex items-start gap-3">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                        <Mail className="size-4 text-primary" />
+                                {/* Job Info */}
+                                <div className="p-4 rounded-xl bg-muted mb-8">
+                                    <p className="text-sm text-muted-foreground mb-1">
+                                        {t("apply.appliedFor")}
+                                    </p>
+                                    <p className="font-semibold text-lg">{jobTitle}</p>
+                                </div>
+
+                                {/* Next Steps */}
+                                <div className="space-y-4 text-start max-w-md mx-auto mb-8">
+                                    <h3 className="font-semibold text-center mb-4">
+                                        {t("apply.whatHappensNext")}
+                                    </h3>
+                                    <div className="flex items-start gap-3">
+                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Mail className="size-4 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm">
+                                                {t("apply.step1Title")}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t("apply.step1Description")}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-sm">
-                                            {t("apply.step1Title")}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {t("apply.step1Description")}
-                                        </p>
+                                    <div className="flex items-start gap-3">
+                                        <div className="size-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                                            <Clock className="size-4 text-purple-500" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm">
+                                                {t("apply.step2Title")}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t("apply.step2Description")}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                        <Clock className="size-4 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-sm">
-                                            {t("apply.step2Title")}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {t("apply.step2Description")}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* CTA */}
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                className="gap-2"
-                                onClick={() => (window.location.href = "/")}
-                            >
-                                {t("apply.backToHome")}
-                                <ExternalLink className="size-4" />
-                            </Button>
+                                {/* CTA */}
+                                <Button
+                                    onClick={() => (window.location.href = "/")}
+                                    variant="outline"
+                                    className="gap-2"
+                                >
+                                    {t("apply.backToHome")}
+                                    <ExternalLink className="size-4" />
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

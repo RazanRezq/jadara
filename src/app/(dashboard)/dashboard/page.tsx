@@ -121,11 +121,11 @@ async function getAdminStats() {
             }
         ]),
 
-        // Action center: Candidates in screening with team reviews (waiting for admin)
+        // Action center: Candidates with team reviews awaiting final decision (not hired/rejected/withdrawn)
         Applicant.aggregate([
             {
                 $match: {
-                    status: "screening",
+                    status: { $in: ["screening", "interviewing", "evaluated", "shortlisted"] },
                     isComplete: true
                 }
             },

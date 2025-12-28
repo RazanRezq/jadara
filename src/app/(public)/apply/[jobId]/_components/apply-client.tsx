@@ -7,10 +7,10 @@ import { AssessmentWizard } from "./assessment-wizard"
 import { ThankYouPage } from "./thank-you-page"
 import { Spinner } from "@/components/ui/spinner"
 import { AlertCircle, Ban } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
 import { useApplicationStore, type PersonalData } from "./store"
 import { checkExistingApplication } from "./actions"
 import { toast } from "sonner"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface Job {
     id: string
@@ -129,9 +129,9 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     // Show loading state
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <Spinner className="size-8" />
+                    <Spinner className="size-10" />
                     <p className="text-muted-foreground animate-pulse">
                         {t("common.loading")}
                     </p>
@@ -144,14 +144,18 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     if (error) {
         const isJobClosed = error === t("apply.jobClosed")
         return (
-            <div className="flex min-h-screen items-center justify-center p-4">
-                <Card className="max-w-md w-full border-destructive/50 bg-destructive/5">
-                    <CardContent className="pt-6">
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <Card className="max-w-md w-full">
+                    <CardContent className="p-8">
                         <div className="flex flex-col items-center text-center space-y-4">
                             {isJobClosed ? (
-                                <Ban className="h-16 w-16 text-muted-foreground" />
+                                <div className="size-20 rounded-2xl bg-muted flex items-center justify-center">
+                                    <Ban className="h-10 w-10 text-muted-foreground" />
+                                </div>
                             ) : (
-                                <AlertCircle className="h-16 w-16 text-destructive" />
+                                <div className="size-20 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                                    <AlertCircle className="h-10 w-10 text-destructive" />
+                                </div>
                             )}
                             <div>
                                 <h2 className="text-xl font-semibold mb-2">

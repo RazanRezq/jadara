@@ -1,9 +1,21 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useTranslate } from "@/hooks/useTranslate"
 import {
     Users,
@@ -13,13 +25,20 @@ import {
     TrendingUp,
     TrendingDown,
     Star,
-    MoreHorizontal,
-    Plus,
-    ExternalLink,
-    Download,
+    ArrowRight,
+    ArrowLeft,
+    Video,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    Eye,
+    Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { toast } from "sonner"
+import { formatDistanceToNow } from "date-fns"
+import { ar, enUS } from "date-fns/locale"
 
 // Types
 interface AdminStats {
@@ -69,60 +88,80 @@ interface AdminViewProps {
     stats: AdminStats
 }
 
-// Stat Card Component
+// Stat Card Component - Optime Style
 function StatCard({
     title,
     value,
     trend,
     icon: Icon,
+    iconColor,
     iconBgColor,
     href,
+    dir,
 }: {
     title: string
     value: number
     trend: number
     icon: React.ElementType
+    iconColor: string
     iconBgColor: string
     href: string
+    dir: "ltr" | "rtl"
 }) {
     const { t } = useTranslate()
     const isPositive = trend >= 0
+    const ArrowIcon = dir === "rtl" ? ArrowLeft : ArrowRight
 
     return (
         <Link href={href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-card">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground font-medium">{title}</p>
-                            <p className="text-3xl font-bold tracking-tight">{value.toLocaleString()}</p>
+            <Card className="group relative overflow-hidden border-border/50 bg-card hover:shadow-lg hover:border-border transition-all duration-300 cursor-pointer">
+                <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-3 flex-1">
+                            <p className="text-sm font-medium text-muted-foreground line-clamp-1">
+                                {title}
+                            </p>
+                            <p className="text-3xl font-bold tracking-tight text-foreground">
+                                {value.toLocaleString()}
+                            </p>
                             {trend !== 0 && (
-                                <div className="flex items-center gap-1">
-                                    {isPositive ? (
-                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                    ) : (
-                                        <TrendingDown className="w-4 h-4 text-red-500" />
-                                    )}
-                                    <span
+                                <div className="flex items-center gap-1.5">
+                                    <div
                                         className={cn(
-                                            "text-sm font-medium",
-                                            isPositive ? "text-emerald-500" : "text-red-500"
+                                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium",
+                                            isPositive
+                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                                : "bg-red-500/10 text-red-600 dark:text-red-400"
                                         )}
                                     >
-                                        {isPositive ? "+" : ""}
-                                        {trend}%
+                                        {isPositive ? (
+                                            <TrendingUp className="w-3 h-3" />
+                                        ) : (
+                                            <TrendingDown className="w-3 h-3" />
+                                        )}
+                                        <span>
+                                            {isPositive ? "+" : ""}
+                                            {trend}%
+                                        </span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                        {t("dashboard.admin.vsLastMonth")}
                                     </span>
                                 </div>
                             )}
                         </div>
                         <div
                             className={cn(
-                                "w-14 h-14 rounded-xl flex items-center justify-center",
+                                "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
                                 iconBgColor
                             )}
                         >
-                            <Icon className="w-7 h-7 text-white" />
+                            <Icon className={cn("w-7 h-7", iconColor)} />
                         </div>
+                    </div>
+                    {/* Hover arrow indicator */}
+                    <div className="absolute bottom-3 end-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ArrowIcon className="w-4 h-4 text-muted-foreground" />
                     </div>
                 </CardContent>
             </Card>
@@ -131,119 +170,124 @@ function StatCard({
 }
 
 // Star Rating Component
-function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+function StarRating({ rating, showValue = false }: { rating: number; showValue?: boolean }) {
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 >= 0.5
-    const starSize = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"
 
     return (
-        <div className="flex items-center gap-0.5">
-            {[...Array(5)].map((_, i) => (
-                <Star
-                    key={i}
-                    className={cn(
-                        starSize,
-                        i < fullStars
-                            ? "fill-amber-400 text-amber-400"
-                            : i === fullStars && hasHalfStar
-                            ? "fill-amber-400/50 text-amber-400"
-                            : "fill-muted text-muted"
-                    )}
-                />
-            ))}
+        <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                    <Star
+                        key={i}
+                        className={cn(
+                            "w-3.5 h-3.5",
+                            i < fullStars
+                                ? "fill-amber-400 text-amber-400"
+                                : i === fullStars && hasHalfStar
+                                ? "fill-amber-400/50 text-amber-400"
+                                : "fill-muted text-muted"
+                        )}
+                    />
+                ))}
+            </div>
+            {showValue && (
+                <span className="text-xs font-medium text-muted-foreground">
+                    {rating.toFixed(1)}
+                </span>
+            )}
         </div>
     )
 }
 
-// Action Center Component
+// Action Center Component - Optime Style
 function ActionCenter({
     candidates,
+    dir,
 }: {
     candidates: AdminStats["actionCenter"]
+    dir: "ltr" | "rtl"
 }) {
     const { t } = useTranslate()
 
     return (
-        <Card className="col-span-2 bg-white dark:bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                    <CardTitle className="text-lg font-semibold">
-                        {t("dashboard.admin.actionCenter")}
-                    </CardTitle>
-                    <CardDescription>
-                        {t("dashboard.admin.actionCenterDesc")}
-                    </CardDescription>
+        <Card className="border-border/50 bg-card h-full">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <CardTitle className="text-base font-semibold">
+                            {t("dashboard.admin.actionCenter")}
+                        </CardTitle>
+                        {candidates.length > 0 && (
+                            <Badge variant="secondary" className="text-xs font-medium">
+                                {candidates.length}
+                            </Badge>
+                        )}
+                    </div>
                 </div>
-                <Button variant="ghost" size="icon">
-                    <Plus className="w-4 h-4" />
-                </Button>
+                <CardDescription className="text-xs">
+                    {t("dashboard.admin.actionCenterDesc")}
+                </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
                 {candidates.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                        {t("dashboard.admin.noActionRequired")}
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                            <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {t("dashboard.admin.noActionRequired")}
+                        </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-xs text-muted-foreground border-b">
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.candidateName")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.jobTitle")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.teamRating")}
-                                    </th>
-                                    <th className="text-end pb-3 font-medium">
-                                        {t("dashboard.admin.actions")}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {candidates.map((candidate) => (
-                                    <tr key={candidate._id} className="group">
-                                        <td className="py-4">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="w-9 h-9">
-                                                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                                                        {candidate.name
-                                                            .split(" ")
-                                                            .map((n) => n[0])
-                                                            .join("")
-                                                            .slice(0, 2)
-                                                            .toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <span className="font-medium text-sm">
-                                                    {candidate.name}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 text-sm text-muted-foreground">
-                                            {candidate.jobTitle}
-                                        </td>
-                                        <td className="py-4">
-                                            <div className="flex items-center gap-2">
-                                                <StarRating rating={candidate.avgRating} />
-                                                <span className="text-xs text-muted-foreground">
-                                                    ({candidate.reviewCount})
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 text-end">
-                                            <Link href={`/dashboard/applicants/${candidate._id}`}>
-                                                <Button size="sm" variant="outline">
-                                                    {t("dashboard.admin.review")}
-                                                </Button>
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="space-y-3">
+                        {candidates.slice(0, 5).map((candidate) => (
+                            <div
+                                key={candidate._id}
+                                className="group flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
+                            >
+                                <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
+                                    <AvatarFallback className="text-sm font-medium bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+                                        {candidate.name
+                                            .split(" ")
+                                            .map((n) => n[0])
+                                            .join("")
+                                            .slice(0, 2)
+                                            .toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">
+                                        {candidate.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {candidate.jobTitle}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <StarRating rating={candidate.avgRating} />
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {candidate.reviewCount} {t("dashboard.admin.reviews")}
+                                    </span>
+                                </div>
+                                <Link href={`/dashboard/applicants?highlight=${candidate._id}`}>
+                                    <Button
+                                        size="sm"
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-3 text-xs"
+                                    >
+                                        {t("dashboard.admin.makeDecision")}
+                                    </Button>
+                                </Link>
+                            </div>
+                        ))}
+                        {candidates.length > 5 && (
+                            <Link href="/dashboard/applicants?status=screening">
+                                <Button variant="ghost" className="w-full text-primary text-sm">
+                                    {t("dashboard.admin.viewAll")} ({candidates.length})
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 )}
             </CardContent>
@@ -251,11 +295,13 @@ function ActionCenter({
     )
 }
 
-// Upcoming Schedule Component
+// Upcoming Schedule Component - Optime Style
 function UpcomingSchedule({
     interviews,
+    dir,
 }: {
     interviews: AdminStats["upcomingInterviews"]
+    dir: "ltr" | "rtl"
 }) {
     const { t } = useTranslate()
 
@@ -263,84 +309,116 @@ function UpcomingSchedule({
     const tomorrowInterviews = interviews.filter((i) => i.isTomorrow)
 
     return (
-        <Card className="bg-white dark:bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                    <CardTitle className="text-lg font-semibold">
-                        {t("dashboard.admin.upcomingSchedule")}
+        <Card className="border-border/50 bg-card h-full">
+            <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <CardTitle className="text-base font-semibold">
+                        {t("dashboard.admin.upcomingInterviews")}
                     </CardTitle>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-0 space-y-4">
                 {interviews.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                        {t("dashboard.admin.noUpcomingInterviews")}
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                            <Calendar className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {t("dashboard.admin.noUpcomingInterviews")}
+                        </p>
+                        <Link href="/dashboard/calendar">
+                            <Button variant="outline" size="sm" className="mt-3">
+                                {t("dashboard.admin.scheduleInterview")}
+                            </Button>
+                        </Link>
                     </div>
                 ) : (
                     <>
+                        {/* Today's Interviews - Priority */}
                         {todayInterviews.length > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    {t("dashboard.admin.priority")}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">
+                                        {t("dashboard.admin.today")}
+                                    </p>
+                                </div>
                                 {todayInterviews.map((interview) => (
                                     <div
                                         key={interview._id}
-                                        className="p-3 rounded-lg bg-primary/5 border border-primary/10"
+                                        className="p-3 rounded-xl bg-red-500/5 border border-red-500/20"
                                     >
-                                        <div className="flex items-start justify-between">
-                                            <div className="space-y-1">
-                                                <p className="font-medium text-sm">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">
                                                     {interview.candidateName}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {t("dashboard.admin.today")} - {interview.scheduledTime}
-                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {interview.scheduledTime}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
+                                            {interview.meetingLink && (
+                                                <a
+                                                    href={interview.meetingLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-8 px-3 gap-1.5 bg-red-500 hover:bg-red-600 text-white"
+                                                    >
+                                                        <Video className="w-3.5 h-3.5" />
+                                                        {t("dashboard.admin.join")}
+                                                    </Button>
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
+                        {/* Tomorrow's Interviews */}
                         {tomorrowInterviews.length > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    {t("dashboard.admin.other")}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                        {t("dashboard.admin.tomorrow")}
+                                    </p>
+                                </div>
                                 {tomorrowInterviews.map((interview) => (
                                     <div
                                         key={interview._id}
-                                        className="p-3 rounded-lg bg-muted/50 border"
+                                        className="p-3 rounded-xl bg-muted/50 border border-border/50"
                                     >
-                                        <div className="flex items-start justify-between">
-                                            <div className="space-y-1">
-                                                <p className="font-medium text-sm">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">
                                                     {interview.candidateName}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {t("dashboard.admin.tomorrow")} - {interview.scheduledTime}
-                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {interview.scheduledTime}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        <Button
-                            variant="ghost"
-                            className="w-full text-primary hover:text-primary/80 hover:bg-primary/5"
-                        >
-                            <Plus className="w-4 h-4 me-2" />
-                            {t("dashboard.admin.createNewSchedule")}
-                        </Button>
+                        <Link href="/dashboard/calendar" className="block">
+                            <Button variant="outline" size="sm" className="w-full">
+                                {t("dashboard.admin.viewAll")}
+                            </Button>
+                        </Link>
                     </>
                 )}
             </CardContent>
@@ -352,174 +430,357 @@ function UpcomingSchedule({
 function StatusBadge({ status }: { status: string }) {
     const { t } = useTranslate()
 
-    const statusConfig: Record<string, { color: string; bg: string }> = {
-        new: { color: "text-blue-700", bg: "bg-blue-100" },
-        screening: { color: "text-amber-700", bg: "bg-amber-100" },
-        interviewing: { color: "text-purple-700", bg: "bg-purple-100" },
-        evaluated: { color: "text-cyan-700", bg: "bg-cyan-100" },
-        shortlisted: { color: "text-emerald-700", bg: "bg-emerald-100" },
-        hired: { color: "text-green-700", bg: "bg-green-100" },
-        rejected: { color: "text-red-700", bg: "bg-red-100" },
-        withdrawn: { color: "text-gray-700", bg: "bg-gray-100" },
+    const statusConfig: Record<string, { color: string; bg: string; darkBg: string }> = {
+        new: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/30" },
+        screening: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
+        interviewing: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
+        evaluated: { color: "text-cyan-700 dark:text-cyan-300", bg: "bg-cyan-100", darkBg: "dark:bg-cyan-900/30" },
+        shortlisted: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100", darkBg: "dark:bg-emerald-900/30" },
+        hired: { color: "text-green-700 dark:text-green-300", bg: "bg-green-100", darkBg: "dark:bg-green-900/30" },
+        rejected: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/30" },
+        withdrawn: { color: "text-gray-700 dark:text-gray-300", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" },
     }
 
-    const config = statusConfig[status] || { color: "text-gray-700", bg: "bg-gray-100" }
+    const config = statusConfig[status] || { color: "text-gray-700", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" }
 
     return (
-        <Badge variant="secondary" className={cn("font-medium", config.bg, config.color)}>
+        <Badge
+            variant="secondary"
+            className={cn("font-medium text-xs px-2 py-0.5", config.bg, config.darkBg, config.color)}
+        >
             {t(`applicants.status.${status}`)}
         </Badge>
     )
 }
 
-// Recent Candidates Table Component
-function RecentCandidatesTable({
-    candidates,
-}: {
-    candidates: AdminStats["recentCandidates"]
-}) {
-    const { t } = useTranslate()
+// AI Score Badge Component
+function AIScoreBadge({ score }: { score: number }) {
+    const scoreConfig =
+        score >= 80
+            ? { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", icon: Sparkles }
+            : score >= 60
+            ? { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", icon: null }
+            : { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300", icon: null }
 
     return (
-        <Card className="bg-white dark:bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                    <CardTitle className="text-lg font-semibold">
-                        {t("dashboard.admin.recentCandidates")}
-                    </CardTitle>
-                    <CardDescription>
-                        {t("dashboard.admin.recentCandidatesDesc")}
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 me-2" />
-                        {t("dashboard.admin.export")}
-                    </Button>
-                    <Link href="/dashboard/applicants">
-                        <Button size="sm">
-                            <Plus className="w-4 h-4 me-2" />
-                            {t("dashboard.admin.viewAll")}
-                        </Button>
-                    </Link>
-                </div>
-            </CardHeader>
-            <CardContent>
-                {candidates.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                        {t("dashboard.admin.noRecentActivity")}
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-xs text-muted-foreground border-b">
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.candidateName")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.jobTitle")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.status")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.aiMatchScore")}
-                                    </th>
-                                    <th className="text-start pb-3 font-medium">
-                                        {t("dashboard.admin.teamRating")}
-                                    </th>
-                                    <th className="text-end pb-3 font-medium">
-                                        {t("dashboard.admin.actions")}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {candidates.map((candidate) => (
-                                    <tr key={candidate._id} className="group hover:bg-muted/30">
-                                        <td className="py-4">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="w-9 h-9">
-                                                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                                                        {candidate.name
-                                                            .split(" ")
-                                                            .map((n) => n[0])
-                                                            .join("")
-                                                            .slice(0, 2)
-                                                            .toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="font-medium text-sm">
-                                                        {candidate.name}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {candidate.email}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 text-sm text-muted-foreground">
-                                            {candidate.jobTitle}
-                                        </td>
-                                        <td className="py-4">
-                                            <StatusBadge status={candidate.status} />
-                                        </td>
-                                        <td className="py-4">
-                                            <div
-                                                className={cn(
-                                                    "inline-flex items-center justify-center w-12 h-8 rounded-md text-sm font-semibold",
-                                                    candidate.aiScore >= 70
-                                                        ? "bg-emerald-100 text-emerald-700"
-                                                        : candidate.aiScore >= 50
-                                                        ? "bg-amber-100 text-amber-700"
-                                                        : "bg-red-100 text-red-700"
-                                                )}
-                                            >
-                                                {candidate.aiScore}
-                                            </div>
-                                        </td>
-                                        <td className="py-4">
-                                            {candidate.avgRating !== null ? (
-                                                <div className="flex items-center gap-2">
-                                                    <StarRating rating={candidate.avgRating} />
-                                                    <span className="text-xs text-muted-foreground">
-                                                        ({candidate.reviewCount})
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">
-                                                    {t("dashboard.admin.noRating")}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Link href={`/dashboard/applicants/${candidate._id}`}>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 text-primary"
-                                                    >
-                                                        <ExternalLink className="w-4 h-4" />
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <div
+            className={cn(
+                "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold",
+                scoreConfig.bg,
+                scoreConfig.text
+            )}
+        >
+            {scoreConfig.icon && <scoreConfig.icon className="w-3 h-3" />}
+            {score}%
+        </div>
     )
 }
 
-// Main AdminView Component
-export function AdminView({ stats }: AdminViewProps) {
+// Recent Candidates Table Component - Optime Style with Quick Actions
+function RecentCandidatesTable({
+    candidates,
+    dir,
+    locale,
+}: {
+    candidates: AdminStats["recentCandidates"]
+    dir: "ltr" | "rtl"
+    locale: string
+}) {
     const { t } = useTranslate()
+    const [actionCandidate, setActionCandidate] = useState<{
+        id: string
+        name: string
+        action: "hire" | "reject"
+    } | null>(null)
+    const [isProcessing, setIsProcessing] = useState(false)
+
+    const handleQuickAction = async () => {
+        if (!actionCandidate) return
+
+        setIsProcessing(true)
+        try {
+            const response = await fetch(`/api/applicants/${actionCandidate.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    status: actionCandidate.action === "hire" ? "hired" : "rejected",
+                }),
+            })
+
+            if (!response.ok) throw new Error("Failed to update status")
+
+            toast.success(
+                actionCandidate.action === "hire"
+                    ? t("dashboard.admin.candidateHired")
+                    : t("dashboard.admin.candidateRejected")
+            )
+
+            // Refresh the page to get updated data
+            window.location.reload()
+        } catch {
+            toast.error(t("common.error"))
+        } finally {
+            setIsProcessing(false)
+            setActionCandidate(null)
+        }
+    }
+
+    const formatDate = (date: Date) => {
+        return formatDistanceToNow(new Date(date), {
+            addSuffix: true,
+            locale: locale === "ar" ? ar : enUS,
+        })
+    }
+
+    return (
+        <>
+            <Card className="border-border/50 bg-card">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-base font-semibold">
+                                {t("dashboard.admin.recentCandidates")}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                {t("dashboard.admin.recentCandidatesDesc")}
+                            </CardDescription>
+                        </div>
+                        <Link href="/dashboard/applicants">
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                                {t("dashboard.admin.viewAll")}
+                                {dir === "rtl" ? (
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                ) : (
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                )}
+                            </Button>
+                        </Link>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                    {candidates.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                            {t("dashboard.admin.noRecentActivity")}
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto -mx-6">
+                            <table className="w-full min-w-[700px]">
+                                <thead>
+                                    <tr className="border-b border-border/50">
+                                        <th className="text-start px-6 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.candidateName")}
+                                        </th>
+                                        <th className="text-start px-3 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.jobTitle")}
+                                        </th>
+                                        <th className="text-start px-3 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.appliedDate")}
+                                        </th>
+                                        <th className="text-start px-3 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.status")}
+                                        </th>
+                                        <th className="text-start px-3 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.aiMatchScore")}
+                                        </th>
+                                        <th className="text-start px-3 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.teamRating")}
+                                        </th>
+                                        <th className="text-end px-6 pb-3 text-xs font-medium text-muted-foreground">
+                                            {t("dashboard.admin.actions")}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/30">
+                                    {candidates.map((candidate) => (
+                                        <tr
+                                            key={candidate._id}
+                                            className="group hover:bg-muted/30 transition-colors"
+                                        >
+                                            <td className="px-6 py-3.5">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="w-9 h-9 border border-border/50">
+                                                        <AvatarFallback className="text-xs font-medium bg-gradient-to-br from-primary/10 to-primary/5 text-primary">
+                                                            {candidate.name
+                                                                .split(" ")
+                                                                .map((n) => n[0])
+                                                                .join("")
+                                                                .slice(0, 2)
+                                                                .toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium text-sm truncate">
+                                                            {candidate.name}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground truncate">
+                                                            {candidate.email}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-3.5">
+                                                <p className="text-sm text-muted-foreground truncate max-w-[150px]">
+                                                    {candidate.jobTitle}
+                                                </p>
+                                            </td>
+                                            <td className="px-3 py-3.5">
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatDate(candidate.submittedAt)}
+                                                </p>
+                                            </td>
+                                            <td className="px-3 py-3.5">
+                                                <StatusBadge status={candidate.status} />
+                                            </td>
+                                            <td className="px-3 py-3.5">
+                                                <AIScoreBadge score={candidate.aiScore} />
+                                            </td>
+                                            <td className="px-3 py-3.5">
+                                                {candidate.avgRating !== null ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <StarRating rating={candidate.avgRating} />
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            ({candidate.reviewCount})
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {t("dashboard.admin.noRating")}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-3.5">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <TooltipProvider delayDuration={0}>
+                                                        {/* View Profile */}
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Link
+                                                                    href={`/dashboard/applicants?highlight=${candidate._id}`}
+                                                                >
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                                    >
+                                                                        <Eye className="w-4 h-4" />
+                                                                    </Button>
+                                                                </Link>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                {t("dashboard.admin.viewProfile")}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+
+                                                        {/* Quick Hire - Only show for non-hired/rejected */}
+                                                        {!["hired", "rejected", "withdrawn"].includes(
+                                                            candidate.status
+                                                        ) && (
+                                                            <>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                                                            onClick={() =>
+                                                                                setActionCandidate({
+                                                                                    id: candidate._id,
+                                                                                    name: candidate.name,
+                                                                                    action: "hire",
+                                                                                })
+                                                                            }
+                                                                        >
+                                                                            <CheckCircle2 className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        {t("dashboard.admin.quickHire")}
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                                            onClick={() =>
+                                                                                setActionCandidate({
+                                                                                    id: candidate._id,
+                                                                                    name: candidate.name,
+                                                                                    action: "reject",
+                                                                                })
+                                                                            }
+                                                                        >
+                                                                            <XCircle className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        {t("dashboard.admin.quickReject")}
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </>
+                                                        )}
+                                                    </TooltipProvider>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Confirmation Dialog */}
+            <AlertDialog open={!!actionCandidate} onOpenChange={() => setActionCandidate(null)}>
+                <AlertDialogContent dir={dir}>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {actionCandidate?.action === "hire"
+                                ? t("dashboard.admin.confirmHire")
+                                : t("dashboard.admin.confirmReject")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {actionCandidate?.action === "hire"
+                                ? t("dashboard.admin.hireConfirmMessage")
+                                : t("dashboard.admin.rejectConfirmMessage")}
+                            <br />
+                            <span className="font-medium text-foreground">
+                                {actionCandidate?.name}
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isProcessing}>
+                            {t("common.cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleQuickAction}
+                            disabled={isProcessing}
+                            className={cn(
+                                actionCandidate?.action === "hire"
+                                    ? "bg-emerald-600 hover:bg-emerald-700"
+                                    : "bg-red-600 hover:bg-red-700"
+                            )}
+                        >
+                            {isProcessing
+                                ? t("common.loading")
+                                : actionCandidate?.action === "hire"
+                                ? t("dashboard.admin.hire")
+                                : t("dashboard.admin.reject")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    )
+}
+
+// Main AdminView Component - Optime Grid Layout
+export function AdminView({ stats }: AdminViewProps) {
+    const { t, dir, locale } = useTranslate()
 
     const statCards = [
         {
@@ -527,7 +788,8 @@ export function AdminView({ stats }: AdminViewProps) {
             value: stats.totalApplicants,
             trend: stats.totalApplicantsTrend,
             icon: Users,
-            iconBgColor: "bg-gradient-to-br from-teal-400 to-teal-600",
+            iconColor: "text-teal-600",
+            iconBgColor: "bg-teal-100 dark:bg-teal-900/30",
             href: "/dashboard/applicants",
         },
         {
@@ -535,7 +797,8 @@ export function AdminView({ stats }: AdminViewProps) {
             value: stats.activeJobs,
             trend: stats.activeJobsTrend,
             icon: Briefcase,
-            iconBgColor: "bg-gradient-to-br from-blue-400 to-blue-600",
+            iconColor: "text-blue-600",
+            iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
             href: "/dashboard/jobs?status=active",
         },
         {
@@ -543,7 +806,8 @@ export function AdminView({ stats }: AdminViewProps) {
             value: stats.upcomingInterviewsCount,
             trend: stats.upcomingInterviewsTrend,
             icon: Calendar,
-            iconBgColor: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+            iconColor: "text-purple-600",
+            iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
             href: "/dashboard/calendar",
         },
         {
@@ -551,25 +815,26 @@ export function AdminView({ stats }: AdminViewProps) {
             value: stats.totalHired,
             trend: stats.totalHiredTrend,
             icon: UserCheck,
-            iconBgColor: "bg-gradient-to-br from-orange-400 to-orange-600",
+            iconColor: "text-emerald-600",
+            iconBgColor: "bg-emerald-100 dark:bg-emerald-900/30",
             href: "/dashboard/applicants?status=hired",
         },
     ]
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" dir={dir}>
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                     {t("dashboard.admin.title")}
                 </h1>
-                <p className="text-muted-foreground mt-1">
+                <p className="text-muted-foreground mt-1 text-sm">
                     {t("dashboard.admin.subtitle")}
                 </p>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Row 1: Stats Grid - 4 columns on xl, 2 on md, 1 on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {statCards.map((stat, index) => (
                     <StatCard
                         key={index}
@@ -577,20 +842,30 @@ export function AdminView({ stats }: AdminViewProps) {
                         value={stat.value}
                         trend={stat.trend}
                         icon={stat.icon}
+                        iconColor={stat.iconColor}
                         iconBgColor={stat.iconBgColor}
                         href={stat.href}
+                        dir={dir}
                     />
                 ))}
             </div>
 
-            {/* Middle Section: Action Center + Upcoming Schedule */}
+            {/* Row 2: Action Center (2/3) + Upcoming Schedule (1/3) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                <ActionCenter candidates={stats.actionCenter} />
-                <UpcomingSchedule interviews={stats.upcomingInterviews} />
+                <div className="xl:col-span-2">
+                    <ActionCenter candidates={stats.actionCenter} dir={dir} />
+                </div>
+                <div className="xl:col-span-1">
+                    <UpcomingSchedule interviews={stats.upcomingInterviews} dir={dir} />
+                </div>
             </div>
 
-            {/* Bottom Section: Recent Candidates Table */}
-            <RecentCandidatesTable candidates={stats.recentCandidates} />
+            {/* Row 3: Recent Candidates Table - Full Width */}
+            <RecentCandidatesTable
+                candidates={stats.recentCandidates}
+                dir={dir}
+                locale={locale}
+            />
         </div>
     )
 }

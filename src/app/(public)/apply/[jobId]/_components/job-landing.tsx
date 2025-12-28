@@ -63,12 +63,12 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/40">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                        <div className="size-10 rounded-lg bg-primary flex items-center justify-center">
                             <Sparkles className="size-5 text-primary-foreground" />
                         </div>
                         <span className="font-bold text-lg">SmartRecruit</span>
@@ -81,17 +81,17 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
             </header>
 
             {/* Main Content */}
-            <main className="pt-24 pb-16 px-4">
+            <main className="pt-10 pb-16 px-4">
                 <div className="container mx-auto max-w-4xl">
                     {/* Job Header */}
-                    <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="text-center mb-10">
                         <Badge
                             variant="secondary"
                             className="mb-4 px-4 py-1.5 text-sm font-medium"
                         >
                             {job.department || t("apply.openPosition")}
                         </Badge>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                        <h1 className="text-4xl md:text-5xl font-bold mb-4">
                             {job.title}
                         </h1>
                         <div className="flex flex-wrap items-center justify-center gap-4 text-muted-foreground">
@@ -120,18 +120,18 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                     </div>
 
                     {/* Job Details View */}
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                    <div className="space-y-6">
                         {/* Description Card */}
-                        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                        <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2">
                                     <FileText className="size-5 text-primary" />
                                     {t("apply.aboutRole")}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <article
-                                    className="prose max-w-none text-start"
+                                    className="prose dark:prose-invert max-w-none text-start"
                                     dir={isRTL ? "rtl" : "ltr"}
                                 >
                                     <ReactMarkdown>{job.description}</ReactMarkdown>
@@ -141,10 +141,10 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
 
                         {/* Skills */}
                         {job.skills.length > 0 && (
-                            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <Star className="size-5 text-primary" />
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Star className="size-5 text-amber-500" />
                                         {t("apply.requiredSkills")}
                                     </CardTitle>
                                 </CardHeader>
@@ -153,12 +153,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                         {job.skills.map((skill, idx) => (
                                             <Badge
                                                 key={idx}
-                                                variant={
-                                                    skill.importance === "required"
-                                                        ? "default"
-                                                        : "secondary"
-                                                }
-                                                className="px-3 py-1"
+                                                variant={skill.importance === "required" ? "default" : "secondary"}
                                             >
                                                 {skill.importance === "required" && (
                                                     <CheckCircle2 className="size-3 me-1" />
@@ -172,10 +167,10 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                         )}
 
                         {/* Assessment Info */}
-                        <Card className="border-primary/30 bg-primary/5">
+                        <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <Mic className="size-5 text-primary" />
+                                <CardTitle className="flex items-center gap-2">
+                                    <Mic className="size-5 text-purple-500" />
                                     {t("apply.assessmentInfo")}
                                 </CardTitle>
                             </CardHeader>
@@ -186,8 +181,8 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                 <div className="grid grid-cols-2 gap-4">
                                     {textQuestions > 0 && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <div className="size-8 rounded-lg bg-secondary flex items-center justify-center">
-                                                <FileText className="size-4" />
+                                            <div className="size-8 rounded-lg bg-muted flex items-center justify-center">
+                                                <FileText className="size-4 text-primary" />
                                             </div>
                                             <span>
                                                 {textQuestions} {t("apply.textQuestions")}
@@ -196,8 +191,8 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                     )}
                                     {voiceQuestions > 0 && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <div className="size-8 rounded-lg bg-secondary flex items-center justify-center">
-                                                <Mic className="size-4" />
+                                            <div className="size-8 rounded-lg bg-muted flex items-center justify-center">
+                                                <Mic className="size-4 text-purple-500" />
                                             </div>
                                             <span>
                                                 {voiceQuestions} {t("apply.voiceQuestions")}
@@ -206,9 +201,9 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                     )}
                                 </div>
                                 {voiceQuestions > 0 && (
-                                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
                                         <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-                                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                                        <p className="text-sm text-amber-700 dark:text-amber-300">
                                             {t("apply.voiceWarning")}
                                         </p>
                                     </div>
@@ -217,14 +212,14 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                         </Card>
 
                         {/* Start Button */}
-                        <div className="flex justify-center pt-4">
+                        <div className="flex justify-center pt-6">
                             <Button
-                                size="lg"
                                 onClick={onStartApplication}
-                                className="min-w-[200px] h-12 text-base gap-2 group"
+                                size="lg"
+                                className="min-w-[240px] gap-2"
                             >
                                 {t("apply.startApplication")}
-                                <ArrowIcon className="size-4 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+                                <ArrowIcon className="size-4" />
                             </Button>
                         </div>
                     </div>
