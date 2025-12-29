@@ -477,13 +477,15 @@
         "salaryExpectation": "الراتب المتوقع",
         "noJob": "لا توجد وظيفة معينة",
         "status": {
+            "title": "الحالة",
             "new": "جديد",
-            "screening": "فرز",
-            "interviewing": "مقابلة",
             "evaluated": "تم التقييم",
-            "shortlisted": "قائمة مختصرة",
+            "interview": "مقابلة",
             "hired": "تم التوظيف",
             "rejected": "مرفوض",
+            "screening": "فرز",
+            "interviewing": "مقابلة",
+            "shortlisted": "قائمة مختصرة",
             "withdrawn": "انسحب"
         },
         "profile": "الملف الشخصي",
@@ -685,6 +687,22 @@
             "cancel": "إلغاء",
             "save": "حفظ",
             "saving": "جاري الحفظ..."
+        },
+        "listView": "عرض القائمة",
+        "boardView": "عرض اللوحة",
+        "filtersDescription": "قم بتنقيح بحثك عن المرشحين باستخدام هذه الفلاتر",
+        "resetFilters": "إعادة تعيين الفلاتر",
+        "applyFilters": "تطبيق الفلاتر",
+        "appliedDate": "تاريخ التقديم",
+        "role": "الدور",
+        "noApplicants": "لا يوجد متقدمين",
+        "kanban": {
+            "new": "جديد",
+            "evaluated": "تم التقييم",
+            "interview": "مقابلة",
+            "hired": "تم التوظيف",
+            "screening": "فرز",
+            "interviewing": "مقابلة"
         }
     },
     "roles": {

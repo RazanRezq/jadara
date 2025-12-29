@@ -410,7 +410,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                 </Button>
 
                 {/* Add Job Button */}
-                {hasPermission(currentUserRole, "admin") && (
+                {hasPermission(currentUserRole, "jobs.create") && (
                     <Button
                         onClick={() => setAddDialogOpen(true)}
                         className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"

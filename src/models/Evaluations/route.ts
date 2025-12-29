@@ -93,11 +93,12 @@ app.post('/create', async (c) => {
             await existing.save()
 
             // Update applicant with AI score
+            // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
             await Applicant.findByIdAndUpdate(validation.data.applicantId, {
                 aiScore: validation.data.overallScore,
                 aiSummary: validation.data.summary,
                 aiRedFlags: validation.data.redFlags,
-                status: 'evaluated',
+                // status: 'evaluated', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
             })
 
             return c.json({
@@ -116,11 +117,12 @@ app.post('/create', async (c) => {
         })
 
         // Update applicant with AI score
+        // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
         await Applicant.findByIdAndUpdate(validation.data.applicantId, {
             aiScore: validation.data.overallScore,
             aiSummary: validation.data.summary,
             aiRedFlags: validation.data.redFlags,
-            status: 'evaluated',
+            // status: 'evaluated', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
         })
 
         return c.json(

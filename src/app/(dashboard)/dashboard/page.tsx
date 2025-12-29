@@ -122,6 +122,7 @@ async function getAdminStats() {
         ]),
 
         // Action center: Candidates with team reviews awaiting final decision (not hired/rejected/withdrawn)
+        // IMPORTANT: Only counts reviews from users with role='reviewer' (not admin/superadmin)
         Applicant.aggregate([
             {
                 $match: {
@@ -130,16 +131,42 @@ async function getAdminStats() {
                 }
             },
             {
+                // Lookup reviews with pipeline to filter by reviewer role
+                $lookup: {
+                    from: "reviews",
+                    let: { applicantId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$applicantId", "$$applicantId"] } } },
+                        {
+                            // Join with users to get reviewer role
+                            $lookup: {
+                                from: "users",
+                                localField: "reviewerId",
+                                foreignField: "_id",
+                                as: "reviewer"
+                            }
+                        },
+                        { $unwind: { path: "$reviewer", preserveNullAndEmptyArrays: false } },
+                        // Only include reviews from users with role='reviewer'
+                        { $match: { "reviewer.role": "reviewer" } },
+                        { $project: { rating: 1, reviewerId: 1 } }
+                    ],
+                    as: "reviewerOnlyReviews"
+                }
+            },
+            {
+                // Also get ALL reviews for avgRating calculation (includes admin reviews)
                 $lookup: {
                     from: "reviews",
                     localField: "_id",
                     foreignField: "applicantId",
-                    as: "reviews"
+                    as: "allReviews"
                 }
             },
             {
                 $match: {
-                    "reviews.0": { $exists: true }
+                    // Only show candidates that have at least one review from a reviewer
+                    "reviewerOnlyReviews.0": { $exists: true }
                 }
             },
             {
@@ -157,8 +184,10 @@ async function getAdminStats() {
                     email: "$personalData.email",
                     jobTitle: { $arrayElemAt: ["$job.title", 0] },
                     jobId: 1,
-                    avgRating: { $avg: "$reviews.rating" },
-                    reviewCount: { $size: "$reviews" },
+                    // Average rating from ALL reviews (for decision-making context)
+                    avgRating: { $avg: "$allReviews.rating" },
+                    // Count ONLY reviewer reviews (matches what reviewer sees)
+                    reviewCount: { $size: "$reviewerOnlyReviews" },
                     submittedAt: 1
                 }
             },
@@ -167,6 +196,7 @@ async function getAdminStats() {
         ]),
 
         // Recent candidates with AI scores and team ratings
+        // IMPORTANT: reviewCount only counts reviews from users with role='reviewer'
         Applicant.aggregate([
             {
                 $match: {
@@ -185,11 +215,34 @@ async function getAdminStats() {
                 }
             },
             {
+                // Lookup reviews with pipeline to filter by reviewer role
+                $lookup: {
+                    from: "reviews",
+                    let: { applicantId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$applicantId", "$$applicantId"] } } },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "reviewerId",
+                                foreignField: "_id",
+                                as: "reviewer"
+                            }
+                        },
+                        { $unwind: { path: "$reviewer", preserveNullAndEmptyArrays: false } },
+                        { $match: { "reviewer.role": "reviewer" } },
+                        { $project: { rating: 1 } }
+                    ],
+                    as: "reviewerOnlyReviews"
+                }
+            },
+            {
+                // Also get ALL reviews for avgRating
                 $lookup: {
                     from: "reviews",
                     localField: "_id",
                     foreignField: "applicantId",
-                    as: "reviews"
+                    as: "allReviews"
                 }
             },
             {
@@ -201,8 +254,9 @@ async function getAdminStats() {
                     jobId: 1,
                     status: 1,
                     aiScore: 1,
-                    avgRating: { $avg: "$reviews.rating" },
-                    reviewCount: { $size: "$reviews" },
+                    avgRating: { $avg: "$allReviews.rating" },
+                    // Count ONLY reviewer reviews
+                    reviewCount: { $size: "$reviewerOnlyReviews" },
                     submittedAt: 1
                 }
             }
@@ -419,5 +473,5 @@ export default async function DashboardPage() {
 
     // Default: Admin/Recruiter view
     const stats = await getAdminStats()
-    return <AdminView stats={stats} />
+    return <AdminView stats={stats} userRole={session.role} userId={session.userId} />
 }

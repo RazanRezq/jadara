@@ -181,8 +181,9 @@ app.post('/process', async (c) => {
             )
         }
 
-        // Update applicant status to screening
-        await Applicant.findByIdAndUpdate(applicantId, { status: 'screening' })
+        // SILENT SCORER: AI does NOT change status
+        // Candidate remains in their current status - only reviewers move candidates
+        console.log('[API] Silent Scorer mode: AI will not update candidate status')
 
         // Build candidate data
         console.log('📋 [API] Building candidate data for applicant:', applicantId)
@@ -224,9 +225,9 @@ app.post('/process', async (c) => {
         }
 
         if (!result.success || !result.evaluation) {
-            // Update applicant status
-            await Applicant.findByIdAndUpdate(applicantId, { 
-                status: 'new',
+            // SILENT SCORER: On failure, only update notes, not status
+            await Applicant.findByIdAndUpdate(applicantId, {
+                // status: 'new', // REMOVED: AI does not update status
                 notes: `Evaluation failed: ${result.error}`,
             })
 
@@ -290,9 +291,10 @@ app.post('/process', async (c) => {
             })
         }
 
-        // Update applicant with evaluation results (use English as default for legacy fields)
+        // SILENT SCORER: Update applicant with evaluation results but DO NOT change status
+        // Only reviewers can move candidates from 'new' to 'evaluated'
         await Applicant.findByIdAndUpdate(applicantId, {
-            status: 'evaluated',
+            // status: 'evaluated', // REMOVED: AI does not update status
             aiScore: result.evaluation.overallScore,
             aiSummary: result.evaluation.summary.en, // Use English for legacy field
             aiRedFlags: result.evaluation.redFlags.en, // Use English for legacy field

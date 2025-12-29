@@ -80,16 +80,28 @@ interface ViewApplicantDialogProps {
     nextApplicantId?: string | null
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATUS COLORS - Based on the "Golden List" (5 statuses)
+// ═══════════════════════════════════════════════════════════════════════════════
 const statusColors: Record<ApplicantStatus, string> = {
     new: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    screening: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-    interviewing: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-    evaluated: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
-    shortlisted: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+    evaluated: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+    interview: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
     hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
     rejected: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-    withdrawn: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DROPDOWN STATUSES - All 5 Golden List statuses visible in dropdown
+// Pipeline: new → evaluated (via reviewer) → interview → hired/rejected
+// ═══════════════════════════════════════════════════════════════════════════════
+const VISIBLE_STATUSES: ApplicantStatus[] = [
+    'new',        // جديد - Initial status (AI scored, pending review)
+    'evaluated',  // تم التقييم - Reviewed by a team member
+    'interview',  // مقابلة - In interview process
+    'hired',      // تم التوظيف - Final positive outcome
+    'rejected',   // مرفوض - Final negative outcome
+]
 
 export function ViewApplicantDialog({
     open,
@@ -481,6 +493,30 @@ export function ViewApplicantDialog({
                             {t("applicants.candidateDetails")}
                         </DialogTitle>
                         <div className="flex items-center gap-2">
+                            {/* Status Dropdown - Visible in header */}
+                            <Select
+                                value={currentStatus}
+                                onValueChange={handleStatusChange}
+                                disabled={updating}
+                            >
+                                <SelectTrigger className="w-[180px] h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {/* CLEAN UI: Only show user-facing statuses, hide internal ones */}
+                                    {VISIBLE_STATUSES.map((status) => (
+                                        <SelectItem key={status} value={status}>
+                                            <span className="flex items-center gap-2">
+                                                <span className={cn("w-2 h-2 rounded-full", statusColors[status].split(" ")[0])} />
+                                                {t(`applicants.status.${status}`)}
+                                            </span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Separator orientation="vertical" className="h-6" />
+
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -508,16 +544,16 @@ export function ViewApplicantDialog({
                     <div className="flex items-center gap-4 mt-4">
                         <div className={cn(
                             "relative w-16 h-16 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-xl shrink-0",
-                            getAvatarGradient(applicant.personalData?.name || "A")
+                            getAvatarGradient(applicant.displayName || applicant.personalData?.name || "A")
                         )}>
-                            {applicant.personalData?.name?.charAt(0)?.toUpperCase() || 'A'}
+                            {(applicant.displayName || applicant.personalData?.name)?.charAt(0)?.toUpperCase() || 'A'}
                             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background" />
                         </div>
 
                         <div className="flex-1">
                             <div className="flex items-center gap-2">
                                 <h2 className="text-xl font-bold">
-                                    {applicant.personalData?.name || 'Unknown'}
+                                    {applicant.displayName || applicant.personalData?.name || 'Unnamed Candidate'}
                                 </h2>
                                 {applicant.isSuspicious && (
                                     <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -1834,33 +1870,7 @@ export function ViewApplicantDialog({
                             </Card>
                         )}
 
-                        {/* Status Update */}
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base">{t("applicants.updateStatus")}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Select
-                                    value={currentStatus}
-                                    onValueChange={handleStatusChange}
-                                    disabled={updating}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.keys(statusColors).map((status) => (
-                                            <SelectItem key={status} value={status}>
-                                                <span className="flex items-center gap-2">
-                                                    <span className={cn("w-2 h-2 rounded-full", statusColors[status as ApplicantStatus].split(" ")[0])} />
-                                                    {t(`applicants.status.${status}`)}
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </CardContent>
-                        </Card>
+                        {/* Note: Status Update moved to dialog header for better UX */}
                     </TabsContent>
 
                     {/* Team Review Tab */}

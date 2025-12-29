@@ -150,17 +150,34 @@ app.post('/submit', authenticate, async (c) => {
 
             console.log('  → Job found?', job ? '✅ YES' : '❌ NO')
 
-            // FAIL-SAFE EXECUTION: Update applicant status FIRST, then notifications in isolated try-catch
-            // This ensures review is saved even if notifications fail
+            // GATEKEEPER LOGIC: Role-based status transitions
+            // Only REVIEWERS can move candidates from 'new' to 'evaluated'
+            // ADMIN/SUPERADMIN reviews are audit badges only - they do NOT move the candidate
 
-            // 2. Auto-update applicant status if currently 'new' or 'screening'
-            if (applicant.status === 'new' || applicant.status === 'screening') {
-                await Applicant.findByIdAndUpdate(validatedData.applicantId, {
-                    status: 'evaluated',
-                })
-                console.log(`  ✅ Updated applicant status: ${applicant.status} → evaluated`)
+            console.log('[Review Submit] GATEKEEPER: Role-based status transition check')
+            console.log(`  Reviewer Role: ${user.role}`)
+            console.log(`  Current Candidate Status: ${applicant.status}`)
+
+            // Safety check: Ensure role is defined before processing
+            if (!user.role) {
+                console.warn('[Review Submit] ⚠️ User role is undefined - skipping status transition')
+            } else if (user.role === 'reviewer') {
+                // REVIEWER: Only moves candidate if in 'new' status
+                if (applicant.status === 'new') {
+                    await Applicant.findByIdAndUpdate(validatedData.applicantId, {
+                        status: 'evaluated',
+                    })
+                    console.log(`  ✅ REVIEWER moved candidate: new → evaluated`)
+                } else if (['interviewing', 'hired', 'rejected'].includes(applicant.status)) {
+                    // Prevent reviewers from downgrading candidates in advanced stages
+                    console.log(`  ⚠️  REVIEWER cannot downgrade candidate (status: ${applicant.status})`)
+                } else {
+                    console.log(`  ℹ️  REVIEWER: Status not updated (current: ${applicant.status})`)
+                }
             } else {
-                console.log(`  ℹ️  Status not updated (current: ${applicant.status})`)
+                // ADMIN/SUPERADMIN: Audit badge only - NO status update
+                console.log(`  📋 ADMIN/SUPERADMIN: Review saved as audit badge (no status change)`)
+                console.log(`  ℹ️  Candidate remains in status: ${applicant.status}`)
             }
 
             // 3. ISOLATED NOTIFICATION LOGIC (failures here won't crash review submission)
@@ -547,6 +564,68 @@ app.get('/my-stats', authenticate, async (c) => {
             },
         })
     } catch (error) {
+        return c.json({
+            success: false,
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        }, 500)
+    }
+})
+
+// Batch get reviewer badges for multiple applicants (for Kanban board display)
+app.post('/batch-badges', authenticate, async (c) => {
+    try {
+        await dbConnect()
+        const body = await c.req.json()
+        const { applicantIds } = body
+
+        if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+            return c.json({
+                success: true,
+                reviewsByApplicant: {},
+            })
+        }
+
+        // Fetch all reviews for the given applicants with reviewer info
+        const reviews = await Review.find({
+            applicantId: { $in: applicantIds.map(id => new mongoose.Types.ObjectId(id)) }
+        })
+            .populate({ path: 'reviewerId', model: User, select: 'name role' })
+            .lean()
+
+        // Group reviews by applicant ID
+        const reviewsByApplicant: Record<string, Array<{
+            reviewerId: string
+            reviewerName: string
+            reviewerRole: string
+            rating: number
+            decision: string
+        }>> = {}
+
+        for (const review of reviews) {
+            const applicantId = review.applicantId.toString()
+            if (!reviewsByApplicant[applicantId]) {
+                reviewsByApplicant[applicantId] = []
+            }
+
+            // Only include if reviewer exists (not deleted)
+            if (review.reviewerId && typeof review.reviewerId === 'object' && '_id' in review.reviewerId) {
+                reviewsByApplicant[applicantId].push({
+                    reviewerId: (review.reviewerId as any)._id.toString(),
+                    reviewerName: (review.reviewerId as any).name || 'Unknown',
+                    reviewerRole: (review.reviewerId as any).role || 'reviewer',
+                    rating: review.rating,
+                    decision: review.decision,
+                })
+            }
+        }
+
+        return c.json({
+            success: true,
+            reviewsByApplicant,
+        })
+    } catch (error) {
+        console.error('[Batch Badges] Error:', error)
         return c.json({
             success: false,
             error: 'Internal server error',

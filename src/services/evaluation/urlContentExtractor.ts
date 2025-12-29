@@ -1158,10 +1158,43 @@ Return ONLY valid JSON, no additional text.`
         const result = await model.generateContent(prompt)
         let responseText = result.response.text().trim()
         
-        // Clean JSON response
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const parsedData = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let parsedData
+        try {
+            parsedData = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[URL Extractor] JSON Parse Error:', parseError)
+            console.error('[URL Extractor] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                parsedData = JSON.parse(fixedText)
+                console.log('[URL Extractor] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[URL Extractor] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         return {
             summary: parsedData.summary || '',

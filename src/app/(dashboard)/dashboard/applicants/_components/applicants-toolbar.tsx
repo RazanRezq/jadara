@@ -1,0 +1,158 @@
+"use client"
+
+import type { ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useTranslate } from "@/hooks/useTranslate"
+import { cn } from "@/lib/utils"
+import {
+    Search,
+    LayoutList,
+    Columns3,
+    RefreshCw,
+    Users,
+} from "lucide-react"
+import type { ViewMode } from "./types"
+
+interface ApplicantsToolbarProps {
+    // View state
+    viewMode: ViewMode
+    onViewModeChange: (mode: ViewMode) => void
+    // Search
+    searchTerm: string
+    onSearchChange: (value: string) => void
+    // Job filter
+    jobs: { id: string; title: string }[]
+    jobFilter: string
+    onJobFilterChange: (jobId: string) => void
+    // Filter component slot (renders the popover)
+    filterSlot: ReactNode
+    // Stats
+    totalApplicants: number
+    // Actions
+    onRefresh: () => void
+    isLoading: boolean
+}
+
+export function ApplicantsToolbar({
+    viewMode,
+    onViewModeChange,
+    searchTerm,
+    onSearchChange,
+    jobs,
+    jobFilter,
+    onJobFilterChange,
+    filterSlot,
+    totalApplicants,
+    onRefresh,
+    isLoading,
+}: ApplicantsToolbarProps) {
+    const { t } = useTranslate()
+
+    return (
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+            <div className="flex flex-col gap-4 p-4">
+                {/* Top Row: Title + Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {/* Left: Title + Badge */}
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-xl font-bold">
+                                {t("applicants.title")}
+                            </h1>
+                            <Badge variant="secondary" className="text-xs">
+                                {totalApplicants}
+                            </Badge>
+                        </div>
+                    </div>
+
+                    {/* Right: View Toggle + Filter Button + Refresh */}
+                    <div className="flex items-center gap-2">
+                        {/* View Mode Toggle */}
+                        <ToggleGroup
+                            type="single"
+                            value={viewMode}
+                            onValueChange={(value) => {
+                                if (value) onViewModeChange(value as ViewMode)
+                            }}
+                            className="bg-muted p-1 rounded-lg"
+                        >
+                            <ToggleGroupItem
+                                value="list"
+                                aria-label={t("applicants.listView")}
+                                className="h-8 px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                            >
+                                <LayoutList className="h-4 w-4" />
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                                value="board"
+                                aria-label={t("applicants.boardView")}
+                                className="h-8 px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                            >
+                                <Columns3 className="h-4 w-4" />
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+
+                        {/* Filter Popover Slot */}
+                        {filterSlot}
+
+                        {/* Refresh Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onRefresh}
+                            disabled={isLoading}
+                            className="h-9 w-9"
+                        >
+                            <RefreshCw className={cn(
+                                "h-4 w-4",
+                                isLoading && "animate-spin"
+                            )} />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Bottom Row: Search + Job Filter */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    {/* Search Input */}
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
+                        <Input
+                            placeholder={t("applicants.searchPlaceholder")}
+                            value={searchTerm}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            className="h-10 ps-10"
+                        />
+                    </div>
+
+                    {/* Job Filter */}
+                    <Select value={jobFilter} onValueChange={onJobFilterChange}>
+                        <SelectTrigger className="w-full sm:w-[200px] h-10">
+                            <SelectValue placeholder={t("applicants.selectJob")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">{t("applicants.allJobs")}</SelectItem>
+                            {jobs.map((job) => (
+                                <SelectItem key={job.id} value={job.id}>
+                                    {job.title}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+        </div>
+    )
+}

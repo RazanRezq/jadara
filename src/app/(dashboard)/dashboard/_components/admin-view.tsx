@@ -39,6 +39,9 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
+import { ViewApplicantDialog } from "@/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog"
+import type { Applicant, EvaluationData } from "@/app/(dashboard)/dashboard/applicants/_components/types"
+import type { UserRole } from "@/lib/auth"
 
 // Types
 interface AdminStats {
@@ -86,6 +89,8 @@ interface AdminStats {
 
 interface AdminViewProps {
     stats: AdminStats
+    userRole: UserRole
+    userId: string
 }
 
 // Stat Card Component - Optime Style
@@ -204,13 +209,76 @@ function StarRating({ rating, showValue = false }: { rating: number; showValue?:
 function ActionCenter({
     candidates,
     dir,
+    userRole,
+    userId,
+    onRefresh,
 }: {
     candidates: AdminStats["actionCenter"]
     dir: "ltr" | "rtl"
+    userRole: UserRole
+    userId: string
+    onRefresh: () => void
 }) {
     const { t } = useTranslate()
+    const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
+    const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationData | undefined>(undefined)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [isLoadingApplicant, setIsLoadingApplicant] = useState(false)
+
+    // Fetch full applicant data and evaluation
+    const handleMakeDecision = async (applicantId: string) => {
+        setIsLoadingApplicant(true)
+        try {
+            // Fetch applicant details
+            const applicantResponse = await fetch(`/api/applicants/${applicantId}`)
+
+            if (!applicantResponse.ok) {
+                const errorText = await applicantResponse.text()
+                console.error("Applicant fetch failed:", applicantResponse.status, errorText)
+                toast.error(`Failed to load applicant: ${applicantResponse.status}`)
+                return
+            }
+
+            const applicantData = await applicantResponse.json()
+
+            if (!applicantData.success) {
+                console.error("Applicant API error:", applicantData)
+                toast.error(applicantData.error || t("common.error"))
+                return
+            }
+
+            // Fetch evaluation data (optional - don't fail if missing)
+            let evaluationData = null
+            try {
+                const evaluationResponse = await fetch(`/api/evaluations/by-applicant/${applicantId}`)
+                if (evaluationResponse.ok) {
+                    evaluationData = await evaluationResponse.json()
+                }
+            } catch (evalError) {
+                console.warn("Evaluation fetch failed (non-critical):", evalError)
+            }
+
+            setSelectedApplicant(applicantData.applicant)
+            setSelectedEvaluation(evaluationData?.success ? evaluationData.evaluation : undefined)
+            setIsDialogOpen(true)
+        } catch (error) {
+            console.error("Failed to fetch applicant data:", error)
+            toast.error(error instanceof Error ? error.message : t("common.error"))
+        } finally {
+            setIsLoadingApplicant(false)
+        }
+    }
+
+    // Handle status change callback - refresh the action center
+    const handleStatusChange = () => {
+        setIsDialogOpen(false)
+        setSelectedApplicant(null)
+        setSelectedEvaluation(undefined)
+        onRefresh()
+    }
 
     return (
+        <>
         <Card className="border-border/50 bg-card h-full">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -271,18 +339,18 @@ function ActionCenter({
                                         {candidate.reviewCount} {t("dashboard.admin.reviews")}
                                     </span>
                                 </div>
-                                <Link href={`/dashboard/applicants?highlight=${candidate._id}`}>
-                                    <Button
-                                        size="sm"
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-3 text-xs"
-                                    >
-                                        {t("dashboard.admin.makeDecision")}
-                                    </Button>
-                                </Link>
+                                <Button
+                                    size="sm"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-3 text-xs"
+                                    onClick={() => handleMakeDecision(candidate._id)}
+                                    disabled={isLoadingApplicant}
+                                >
+                                    {t("dashboard.admin.makeDecision")}
+                                </Button>
                             </div>
                         ))}
                         {candidates.length > 5 && (
-                            <Link href="/dashboard/applicants?status=screening">
+                            <Link href="/dashboard/applicants?status=evaluated">
                                 <Button variant="ghost" className="w-full text-primary text-sm">
                                     {t("dashboard.admin.viewAll")} ({candidates.length})
                                 </Button>
@@ -292,6 +360,22 @@ function ActionCenter({
                 )}
             </CardContent>
         </Card>
+
+        {/* Applicant Details Dialog */}
+        {selectedApplicant && (
+            <ViewApplicantDialog
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                applicant={selectedApplicant}
+                evaluation={selectedEvaluation}
+                userRole={userRole}
+                userId={userId}
+                onStatusChange={handleStatusChange}
+                initialTab="overview"
+                nextApplicantId={null}
+            />
+        )}
+    </>
     )
 }
 
@@ -430,15 +514,19 @@ function UpcomingSchedule({
 function StatusBadge({ status }: { status: string }) {
     const { t } = useTranslate()
 
+    // Golden List + Legacy (API normalizes legacy statuses before sending to client)
     const statusConfig: Record<string, { color: string; bg: string; darkBg: string }> = {
+        // Golden List (5 statuses)
         new: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/30" },
-        screening: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
-        interviewing: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
-        evaluated: { color: "text-cyan-700 dark:text-cyan-300", bg: "bg-cyan-100", darkBg: "dark:bg-cyan-900/30" },
-        shortlisted: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100", darkBg: "dark:bg-emerald-900/30" },
-        hired: { color: "text-green-700 dark:text-green-300", bg: "bg-green-100", darkBg: "dark:bg-green-900/30" },
+        evaluated: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
+        interview: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
+        hired: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100", darkBg: "dark:bg-emerald-900/30" },
         rejected: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/30" },
-        withdrawn: { color: "text-gray-700 dark:text-gray-300", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" },
+        // Legacy (for backwards compatibility - should not appear in normal flow)
+        screening: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
+        interviewing: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
+        shortlisted: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
+        withdrawn: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/30" },
     }
 
     const config = statusConfig[status] || { color: "text-gray-700", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" }
@@ -779,8 +867,13 @@ function RecentCandidatesTable({
 }
 
 // Main AdminView Component - Optime Grid Layout
-export function AdminView({ stats }: AdminViewProps) {
+export function AdminView({ stats, userRole, userId }: AdminViewProps) {
     const { t, dir, locale } = useTranslate()
+
+    // Refresh function - reload the page to get fresh data
+    const handleRefresh = () => {
+        window.location.reload()
+    }
 
     const statCards = [
         {
@@ -853,7 +946,13 @@ export function AdminView({ stats }: AdminViewProps) {
             {/* Row 2: Action Center (2/3) + Upcoming Schedule (1/3) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                 <div className="xl:col-span-2">
-                    <ActionCenter candidates={stats.actionCenter} dir={dir} />
+                    <ActionCenter
+                        candidates={stats.actionCenter}
+                        dir={dir}
+                        userRole={userRole}
+                        userId={userId}
+                        onRefresh={handleRefresh}
+                    />
                 </div>
                 <div className="xl:col-span-1">
                     <UpcomingSchedule interviews={stats.upcomingInterviews} dir={dir} />

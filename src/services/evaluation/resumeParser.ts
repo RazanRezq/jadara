@@ -123,10 +123,43 @@ ${rawText}
         const parseResult = await model.generateContent(parsePrompt)
         let responseText = parseResult.response.text().trim()
         
-        // Clean JSON response
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const parsedData = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let parsedData
+        try {
+            parsedData = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[Resume Parser] JSON Parse Error:', parseError)
+            console.error('[Resume Parser] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                parsedData = JSON.parse(fixedText)
+                console.log('[Resume Parser] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[Resume Parser] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         console.log('[Resume Parser] Parsed successfully:')
         console.log('  - Skills:', parsedData.skills?.length || 0)
@@ -256,9 +289,44 @@ Return ONLY valid JSON.`
 
         const result = await model.generateContent(prompt)
         let responseText = result.response.text().trim()
+        
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const portfolioData = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let portfolioData
+        try {
+            portfolioData = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[Portfolio Parser] JSON Parse Error:', parseError)
+            console.error('[Portfolio Parser] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                portfolioData = JSON.parse(fixedText)
+                console.log('[Portfolio Parser] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[Portfolio Parser] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         const skills: ExtractedSkill[] = [
             ...(portfolioData.skills || []).map((s: string) => ({

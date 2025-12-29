@@ -184,11 +184,43 @@ Question asked: "${questionText}"
         
         console.log('🎤 [Transcription] Gemini response received, length:', responseText.length)
 
-        // Clean JSON response
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        // Parse the JSON response
-        const geminiResult = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let geminiResult
+        try {
+            geminiResult = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('🎤 [Transcription] JSON Parse Error:', parseError)
+            console.error('🎤 [Transcription] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                geminiResult = JSON.parse(fixedText)
+                console.log('🎤 [Transcription] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('🎤 [Transcription] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         console.log('✅ [Transcription] SUCCESS! Transcription and analysis completed')
         console.log('✅ [Transcription] Raw transcript length:', geminiResult.rawTranscript?.length || 0)
@@ -315,10 +347,43 @@ Respond ONLY with the JSON, no additional text.`
         const result = await model.generateContent(prompt)
         let responseText = result.response.text().trim()
         
-        // Clean JSON response
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const analysis = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let analysis
+        try {
+            analysis = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[Voice Analysis] JSON Parse Error:', parseError)
+            console.error('[Voice Analysis] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                analysis = JSON.parse(fixedText)
+                console.log('[Voice Analysis] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[Voice Analysis] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         return {
             success: true,

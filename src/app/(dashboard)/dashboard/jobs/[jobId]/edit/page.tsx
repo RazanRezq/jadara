@@ -18,3 +18,4 @@ export default async function EditJobPage({
     return <EditJobPageClient jobId={jobId} userId={session.userId} />
 }
 
+

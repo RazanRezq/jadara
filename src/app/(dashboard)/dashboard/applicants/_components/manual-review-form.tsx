@@ -520,8 +520,8 @@ export function ManualReviewForm({
                         {submitting
                             ? t("applicants.review.submitting")
                             : existingReview
-                            ? t("applicants.review.updateReview")
-                            : t("applicants.review.submitReview")}
+                                ? t("applicants.review.updateReview")
+                                : t("applicants.review.submitReview")}
                     </Button>
                 </div>
             </CardContent>

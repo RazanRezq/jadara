@@ -313,8 +313,9 @@ export async function submitApplication(
                     })
 
                     // Update applicant with AI results (use English for legacy fields)
+                    // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
                     await Applicant.findByIdAndUpdate(applicantId, {
-                        status: 'evaluated',
+                        // status: 'evaluated', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
                         aiScore: result.evaluation.overallScore,
                         aiSummary: result.evaluation.summary.en,
                         aiRedFlags: result.evaluation.redFlags.en,
@@ -390,9 +391,10 @@ export async function submitApplication(
                         processedAt: new Date(),
                     })
 
-                    // Update applicant status to 'pending' for manual review
+                    // Update applicant with partial AI results
+                    // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
                     await Applicant.findByIdAndUpdate(applicantId, {
-                        status: 'pending',
+                        // status: 'pending', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
                         aiScore: 0,
                         aiSummary: `Partial evaluation: ${result.error}`,
                         aiRedFlags: result.errorType === 'quota_exceeded' ? ['API quota exceeded - retry available'] : ['Evaluation incomplete'],

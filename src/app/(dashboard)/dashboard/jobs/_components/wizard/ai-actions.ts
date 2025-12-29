@@ -491,8 +491,40 @@ Return ONLY a valid JSON array with no additional text or markdown`
         // Clean up the response (remove markdown code blocks if present)
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 
-        // Parse the JSON response
-        const skills: ExtractedSkill[] = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+
+        // Try to parse JSON, with error recovery
+        let skills: ExtractedSkill[]
+        try {
+            skills = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[AI Actions] JSON Parse Error:', parseError)
+            console.error('[AI Actions] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                skills = JSON.parse(fixedText)
+                console.log('[AI Actions] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[AI Actions] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         if (!Array.isArray(skills) || skills.length === 0) {
             return {

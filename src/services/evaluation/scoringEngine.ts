@@ -450,9 +450,44 @@ Return ONLY valid JSON.`
 
         const result = await model.generateContent(prompt)
         let responseText = result.response.text().trim()
+        
+        // Clean JSON response - remove markdown code blocks
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         
-        const recommendation = JSON.parse(responseText)
+        // Extract JSON object/array if there's extra text
+        const jsonMatch = responseText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+        
+        // Try to parse JSON, with error recovery
+        let recommendation
+        try {
+            recommendation = JSON.parse(responseText)
+        } catch (parseError) {
+            console.error('[Recommendation Engine] JSON Parse Error:', parseError)
+            console.error('[Recommendation Engine] Problematic JSON (first 500 chars):', responseText.substring(0, 500))
+            
+            // Try to fix common JSON issues
+            let fixedText = responseText
+                // Fix trailing commas in arrays/objects
+                .replace(/,(\s*[}\]])/g, '$1')
+                // Fix missing commas between array elements
+                .replace(/"\s*\n\s*"/g, '",\n"')
+                // Fix single quotes to double quotes (but be careful with apostrophes in text)
+                .replace(/([{,]\s*)'/g, '$1"')
+                .replace(/'\s*([,}])/g, '"$1')
+                // Remove any text after the closing bracket
+                .replace(/([}\]])[\s\S]*$/, '$1')
+            
+            try {
+                recommendation = JSON.parse(fixedText)
+                console.log('[Recommendation Engine] Successfully parsed JSON after fixes')
+            } catch (secondError) {
+                console.error('[Recommendation Engine] Still failed after fixes:', secondError)
+                throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+            }
+        }
 
         console.log('[Scoring Engine] Recommendation:', recommendation.recommendation)
         console.log('[Scoring Engine] Confidence:', recommendation.confidence, '%')

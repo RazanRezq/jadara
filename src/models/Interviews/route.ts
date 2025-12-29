@@ -89,10 +89,10 @@ app.post('/create', authenticate, requireRole('admin'), async (c) => {
         console.log('✅ Interview saved:', interview._id)
 
         console.log('🔹 Step 8: Updating applicant status...')
-        // Update applicant status to interviewing
-        applicant.status = 'interviewing'
+        // Update applicant status to interview (Golden List canonical name)
+        applicant.status = 'interview'
         await applicant.save()
-        console.log('✅ Applicant status updated to interviewing')
+        console.log('✅ Applicant status updated to interview')
 
         const applicantName = applicant.personalData?.name || 'Unknown'
         const applicantEmail = applicant.personalData?.email || ''

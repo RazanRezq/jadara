@@ -34,6 +34,10 @@ export function KanbanBoard({ applicants, onApplicantClick }: KanbanBoardProps) 
     const { t } = useTranslate()
     const [draggedApplicant, setDraggedApplicant] = useState<Applicant | null>(null)
 
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // KANBAN COLUMNS - Based on the "Golden List" (5 statuses)
+    // Only 4 columns shown (rejected is excluded from active pipeline)
+    // ═══════════════════════════════════════════════════════════════════════════════
     const columns: KanbanColumn[] = [
         {
             status: "new",
@@ -42,28 +46,16 @@ export function KanbanBoard({ applicants, onApplicantClick }: KanbanBoardProps) 
             bgColor: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
         },
         {
-            status: "screening",
-            title: t("applicants.status.screening"),
+            status: "evaluated",
+            title: t("applicants.status.evaluated"),
             color: "text-purple-700 dark:text-purple-300",
             bgColor: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
         },
         {
-            status: "interviewing",
-            title: t("applicants.status.interviewing"),
+            status: "interview",
+            title: t("applicants.status.interview"),
             color: "text-amber-700 dark:text-amber-300",
             bgColor: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
-        },
-        {
-            status: "evaluated",
-            title: t("applicants.status.evaluated"),
-            color: "text-indigo-700 dark:text-indigo-300",
-            bgColor: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800",
-        },
-        {
-            status: "shortlisted",
-            title: t("applicants.status.shortlisted"),
-            color: "text-cyan-700 dark:text-cyan-300",
-            bgColor: "bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800",
         },
         {
             status: "hired",
@@ -71,12 +63,7 @@ export function KanbanBoard({ applicants, onApplicantClick }: KanbanBoardProps) 
             color: "text-emerald-700 dark:text-emerald-300",
             bgColor: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
         },
-        {
-            status: "rejected",
-            title: t("applicants.status.rejected"),
-            color: "text-red-700 dark:text-red-300",
-            bgColor: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800",
-        },
+        // Note: 'rejected' is excluded from Kanban board (not part of active pipeline)
     ]
 
     const getApplicantsByStatus = (status: ApplicantStatus) => {

@@ -477,13 +477,15 @@
         "salaryExpectation": "Salary Expectation",
         "noJob": "No job assigned",
         "status": {
+            "title": "Status",
             "new": "New",
-            "screening": "Screening",
-            "interviewing": "Interviewing",
             "evaluated": "Evaluated",
-            "shortlisted": "Shortlisted",
+            "interview": "Interview",
             "hired": "Hired",
             "rejected": "Rejected",
+            "screening": "Screening",
+            "interviewing": "Interviewing",
+            "shortlisted": "Shortlisted",
             "withdrawn": "Withdrawn"
         },
         "profile": "Profile",
@@ -685,6 +687,22 @@
             "cancel": "Cancel",
             "save": "Save",
             "saving": "Saving..."
+        },
+        "listView": "List View",
+        "boardView": "Board View",
+        "filtersDescription": "Refine your candidate search with these filters",
+        "resetFilters": "Reset Filters",
+        "applyFilters": "Apply Filters",
+        "appliedDate": "Applied Date",
+        "role": "Role",
+        "noApplicants": "No applicants",
+        "kanban": {
+            "new": "New",
+            "evaluated": "Evaluated",
+            "interview": "Interview",
+            "hired": "Hired",
+            "screening": "Screening",
+            "interviewing": "Interviewing"
         }
     },
     "roles": {

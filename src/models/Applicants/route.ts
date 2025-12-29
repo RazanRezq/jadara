@@ -1,12 +1,28 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
-import Applicant from './applicantSchema'
+import Applicant, { LEGACY_STATUS_MAP, type ApplicantStatus } from './applicantSchema'
 import { authenticate, getAuthUser, requireRole } from '@/lib/authMiddleware'
 import { logUserAction } from '@/lib/auditLogger'
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOLDEN LIST STATUS NORMALIZATION
+// Transforms any legacy DB status to one of the 5 canonical statuses
+// ═══════════════════════════════════════════════════════════════════════════════
+const GOLDEN_STATUSES: ApplicantStatus[] = ['new', 'evaluated', 'interview', 'hired', 'rejected']
+
+function normalizeStatus(dbStatus: string): ApplicantStatus {
+    // If already a Golden List status, return as-is
+    if (GOLDEN_STATUSES.includes(dbStatus as ApplicantStatus)) {
+        return dbStatus as ApplicantStatus
+    }
+    // Map legacy status to Golden List
+    return LEGACY_STATUS_MAP[dbStatus] || 'new'
+}
+
+// Zod schema uses Golden List for input validation
 const updateApplicantSchema = z.object({
-    status: z.enum(['new', 'screening', 'interviewing', 'evaluated', 'shortlisted', 'hired', 'rejected', 'withdrawn']).optional(),
+    status: z.enum(['new', 'evaluated', 'interview', 'hired', 'rejected']).optional(),
     tags: z.array(z.string()).optional(),
     notes: z.string().optional(),
     aiScore: z.number().min(0).max(100).optional(),
@@ -90,11 +106,25 @@ app.get('/list', authenticate, async (c) => {
         // Remove sensitive data for reviewers
         const isReviewer = user.role === 'reviewer'
 
+        // Helper function to generate display name
+        const getDisplayName = (personalData: any): string => {
+            if (!personalData) return 'Unnamed Candidate'
+            if (personalData.name && personalData.name.trim()) return personalData.name.trim()
+            // Fallback: try email prefix
+            if (personalData.email) {
+                const emailPrefix = personalData.email.split('@')[0]
+                if (emailPrefix) return emailPrefix
+            }
+            return 'Unnamed Candidate'
+        }
+
         return c.json({
             success: true,
             applicants: applicants.map((a) => ({
                 id: String(a._id),
                 jobId: a.jobId,
+                // NORMALIZED: Always provide a displayName for UI consistency
+                displayName: getDisplayName(a.personalData),
                 personalData: a.personalData ? {
                     name: a.personalData.name || '',
                     email: a.personalData.email || '',
@@ -120,7 +150,8 @@ app.get('/list', authenticate, async (c) => {
                     phone: '',
                 },
                 cvUrl: a.cvUrl,
-                status: a.status,
+                // GOLDEN LIST: Normalize legacy statuses before sending to client
+                status: normalizeStatus(a.status),
                 tags: a.tags,
                 notes: a.notes,
                 aiScore: a.aiScore,
@@ -171,18 +202,32 @@ app.get('/:id', authenticate, async (c) => {
 
         const isReviewer = user.role === 'reviewer'
 
+        // Helper function to generate display name
+        const getDisplayName = (personalData: any): string => {
+            if (!personalData) return 'Unnamed Candidate'
+            if (personalData.name && personalData.name.trim()) return personalData.name.trim()
+            if (personalData.email) {
+                const emailPrefix = personalData.email.split('@')[0]
+                if (emailPrefix) return emailPrefix
+            }
+            return 'Unnamed Candidate'
+        }
+
         return c.json({
             success: true,
             applicant: {
                 id: applicant._id.toString(),
                 jobId: applicant.jobId,
+                // NORMALIZED: Always provide a displayName for UI consistency
+                displayName: getDisplayName(applicant.personalData),
                 personalData: {
                     ...applicant.personalData,
                     salaryExpectation: isReviewer ? undefined : applicant.personalData.salaryExpectation,
                 },
                 cvUrl: applicant.cvUrl,
                 cvParsedData: applicant.cvParsedData,
-                status: applicant.status,
+                // GOLDEN LIST: Normalize legacy statuses before sending to client
+                status: normalizeStatus(applicant.status),
                 tags: applicant.tags,
                 notes: applicant.notes,
                 aiScore: applicant.aiScore,

@@ -1,14 +1,23 @@
 import mongoose, { Document, Model, Schema } from 'mongoose'
 
-export type ApplicantStatus = 
-    | 'new'           // Just submitted
-    | 'screening'     // Under initial review
-    | 'interviewing'  // In interview process
-    | 'evaluated'     // AI/Human evaluation done
-    | 'shortlisted'   // Made it to shortlist
-    | 'hired'         // Got the job
-    | 'rejected'      // Did not pass
-    | 'withdrawn'     // Candidate withdrew
+// ═══════════════════════════════════════════════════════════════════════════════
+// THE "GOLDEN LIST" - EXACTLY 5 STATUSES
+// These are the ONLY valid statuses in the system. No exceptions.
+// ═══════════════════════════════════════════════════════════════════════════════
+export type ApplicantStatus =
+    | 'new'           // Just submitted, AI scored but awaiting human review
+    | 'evaluated'     // Reviewed by a team member (replaces: screening, shortlisted)
+    | 'interview'     // In interview process (canonical name)
+    | 'hired'         // Final positive outcome
+    | 'rejected'      // Final negative outcome (includes: withdrawn)
+
+// Legacy status mapping (for API layer transformation)
+export const LEGACY_STATUS_MAP: Record<string, ApplicantStatus> = {
+    'screening': 'evaluated',     // Legacy: map to evaluated
+    'interviewing': 'interview',  // Legacy: normalize to interview
+    'shortlisted': 'evaluated',   // Legacy: map to evaluated
+    'withdrawn': 'rejected',      // Legacy: treat as rejected
+}
 
 export interface IPersonalData {
     name: string
@@ -133,7 +142,9 @@ const applicantSchema = new Schema<IApplicant>(
         },
         status: {
             type: String,
-            enum: ['new', 'screening', 'interviewing', 'evaluated', 'shortlisted', 'hired', 'rejected', 'withdrawn'],
+            // Golden List (5) + Legacy (4) for backwards compatibility
+            // API layer normalizes legacy values to Golden List before sending to client
+            enum: ['new', 'evaluated', 'interview', 'hired', 'rejected', 'screening', 'interviewing', 'shortlisted', 'withdrawn'],
             default: 'new',
         },
         tags: {
