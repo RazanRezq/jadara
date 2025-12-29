@@ -6,6 +6,7 @@ import {
     SidebarInset,
     SidebarProvider,
 } from "@/components/ui/sidebar"
+import { cookies } from "next/headers"
 
 export default async function DashboardLayout({
     children,
@@ -18,8 +19,13 @@ export default async function DashboardLayout({
         redirect("/login")
     }
 
+    // Detect direction from locale cookie
+    const cookieStore = await cookies()
+    const locale = cookieStore.get('locale')?.value || 'ar'
+    const direction = locale === 'ar' ? 'rtl' : 'ltr'
+
     return (
-        <div className="[--header-height:3.5rem] bg-background">
+        <div className="[--header-height:3.5rem] bg-background" dir={direction}>
             <SidebarProvider defaultOpen={true} className="flex flex-col">
                 <SiteHeader userId={session.userId} />
                 <div className="flex flex-1">

@@ -65,6 +65,11 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
         async function fetchProfile() {
             try {
                 const response = await fetch("/api/company/profile")
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+
                 const data = await response.json()
 
                 if (data.success && data.profile) {
@@ -154,14 +159,14 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-20">
+            <div className="dashboard-container flex items-center justify-center py-20">
                 <Spinner className="h-8 w-8 text-primary" />
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div>
                 <h1 className="text-3xl font-bold">{t("settings.company.title")}</h1>

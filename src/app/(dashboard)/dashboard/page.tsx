@@ -7,6 +7,7 @@ import User from "@/models/Users/userSchema"
 // Note: Evaluation import removed as it's no longer used in admin stats
 import Review from "@/models/Reviews/reviewSchema"
 import Interview from "@/models/Interviews/interviewSchema"
+import Response from "@/models/Responses/responseSchema"
 import { AdminView } from "./_components/admin-view"
 import { ReviewerDashboardClient } from "@/components/dashboard/reviewer-dashboard-client"
 import { SuperAdminView } from "./_components/super-admin-view"
@@ -349,7 +350,7 @@ async function getReviewerStats(userId: string, userName: string) {
 
         // Get all reviews by this reviewer
         Review.find({ reviewerId: userId })
-            .select('applicantId')
+            .select('applicantId rating createdAt')
             .lean(),
 
         // Get all jobs for lookup
@@ -358,9 +359,15 @@ async function getReviewerStats(userId: string, userName: string) {
             .lean(),
     ])
 
-    // Create a Set of reviewed applicant IDs for O(1) lookup
-    const reviewedApplicantIds = new Set(
-        reviews.map((r: any) => r.applicantId.toString())
+    // Create a Map of reviewed applicant IDs with their review data for O(1) lookup
+    const reviewedApplicantsMap = new Map(
+        reviews.map((r: any) => [
+            r.applicantId.toString(),
+            {
+                rating: r.rating,
+                reviewedAt: r.createdAt
+            }
+        ])
     )
 
     // Create a job lookup map
@@ -368,50 +375,45 @@ async function getReviewerStats(userId: string, userName: string) {
         jobs.map((j: any) => [j._id.toString(), j.title])
     )
 
-    // Separate applicants into pending and completed
-    const pendingApplicants: any[] = []
+    // ONLY include applicants that have been reviewed by this reviewer
     const completedApplicants: any[] = []
 
     for (const app of applicants) {
         const applicantId = app._id.toString()
-        const jobTitle = jobMap.get(app.jobId?.toString()) || 'Unknown Position'
+        const reviewData = reviewedApplicantsMap.get(applicantId)
 
-        const formattedApplicant = {
-            _id: applicantId,
-            name: app.personalData?.name || 'Unknown',
-            email: app.personalData?.email || '',
-            jobId: app.jobId?.toString() || '',
-            jobTitle,
-            status: app.status,
-            createdAt: app.createdAt ? new Date(app.createdAt).toISOString() : new Date().toISOString(),
-            sessionId: app.sessionId,
-            aiScore: app.aiScore,
-        }
+        // Only include if this reviewer has reviewed this applicant
+        if (reviewData) {
+            const jobTitle = jobMap.get(app.jobId?.toString()) || 'Unknown Position'
 
-        if (reviewedApplicantIds.has(applicantId)) {
-            completedApplicants.push(formattedApplicant)
-        } else {
-            pendingApplicants.push(formattedApplicant)
+            completedApplicants.push({
+                _id: applicantId,
+                name: app.personalData?.name || 'Unknown',
+                email: app.personalData?.email || '',
+                jobId: app.jobId?.toString() || '',
+                jobTitle,
+                status: app.status,
+                createdAt: app.createdAt ? new Date(app.createdAt).toISOString() : new Date().toISOString(),
+                sessionId: app.sessionId,
+                aiScore: app.aiScore,
+                myRating: reviewData.rating,
+                reviewedAt: reviewData.reviewedAt ? new Date(reviewData.reviewedAt).toISOString() : null,
+            })
         }
     }
 
-    // Calculate stats
-    const totalApplicants = applicants.length
-    const pendingCount = pendingApplicants.length
-    const completedCount = completedApplicants.length
-    const progressPercent = totalApplicants > 0
-        ? Math.round((completedCount / totalApplicants) * 100)
-        : 0
+    // Calculate stats based on reviewed applicants only
+    const totalReviewed = completedApplicants.length
 
     return {
         userName,
         stats: {
-            total: totalApplicants,
-            pending: pendingCount,
-            completed: completedCount,
-            progressPercent,
+            total: totalReviewed,
+            pending: 0, // No longer showing pending since we only show reviewed
+            completed: totalReviewed,
+            progressPercent: 100, // Always 100% since we only show completed
         },
-        pendingApplicants,
+        pendingApplicants: [], // Empty since we only show reviewed applicants
         completedApplicants,
     }
 }
@@ -420,17 +422,80 @@ async function getReviewerStats(userId: string, userName: string) {
 async function getSuperAdminStats() {
     await dbConnect()
 
-    // Run all queries in parallel
-    const [totalUsers, totalJobs, users] = await Promise.all([
+    const now = new Date()
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    // Run all queries in parallel for performance
+    const [
+        totalUsers,
+        totalJobs,
+        users,
+        usersByRole,
+        activeUsers,
+        inactiveUsers,
+        recentActiveUsers,
+        reviewsByDecision,
+        interviewsByStatus,
+        responsesByType,
+        applicantsByStatus,
+        totalApplicants,
+        totalInterviews,
+        totalReviews,
+        totalResponses
+    ] = await Promise.all([
+        // Basic counts
         User.countDocuments(),
         Job.countDocuments(),
+
+        // Recent users list
         User.find()
             .select("name email role isActive lastLogin")
             .sort({ createdAt: -1 })
             .limit(10)
             .lean(),
+
+        // Users by role
+        User.aggregate([
+            { $group: { _id: "$role", count: { $sum: 1 } } }
+        ]),
+
+        // Active/Inactive users
+        User.countDocuments({ isActive: true }),
+        User.countDocuments({ isActive: false }),
+
+        // Users who logged in last 30 days
+        User.countDocuments({ lastLogin: { $gte: thirtyDaysAgo } }),
+
+        // Reviews by decision type
+        Review.aggregate([
+            { $group: { _id: "$decision", count: { $sum: 1 } } }
+        ]),
+
+        // Interviews by status
+        Interview.aggregate([
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+        ]),
+
+        // Responses by type
+        Response.aggregate([
+            { $group: { _id: "$type", count: { $sum: 1 } } }
+        ]),
+
+        // Applicants by status
+        Applicant.aggregate([
+            { $match: { isComplete: true } },
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+        ]),
+
+        // Total counts for percentages
+        Applicant.countDocuments({ isComplete: true }),
+        Interview.countDocuments(),
+        Review.countDocuments(),
+        Response.countDocuments()
     ])
 
+    // Format users list
     const usersFormatted = users.map((user) => ({
         _id: user._id.toString(),
         name: user.name,
@@ -440,14 +505,139 @@ async function getSuperAdminStats() {
         lastLogin: user.lastLogin,
     }))
 
-    // Simple health check (can be expanded)
-    const systemHealth: "healthy" | "warning" | "critical" = "healthy"
+    // Process role stats
+    const roleStats = {
+        superadmin: 0,
+        admin: 0,
+        reviewer: 0
+    }
+    usersByRole.forEach((item: any) => {
+        if (item._id in roleStats) {
+            roleStats[item._id as keyof typeof roleStats] = item.count
+        }
+    })
+
+    // Process review stats by decision
+    const reviewStats: Record<string, number> = {
+        strong_hire: 0,
+        recommended: 0,
+        neutral: 0,
+        not_recommended: 0,
+        strong_no: 0
+    }
+    reviewsByDecision.forEach((item: any) => {
+        if (item._id in reviewStats) {
+            reviewStats[item._id] = item.count
+        }
+    })
+
+    // Process interview stats
+    const interviewStats: Record<string, number> = {
+        scheduled: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        no_show: 0,
+        rescheduled: 0
+    }
+    interviewsByStatus.forEach((item: any) => {
+        if (item._id in interviewStats) {
+            interviewStats[item._id] = item.count
+        }
+    })
+
+    // Process response stats
+    const responseStats: Record<string, number> = {
+        text: 0,
+        voice: 0,
+        'multiple-choice': 0,
+        file: 0
+    }
+    responsesByType.forEach((item: any) => {
+        if (item._id in responseStats) {
+            responseStats[item._id] = item.count
+        }
+    })
+
+    // Process applicant stats
+    const applicantStats: Record<string, number> = {
+        new: 0,
+        evaluated: 0,
+        interview: 0,
+        hired: 0,
+        rejected: 0
+    }
+    applicantsByStatus.forEach((item: any) => {
+        if (item._id in applicantStats) {
+            applicantStats[item._id] = item.count
+        }
+    })
+
+    // Calculate percentages helper
+    const calcPercentage = (value: number, total: number) =>
+        total > 0 ? Math.round((value / total) * 100) : 0
+
+    // Simple health check
+    const systemHealth: "healthy" | "warning" | "critical" =
+        activeUsers > 0 && totalJobs > 0 ? "healthy" : "warning"
+
+    // Build analytics data from real database queries
+    const userAnalytics = {
+        roleStats: {
+            total: totalUsers,
+            superadmin: roleStats.superadmin,
+            admin: roleStats.admin,
+            reviewer: roleStats.reviewer
+        },
+        activityStats: {
+            total: totalUsers,
+            active: activeUsers,
+            inactive: inactiveUsers,
+            recentlyActive: recentActiveUsers
+        }
+    }
+
+    const platformServices = {
+        reviews: {
+            total: totalReviews,
+            strongHire: reviewStats.strong_hire,
+            recommended: reviewStats.recommended,
+            neutral: reviewStats.neutral,
+            notRecommended: reviewStats.not_recommended,
+            strongNo: reviewStats.strong_no
+        },
+        interviews: {
+            total: totalInterviews,
+            scheduled: interviewStats.scheduled,
+            confirmed: interviewStats.confirmed,
+            completed: interviewStats.completed,
+            cancelled: interviewStats.cancelled,
+            noShow: interviewStats.no_show
+        },
+        responses: {
+            total: totalResponses,
+            text: responseStats.text,
+            voice: responseStats.voice,
+            multipleChoice: responseStats['multiple-choice'],
+            file: responseStats.file
+        },
+        applicants: {
+            total: totalApplicants,
+            new: applicantStats.new,
+            evaluated: applicantStats.evaluated,
+            interview: applicantStats.interview,
+            hired: applicantStats.hired,
+            rejected: applicantStats.rejected
+        }
+    }
 
     return {
         totalUsers,
         totalJobs,
         systemHealth,
         users: usersFormatted,
+        userAnalytics,
+        platformServices,
     }
 }
 

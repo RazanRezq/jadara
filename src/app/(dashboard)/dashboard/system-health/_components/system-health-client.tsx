@@ -93,6 +93,14 @@ export function SystemHealthClient() {
                 fetch("/api/system-health/alerts"),
             ])
 
+            if (!healthResponse.ok) {
+                throw new Error(`HTTP error! status: ${healthResponse.status}`)
+            }
+
+            if (!alertsResponse.ok) {
+                throw new Error(`HTTP error! status: ${alertsResponse.status}`)
+            }
+
             const healthData = await healthResponse.json()
             const alertsData = await alertsResponse.json()
 
@@ -143,14 +151,14 @@ export function SystemHealthClient() {
 
     if (loading || !health) {
         return (
-            <div className="flex items-center justify-center py-20">
+            <div className="dashboard-container flex items-center justify-center py-20">
                 <Spinner className="h-8 w-8 text-primary" />
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>

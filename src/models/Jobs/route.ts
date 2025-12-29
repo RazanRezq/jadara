@@ -205,6 +205,9 @@ app.get('/list', authenticate, async (c) => {
         const searchTerm = c.req.query('search') || ''
         const status = c.req.query('status') || ''
         const department = c.req.query('department') || ''
+        const employmentType = c.req.query('employmentType') || ''
+        const sortBy = c.req.query('sortBy') || 'createdAt'
+        const sortOrder = c.req.query('sortOrder') || 'desc'
 
         const query: Record<string, unknown> = {}
 
@@ -219,18 +222,34 @@ app.get('/list', authenticate, async (c) => {
             query.status = status
         }
 
-        if (department) {
+        if (department && department !== 'all') {
             query.department = { $regex: department, $options: 'i' }
+        }
+
+        if (employmentType && employmentType !== 'all') {
+            query.employmentType = employmentType
+        }
+
+        // Build sort object
+        const sortDirection = sortOrder === 'asc' ? 1 : -1
+        const sortObject: Record<string, number> = {}
+
+        // Handle applicantsCount sorting differently (will be done after aggregation)
+        if (sortBy !== 'applicantsCount') {
+            sortObject[sortBy] = sortDirection
+        } else {
+            // Default sort for applicantsCount case
+            sortObject.createdAt = -1
         }
 
         const skip = (page - 1) * limit
         const total = await Job.countDocuments(query)
-        const jobs = await Job.find(query)
+        let jobs = await Job.find(query)
             .select('title description department location employmentType salaryMin salaryMax currency skills minExperience autoRejectThreshold candidateDataConfig candidateInstructions questions retakePolicy requiredSkills responsibilities criteria status expiresAt createdBy createdAt updatedAt')
             .populate('createdBy', 'name email')
             .skip(skip)
             .limit(limit)
-            .sort({ createdAt: -1 })
+            .sort(sortObject)
             .lean()
 
         // Import Applicant model to count applicants
@@ -248,40 +267,52 @@ app.get('/list', authenticate, async (c) => {
             applicantCounts.map(item => [String(item._id), item.count])
         )
 
+        // Map jobs with applicant counts
+        let mappedJobs = jobs.map((job) => ({
+            id: String(job._id),
+            title: job.title,
+            description: job.description,
+            department: job.department,
+            location: job.location,
+            employmentType: job.employmentType,
+            salaryMin: job.salaryMin,
+            salaryMax: job.salaryMax,
+            currency: job.currency,
+            // Step 2: Evaluation Criteria
+            skills: job.skills,
+            minExperience: job.minExperience,
+            autoRejectThreshold: job.autoRejectThreshold,
+            // Step 3: Candidate Data
+            candidateDataConfig: job.candidateDataConfig,
+            // Step 4: Exam Builder
+            candidateInstructions: job.candidateInstructions,
+            questions: job.questions,
+            retakePolicy: job.retakePolicy,
+            // Legacy fields
+            requiredSkills: job.requiredSkills,
+            responsibilities: job.responsibilities,
+            criteria: job.criteria,
+            status: job.status,
+            expiresAt: job.expiresAt,
+            createdBy: job.createdBy,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+            // Applicants count
+            applicantsCount: countsMap.get(String(job._id)) || 0,
+        }))
+
+        // Sort by applicantsCount if requested
+        if (sortBy === 'applicantsCount') {
+            mappedJobs.sort((a, b) => {
+                return sortDirection === 1
+                    ? a.applicantsCount - b.applicantsCount
+                    : b.applicantsCount - a.applicantsCount
+            })
+        }
+
         return c.json({
             success: true,
-            jobs: jobs.map((job) => ({
-                id: String(job._id),
-                title: job.title,
-                description: job.description,
-                department: job.department,
-                location: job.location,
-                employmentType: job.employmentType,
-                salaryMin: job.salaryMin,
-                salaryMax: job.salaryMax,
-                currency: job.currency,
-                // Step 2: Evaluation Criteria
-                skills: job.skills,
-                minExperience: job.minExperience,
-                autoRejectThreshold: job.autoRejectThreshold,
-                // Step 3: Candidate Data
-                candidateDataConfig: job.candidateDataConfig,
-                // Step 4: Exam Builder
-                candidateInstructions: job.candidateInstructions,
-                questions: job.questions,
-                retakePolicy: job.retakePolicy,
-                // Legacy fields
-                requiredSkills: job.requiredSkills,
-                responsibilities: job.responsibilities,
-                criteria: job.criteria,
-                status: job.status,
-                expiresAt: job.expiresAt,
-                createdBy: job.createdBy,
-                createdAt: job.createdAt,
-                updatedAt: job.updatedAt,
-                // Applicants count
-                applicantsCount: countsMap.get(String(job._id)) || 0,
-            })),
+            jobs: mappedJobs,
             pagination: {
                 page,
                 limit,
@@ -290,6 +321,170 @@ app.get('/list', authenticate, async (c) => {
             },
         })
     } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Get dashboard widgets data
+app.get('/dashboard-widgets', authenticate, async (c) => {
+    try {
+        await dbConnect()
+        const Applicant = (await import('../Applicants/applicantSchema')).default
+
+        const now = new Date()
+        const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+        // Total Applications
+        const totalApplications = await Applicant.countDocuments({})
+        const lastWeekApplications = await Applicant.countDocuments({
+            createdAt: { $gte: lastWeek },
+        })
+        const previousWeekApplications = await Applicant.countDocuments({
+            createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
+        })
+        const applicationsChange = previousWeekApplications > 0
+            ? ((lastWeekApplications - previousWeekApplications) / previousWeekApplications) * 100
+            : 0
+
+        // Get chart data for applications (last 30 days)
+        const applicationsChartData = await Applicant.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: thirtyDaysAgo },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: '%Y-%m-%d',
+                            date: '$createdAt',
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+        ])
+
+        // Active Jobs
+        const activeJobsCount = await Job.countDocuments({ status: 'active' })
+        const activeJobsByDepartment = await Job.aggregate([
+            {
+                $match: { status: 'active' },
+            },
+            {
+                $group: {
+                    _id: '$department',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $limit: 3,
+            },
+        ])
+        const topDepartments = activeJobsByDepartment.map((d) => d._id || 'Unknown')
+
+        // Interviews Scheduled (placeholder - you can implement actual interview tracking)
+        const interviewsCount = 0
+        const nextInterview = null
+
+        // Active Applicants
+        const activeApplicants = await Applicant.countDocuments({})
+        const newApplicantsThisWeek = await Applicant.countDocuments({
+            createdAt: { $gte: lastWeek },
+        })
+
+        // Get chart data for applicants (last 30 days)
+        const applicantsChartData = await Applicant.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: thirtyDaysAgo },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: '%Y-%m-%d',
+                            date: '$createdAt',
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+        ])
+
+        // Hiring Pipeline
+        const pipelineStages = [
+            {
+                name: 'New',
+                count: await Applicant.countDocuments({ status: 'new' }),
+                color: 'bg-blue-500',
+            },
+            {
+                name: 'Screening',
+                count: await Applicant.countDocuments({ status: 'screening' }),
+                color: 'bg-yellow-500',
+            },
+            {
+                name: 'Interview',
+                count: await Applicant.countDocuments({ status: 'interviewing' }),
+                color: 'bg-purple-500',
+            },
+            {
+                name: 'Offer',
+                count: await Applicant.countDocuments({ status: 'offer' }),
+                color: 'bg-green-500',
+            },
+        ]
+
+        return c.json({
+            success: true,
+            widgets: {
+                applications: {
+                    total: totalApplications,
+                    change: Math.round(applicationsChange * 10) / 10,
+                    label: 'Last Week',
+                    chartData: applicationsChartData.map((item) => item.count),
+                },
+                jobs: {
+                    count: activeJobsCount,
+                    topDepartments,
+                },
+                interviews: {
+                    count: interviewsCount,
+                    nextInterview,
+                },
+                applicants: {
+                    total: activeApplicants,
+                    newThisWeek: newApplicantsThisWeek,
+                    chartData: applicantsChartData.map((item) => item.count),
+                },
+                pipeline: {
+                    stages: pipelineStages,
+                },
+            },
+        })
+    } catch (error) {
+        console.error('Dashboard widgets error:', error)
         return c.json(
             {
                 success: false,
@@ -859,6 +1054,199 @@ app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
         return c.json({
             success: true,
             message: 'Job deleted successfully',
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Bulk delete jobs
+app.post('/bulk-delete', authenticate, requireRole('admin'), async (c) => {
+    try {
+        await dbConnect()
+        const body = await c.req.json()
+        const { jobIds } = body
+
+        if (!Array.isArray(jobIds) || jobIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job IDs array is required',
+                },
+                400
+            )
+        }
+
+        // Fetch jobs before deletion for audit logging
+        const jobs = await Job.find({ _id: { $in: jobIds } }).lean()
+
+        // Delete all jobs
+        const result = await Job.deleteMany({ _id: { $in: jobIds } })
+
+        // Log bulk deletion
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            await logUserAction(
+                user,
+                'job.bulk_deleted',
+                'Job',
+                'bulk',
+                `Bulk deleted ${result.deletedCount} jobs`,
+                {
+                    metadata: {
+                        count: result.deletedCount,
+                        jobIds: jobIds,
+                        jobTitles: jobs.map(j => j.title),
+                    },
+                    severity: 'warning',
+                }
+            )
+        }
+
+        return c.json({
+            success: true,
+            count: result.deletedCount,
+            message: `Successfully deleted ${result.deletedCount} jobs`,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Bulk archive jobs
+app.post('/bulk-archive', authenticate, requireRole('admin'), async (c) => {
+    try {
+        await dbConnect()
+        const body = await c.req.json()
+        const { jobIds } = body
+
+        if (!Array.isArray(jobIds) || jobIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job IDs array is required',
+                },
+                400
+            )
+        }
+
+        // Update all jobs to archived status
+        const result = await Job.updateMany(
+            { _id: { $in: jobIds } },
+            { $set: { status: 'archived' } }
+        )
+
+        // Log bulk archive
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            const jobs = await Job.find({ _id: { $in: jobIds } }).select('title').lean()
+            await logUserAction(
+                user,
+                'job.bulk_archived',
+                'Job',
+                'bulk',
+                `Bulk archived ${result.modifiedCount} jobs`,
+                {
+                    metadata: {
+                        count: result.modifiedCount,
+                        jobIds: jobIds,
+                        jobTitles: jobs.map(j => j.title),
+                    },
+                    severity: 'info',
+                }
+            )
+        }
+
+        return c.json({
+            success: true,
+            count: result.modifiedCount,
+            message: `Successfully archived ${result.modifiedCount} jobs`,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// Bulk status change
+app.post('/bulk-status', authenticate, requireRole('admin'), async (c) => {
+    try {
+        await dbConnect()
+        const body = await c.req.json()
+        const { jobIds, status } = body
+
+        if (!Array.isArray(jobIds) || jobIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Job IDs array is required',
+                },
+                400
+            )
+        }
+
+        if (!status || !['draft', 'active', 'closed', 'archived'].includes(status)) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Valid status is required (draft, active, closed, archived)',
+                },
+                400
+            )
+        }
+
+        // Update all jobs to new status
+        const result = await Job.updateMany(
+            { _id: { $in: jobIds } },
+            { $set: { status } }
+        )
+
+        // Log bulk status change
+        const user = getAuthUser(c)
+        if (user && user.userId) {
+            const jobs = await Job.find({ _id: { $in: jobIds } }).select('title').lean()
+            await logUserAction(
+                user,
+                'job.bulk_status_changed',
+                'Job',
+                'bulk',
+                `Bulk changed ${result.modifiedCount} jobs to ${status}`,
+                {
+                    metadata: {
+                        count: result.modifiedCount,
+                        newStatus: status,
+                        jobIds: jobIds,
+                        jobTitles: jobs.map(j => j.title),
+                    },
+                    severity: 'info',
+                }
+            )
+        }
+
+        return c.json({
+            success: true,
+            count: result.modifiedCount,
+            message: `Successfully changed ${result.modifiedCount} jobs to ${status}`,
         })
     } catch (error) {
         return c.json(

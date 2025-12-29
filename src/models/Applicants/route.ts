@@ -4,6 +4,10 @@ import dbConnect from '@/lib/mongodb'
 import Applicant, { LEGACY_STATUS_MAP, type ApplicantStatus } from './applicantSchema'
 import { authenticate, getAuthUser, requireRole } from '@/lib/authMiddleware'
 import { logUserAction } from '@/lib/auditLogger'
+import Evaluation from '@/models/Evaluations/evaluationSchema'
+import Review from '@/models/Reviews/reviewSchema'
+import User from '@/models/Users/userSchema'
+import Interview from '@/models/Interviews/interviewSchema'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GOLDEN LIST STATUS NORMALIZATION
@@ -32,6 +36,10 @@ const updateApplicantSchema = z.object({
     suspiciousReason: z.string().optional(),
 })
 
+const statusOnlySchema = z.object({
+    status: z.enum(['new', 'evaluated', 'interview', 'hired', 'rejected'])
+})
+
 const app = new Hono()
 
 // ============================================
@@ -56,6 +64,7 @@ app.get('/list', authenticate, async (c) => {
         const minExperience = c.req.query('minExperience')
         const user = getAuthUser(c)
         const onlyComplete = c.req.query('onlyComplete') === 'true'
+        const includeRelations = c.req.query('includeRelations') === 'true'
 
         const query: Record<string, unknown> = {}
         
@@ -97,11 +106,112 @@ app.get('/list', authenticate, async (c) => {
         const total = await Applicant.countDocuments(query)
         const applicants = await Applicant.find(query)
             .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
-            .populate('jobId', 'title')
+            .populate('jobId', 'title currency')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
             .lean()
+
+        // Fetch related data (evaluations, review badges, and interviews) if requested
+        let evaluationsMap = new Map()
+        let reviewsMap = new Map()
+        let interviewsMap = new Map()
+
+        if (includeRelations && applicants.length > 0) {
+            const applicantIds = applicants.map((a: any) => a._id)
+
+            // Fetch evaluations, reviews, and interviews in parallel
+            const [evaluations, reviews, interviews] = await Promise.all([
+                // Fetch evaluations
+                Evaluation.find({ applicantId: { $in: applicantIds } })
+                    .select('applicantId summary strengths weaknesses recommendation overallScore categoryScores')
+                    .lean(),
+
+                // Fetch reviews with reviewer info
+                Review.aggregate([
+                    { $match: { applicantId: { $in: applicantIds } } },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'reviewerId',
+                            foreignField: '_id',
+                            as: 'reviewer'
+                        }
+                    },
+                    { $unwind: '$reviewer' },
+                    { $match: { 'reviewer.role': 'reviewer' } }, // Only include reviews from reviewers
+                    {
+                        $project: {
+                            applicantId: 1,
+                            reviewerId: 1,
+                            rating: 1,
+                            reviewerName: '$reviewer.name',
+                            reviewerInitials: {
+                                $concat: [
+                                    { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, 0] }, 0, 1] },
+                                    { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, -1] }, 0, 1] }
+                                ]
+                            }
+                        }
+                    }
+                ]),
+
+                // Fetch interviews
+                Interview.find({
+                    applicantId: { $in: applicantIds },
+                    status: { $in: ['scheduled', 'confirmed'] } // Only fetch upcoming/scheduled interviews
+                })
+                    .select('applicantId scheduledDate scheduledTime duration meetingLink notes status')
+                    .sort({ scheduledDate: 1 }) // Get earliest upcoming interview
+                    .lean()
+            ])
+
+            // Build evaluations map
+            evaluations.forEach((evaluation: any) => {
+                const applicantId = String(evaluation.applicantId)
+                evaluationsMap.set(applicantId, {
+                    summary: evaluation.summary,
+                    strengths: evaluation.strengths,
+                    weaknesses: evaluation.weaknesses,
+                    recommendation: evaluation.recommendation,
+                    overallScore: evaluation.overallScore,
+                    categoryScores: evaluation.categoryScores,
+                })
+            })
+
+            // Build reviews map (grouped by applicant)
+            const reviewsByApplicant = new Map()
+            reviews.forEach((review: any) => {
+                const applicantId = String(review.applicantId)
+                if (!reviewsByApplicant.has(applicantId)) {
+                    reviewsByApplicant.set(applicantId, [])
+                }
+                reviewsByApplicant.get(applicantId).push({
+                    reviewerId: String(review.reviewerId),
+                    rating: review.rating,
+                    initials: review.reviewerInitials || review.reviewerName.substring(0, 2).toUpperCase(),
+                    name: review.reviewerName,
+                })
+            })
+            reviewsMap = reviewsByApplicant
+
+            // Build interviews map (only the most recent upcoming interview per applicant)
+            interviews.forEach((interview: any) => {
+                const applicantId = String(interview.applicantId)
+                // Only store the first (earliest) interview for each applicant
+                if (!interviewsMap.has(applicantId)) {
+                    interviewsMap.set(applicantId, {
+                        id: String(interview._id),
+                        scheduledDate: interview.scheduledDate,
+                        scheduledTime: interview.scheduledTime,
+                        duration: interview.duration,
+                        meetingLink: interview.meetingLink,
+                        notes: interview.notes,
+                        status: interview.status,
+                    })
+                }
+            })
+        }
 
         // Remove sensitive data for reviewers
         const isReviewer = user.role === 'reviewer'
@@ -120,48 +230,57 @@ app.get('/list', authenticate, async (c) => {
 
         return c.json({
             success: true,
-            applicants: applicants.map((a) => ({
-                id: String(a._id),
-                jobId: a.jobId,
-                // NORMALIZED: Always provide a displayName for UI consistency
-                displayName: getDisplayName(a.personalData),
-                personalData: a.personalData ? {
-                    name: a.personalData.name || '',
-                    email: a.personalData.email || '',
-                    phone: a.personalData.phone || '',
-                    age: a.personalData.age,
-                    major: a.personalData.major,
-                    yearsOfExperience: a.personalData.yearsOfExperience,
-                    // Hide salary expectation from reviewers
-                    salaryExpectation: isReviewer ? undefined : a.personalData.salaryExpectation,
-                    linkedinUrl: a.personalData.linkedinUrl,
-                    behanceUrl: a.personalData.behanceUrl,
-                    portfolioUrl: a.personalData.portfolioUrl,
-                    // Include screening answers and language proficiency (safely convert Maps)
-                    screeningAnswers: a.personalData.screeningAnswers && a.personalData.screeningAnswers instanceof Map
-                        ? Object.fromEntries(a.personalData.screeningAnswers)
-                        : a.personalData.screeningAnswers || undefined,
-                    languageProficiency: a.personalData.languageProficiency && a.personalData.languageProficiency instanceof Map
-                        ? Object.fromEntries(a.personalData.languageProficiency)
-                        : a.personalData.languageProficiency || undefined,
-                } : {
-                    name: '',
-                    email: '',
-                    phone: '',
-                },
-                cvUrl: a.cvUrl,
-                // GOLDEN LIST: Normalize legacy statuses before sending to client
-                status: normalizeStatus(a.status),
-                tags: a.tags,
-                notes: a.notes,
-                aiScore: a.aiScore,
-                aiSummary: a.aiSummary,
-                aiRedFlags: isReviewer ? undefined : a.aiRedFlags, // Hide from reviewers
-                isSuspicious: a.isSuspicious,
-                isComplete: a.isComplete,
-                submittedAt: a.submittedAt,
-                createdAt: a.createdAt,
-            })),
+            applicants: applicants.map((a) => {
+                const applicantId = String(a._id)
+                return {
+                    id: applicantId,
+                    jobId: a.jobId,
+                    // NORMALIZED: Always provide a displayName for UI consistency
+                    displayName: getDisplayName(a.personalData),
+                    personalData: a.personalData ? {
+                        name: a.personalData.name || '',
+                        email: a.personalData.email || '',
+                        phone: a.personalData.phone || '',
+                        age: a.personalData.age,
+                        major: a.personalData.major,
+                        yearsOfExperience: a.personalData.yearsOfExperience,
+                        // Hide salary expectation from reviewers
+                        salaryExpectation: isReviewer ? undefined : a.personalData.salaryExpectation,
+                        linkedinUrl: a.personalData.linkedinUrl,
+                        behanceUrl: a.personalData.behanceUrl,
+                        portfolioUrl: a.personalData.portfolioUrl,
+                        // Include screening answers and language proficiency (safely convert Maps)
+                        screeningAnswers: a.personalData.screeningAnswers && a.personalData.screeningAnswers instanceof Map
+                            ? Object.fromEntries(a.personalData.screeningAnswers)
+                            : a.personalData.screeningAnswers || undefined,
+                        languageProficiency: a.personalData.languageProficiency && a.personalData.languageProficiency instanceof Map
+                            ? Object.fromEntries(a.personalData.languageProficiency)
+                            : a.personalData.languageProficiency || undefined,
+                    } : {
+                        name: '',
+                        email: '',
+                        phone: '',
+                    },
+                    cvUrl: a.cvUrl,
+                    // GOLDEN LIST: Normalize legacy statuses before sending to client
+                    status: normalizeStatus(a.status),
+                    tags: a.tags,
+                    notes: a.notes,
+                    aiScore: a.aiScore,
+                    aiSummary: a.aiSummary,
+                    aiRedFlags: isReviewer ? undefined : a.aiRedFlags, // Hide from reviewers
+                    isSuspicious: a.isSuspicious,
+                    isComplete: a.isComplete,
+                    submittedAt: a.submittedAt,
+                    createdAt: a.createdAt,
+                    // Include related data if requested
+                    ...(includeRelations && {
+                        evaluation: evaluationsMap.get(applicantId) || null,
+                        reviewBadges: reviewsMap.get(applicantId) || [],
+                        interview: interviewsMap.get(applicantId) || null
+                    })
+                }
+            }),
             pagination: {
                 page,
                 limit,
@@ -343,6 +462,132 @@ app.post('/update/:id', authenticate, async (c) => {
         return c.json({
             success: true,
             message: 'Applicant updated successfully',
+            applicant: {
+                id: applicant._id.toString(),
+                status: applicant.status,
+            },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// PATCH /:id/status - Update applicant status only
+app.patch('/:id/status', authenticate, async (c) => {
+    try {
+        await dbConnect()
+        const id = c.req.param('id')
+        const body = await c.req.json()
+        const user = getAuthUser(c)
+
+        // Validate status only
+        const validation = statusOnlySchema.safeParse(body)
+        if (!validation.success) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Validation failed',
+                    details: validation.error.flatten().fieldErrors,
+                },
+                400
+            )
+        }
+
+        const applicant = await Applicant.findById(id).populate('jobId', 'title')
+        if (!applicant) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Applicant not found',
+                },
+                404
+            )
+        }
+
+        const oldStatus = applicant.status
+        const newStatus = validation.data.status
+
+        // Only update if status actually changed
+        if (oldStatus === newStatus) {
+            return c.json({
+                success: true,
+                message: 'Status unchanged',
+                applicant: {
+                    id: applicant._id.toString(),
+                    status: applicant.status,
+                },
+            })
+        }
+
+        // Update status
+        applicant.status = newStatus
+        await applicant.save()
+
+        // Log status change
+        const applicantName = applicant.personalData?.name || 'Unknown'
+        const applicantEmail = applicant.personalData?.email || 'Unknown'
+        const jobTitle = applicant.jobId && typeof applicant.jobId === 'object'
+            ? (applicant.jobId as any).title
+            : 'Unknown'
+
+        await logUserAction(
+            user,
+            'applicant.status_changed',
+            'Applicant',
+            applicant._id.toString(),
+            `Changed applicant status: ${applicantName} from ${oldStatus} to ${newStatus}`,
+            {
+                resourceName: applicantName,
+                changes: {
+                    before: { status: oldStatus },
+                    after: { status: newStatus },
+                },
+                metadata: {
+                    applicantEmail,
+                    jobTitle,
+                    oldStatus,
+                    newStatus,
+                },
+                severity: 'info',
+            }
+        )
+
+        // Send emails if needed
+        if (applicantEmail && applicantEmail !== 'Unknown') {
+            try {
+                const { sendOfferEmail, sendRejectionEmail } = await import('@/lib/email')
+
+                if (newStatus === 'hired') {
+                    await sendOfferEmail(applicantEmail, {
+                        candidateName: applicantName,
+                        jobTitle: jobTitle,
+                    })
+                    console.log(`✅ Offer email sent to ${applicantEmail}`)
+                }
+
+                if (newStatus === 'rejected') {
+                    await sendRejectionEmail(applicantEmail, {
+                        candidateName: applicantName,
+                        jobTitle: jobTitle,
+                    })
+                    console.log(`✅ Rejection email sent to ${applicantEmail}`)
+                }
+            } catch (emailError) {
+                console.error('❌ Failed to send email:', emailError)
+                // Don't fail the status update if email fails
+            }
+        }
+
+        return c.json({
+            success: true,
+            message: 'Applicant status updated successfully',
             applicant: {
                 id: applicant._id.toString(),
                 status: applicant.status,

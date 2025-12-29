@@ -13,6 +13,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { DashboardWidgetGradient } from "@/components/dashboard/dashboard-widget"
+import { getCardGradient } from "@/lib/card-gradients"
 
 interface ReviewerStats {
     pendingReviews: number
@@ -31,6 +33,9 @@ interface ReviewerViewProps {
 
 export function ReviewerView({ stats }: ReviewerViewProps) {
     const { t } = useTranslate()
+    const warningGradient = getCardGradient("warning")
+    const successGradient = getCardGradient("success")
+    const reviewsGradient = getCardGradient("reviews")
 
     return (
         <div className="space-y-6">
@@ -42,43 +47,32 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {t("dashboard.reviewer.pendingReviews")}
-                        </CardTitle>
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                            <Clock className="w-5 h-5 text-white" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.pendingReviews}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {t("dashboard.reviewer.awaitingYourReview")}
-                        </p>
-                    </CardContent>
-                </Card>
+                <DashboardWidgetGradient
+                    title={t("dashboard.reviewer.pendingReviews")}
+                    value={stats.pendingReviews}
+                    icon={Clock}
+                    iconVariant="warning"
+                    gradientFrom={warningGradient.from}
+                    gradientTo={warningGradient.to}
+                    description={t("dashboard.reviewer.awaitingYourReview")}
+                />
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {t("dashboard.reviewer.completedReviews")}
-                        </CardTitle>
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                            <CheckCircle2 className="w-5 h-5 text-white" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.completedReviews}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {t("dashboard.reviewer.totalCompleted")}
-                        </p>
-                    </CardContent>
-                </Card>
+                <DashboardWidgetGradient
+                    title={t("dashboard.reviewer.completedReviews")}
+                    value={stats.completedReviews}
+                    icon={CheckCircle2}
+                    iconVariant="success"
+                    gradientFrom={successGradient.from}
+                    gradientTo={successGradient.to}
+                    description={t("dashboard.reviewer.totalCompleted")}
+                />
             </div>
 
             {/* Evaluation Queue */}
-            <Card>
+            <Card
+                gradientFrom={reviewsGradient.from}
+                gradientTo={reviewsGradient.to}
+            >
                 <CardHeader>
                     <CardTitle>{t("dashboard.reviewer.evaluationQueue")}</CardTitle>
                     <CardDescription>{t("dashboard.reviewer.evaluationQueueDesc")}</CardDescription>
@@ -131,7 +125,11 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
             </Card>
 
             {/* Blind Hiring Notice */}
-            <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <Card
+                className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20"
+                gradientFrom="#3b82f6"
+                gradientTo="#6366f1"
+            >
                 <CardHeader>
                     <CardTitle className="text-blue-900 dark:text-blue-100">
                         {t("dashboard.reviewer.blindHiringNotice")}

@@ -60,6 +60,11 @@ export function SessionsClient() {
             if (filterActive) params.append("isActive", filterActive)
 
             const response = await fetch(`/api/sessions?${params}`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -89,6 +94,11 @@ export function SessionsClient() {
     const fetchStats = async () => {
         try {
             const response = await fetch("/api/sessions/stats")
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -127,6 +137,10 @@ export function SessionsClient() {
                 body: JSON.stringify({ reason: "Revoked by superadmin" }),
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -154,6 +168,10 @@ export function SessionsClient() {
                 body: JSON.stringify({ reason: "All sessions revoked by superadmin" }),
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -177,6 +195,11 @@ export function SessionsClient() {
 
         try {
             const response = await fetch("/api/sessions/cleanup", { method: "DELETE" })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -204,7 +227,7 @@ export function SessionsClient() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -312,6 +335,8 @@ export function SessionsClient() {
                         </div>
                     ) : (
                         <div className="space-y-4">
+                            {/* Desktop Table View - hidden on mobile */}
+                            <div className="hidden md:block overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -403,6 +428,92 @@ export function SessionsClient() {
                                     ))}
                                 </TableBody>
                             </Table>
+                            </div>
+
+                            {/* Mobile Card View - shown on mobile only */}
+                            <div className="md:hidden space-y-3">
+                                {sessions.map((session) => (
+                                    <Card key={session._id} className={`border-l-4 ${session.isActive ? 'border-l-green-500' : 'border-l-gray-400'}`}>
+                                        <CardContent className="p-4 space-y-3">
+                                            {/* Header */}
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-medium truncate">{session.userName}</h4>
+                                                    <p className="text-sm text-muted-foreground truncate">{session.userEmail}</p>
+                                                    <Badge variant="outline" className="text-xs mt-1">
+                                                        {session.userRole}
+                                                    </Badge>
+                                                </div>
+                                                {session.isActive ? (
+                                                    <Badge className="bg-green-500 shrink-0">Active</Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="shrink-0">Revoked</Badge>
+                                                )}
+                                            </div>
+
+                                            {/* Device Info */}
+                                            <div className="space-y-2 pt-2 border-t">
+                                                <div className="flex items-center gap-2">
+                                                    {getDeviceIcon(session.deviceType)}
+                                                    <div>
+                                                        <p className="text-sm font-medium capitalize">{session.deviceType}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {session.browser} on {session.os}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    <span>
+                                                        {session.city && session.country
+                                                            ? `${session.city}, ${session.country}`
+                                                            : session.ipAddress}
+                                                    </span>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">Last Activity</p>
+                                                    <p className="text-sm">
+                                                        {formatDistanceToNow(new Date(session.lastActivity), { addSuffix: true })}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {format(new Date(session.lastActivity), "MMM d, yyyy HH:mm")}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            {session.isActive && (
+                                                <div className="flex gap-2 pt-2 border-t">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="flex-1"
+                                                        onClick={() => {
+                                                            setSelectedSession(session)
+                                                            setRevokeDialogOpen(true)
+                                                        }}
+                                                    >
+                                                        Revoke
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        className="flex-1"
+                                                        onClick={() => {
+                                                            setSelectedSession(session)
+                                                            setRevokeAllDialogOpen(true)
+                                                        }}
+                                                    >
+                                                        Revoke All
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
 
                             {/* Pagination */}
                             <div className="flex items-center justify-between">

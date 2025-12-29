@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table"
 import type { UserRole } from "@/lib/auth"
 import { getRoleColor } from "@/lib/authClient"
+import { DashboardWidgetCompact, DashboardWidgetAnalytics } from "@/components/dashboard/dashboard-widget"
+import { getCardGradient } from "@/lib/card-gradients"
 
 interface SuperAdminStats {
     totalUsers: number
@@ -29,6 +31,54 @@ interface SuperAdminStats {
         isActive: boolean
         lastLogin?: Date
     }>
+    // Real analytics data from database
+    userAnalytics: {
+        roleStats: {
+            total: number
+            superadmin: number
+            admin: number
+            reviewer: number
+        }
+        activityStats: {
+            total: number
+            active: number
+            inactive: number
+            recentlyActive: number
+        }
+    }
+    platformServices: {
+        reviews: {
+            total: number
+            strongHire: number
+            recommended: number
+            neutral: number
+            notRecommended: number
+            strongNo: number
+        }
+        interviews: {
+            total: number
+            scheduled: number
+            confirmed: number
+            completed: number
+            cancelled: number
+            noShow: number
+        }
+        responses: {
+            total: number
+            text: number
+            voice: number
+            multipleChoice: number
+            file: number
+        }
+        applicants: {
+            total: number
+            new: number
+            evaluated: number
+            interview: number
+            hired: number
+            rejected: number
+        }
+    }
 }
 
 interface SuperAdminViewProps {
@@ -37,17 +87,22 @@ interface SuperAdminViewProps {
 
 export function SuperAdminView({ stats }: SuperAdminViewProps) {
     const { t } = useTranslate()
+    const usersGradient = getCardGradient("users")
+    const jobsGradient = getCardGradient("jobs")
+    const successGradient = getCardGradient("success")
+    const warningGradient = getCardGradient("warning")
+    const dangerGradient = getCardGradient("danger")
 
-    const getHealthColor = (health: string) => {
+    const getHealthGradient = (health: string) => {
         switch (health) {
             case "healthy":
-                return "from-emerald-500 to-green-500"
+                return successGradient
             case "warning":
-                return "from-amber-500 to-orange-500"
+                return warningGradient
             case "critical":
-                return "from-red-500 to-rose-500"
+                return dangerGradient
             default:
-                return "from-gray-500 to-slate-500"
+                return getCardGradient("neutral")
         }
     }
 
@@ -64,76 +119,335 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
         }
     }
 
+    const healthGradient = getHealthGradient(stats.systemHealth)
+
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">
+        <div className="dashboard-container space-y-6">
+            {/* Header - Clean and simple */}
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
                     {t("dashboard.superAdmin.title")}
                 </h1>
-                <p className="text-muted-foreground mt-1">{t("dashboard.superAdmin.subtitle")}</p>
+                <p className="text-muted-foreground text-base">{t("dashboard.superAdmin.subtitle")}</p>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {t("dashboard.superAdmin.totalUsers")}
-                        </CardTitle>
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Users className="w-5 h-5 text-white" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {t("dashboard.superAdmin.registeredUsers")}
-                        </p>
-                    </CardContent>
-                </Card>
+                <DashboardWidgetCompact
+                    title={t("dashboard.superAdmin.totalUsers")}
+                    value={stats.totalUsers}
+                    icon={Users}
+                    iconVariant="primary"
+                    iconColor="text-blue-600 dark:text-blue-400"
+                    iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                    gradientColor={usersGradient.from}
+                    description={t("dashboard.superAdmin.registeredUsers")}
+                />
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {t("dashboard.superAdmin.totalJobs")}
-                        </CardTitle>
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                            <Briefcase className="w-5 h-5 text-white" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalJobs}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {t("dashboard.superAdmin.systemWide")}
-                        </p>
-                    </CardContent>
-                </Card>
+                <DashboardWidgetCompact
+                    title={t("dashboard.superAdmin.totalJobs")}
+                    value={stats.totalJobs}
+                    icon={Briefcase}
+                    iconVariant="info"
+                    iconColor="text-purple-600 dark:text-purple-400"
+                    iconBgColor="bg-purple-100 dark:bg-purple-900/30"
+                    gradientColor={jobsGradient.from}
+                    description={t("dashboard.superAdmin.systemWide")}
+                />
 
-                <Card className="relative overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {t("dashboard.superAdmin.systemHealth")}
-                        </CardTitle>
-                        <div
-                            className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getHealthColor(
-                                stats.systemHealth
-                            )} flex items-center justify-center shadow-lg`}
-                        >
-                            <Activity className="w-5 h-5 text-white" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{getHealthText(stats.systemHealth)}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {t("dashboard.superAdmin.allSystemsOperational")}
-                        </p>
-                    </CardContent>
-                </Card>
+                <DashboardWidgetCompact
+                    title={t("dashboard.superAdmin.systemHealth")}
+                    value={getHealthText(stats.systemHealth)}
+                    gradientColor={healthGradient.from}
+                    icon={Activity}
+                    iconVariant={stats.systemHealth === "healthy" ? "success" : stats.systemHealth === "warning" ? "warning" : "danger"}
+                    iconColor="text-white"
+                    iconBgColor={`bg-gradient-to-br from-[${healthGradient.from}] to-[${healthGradient.to}]`}
+                    description={t("dashboard.superAdmin.allSystemsOperational")}
+                />
+            </div>
+
+            {/* User Analytics Section */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    {t("dashboard.superAdmin.userAnalytics")}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {/* Users by Role */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.usersByRole")}
+                        value={stats.userAnalytics.roleStats.total}
+                        icon={Users}
+                        iconVariant="primary"
+                        gradientColor="#3b82f6"
+                        breakdowns={[
+                            {
+                                label: t("roles.superadmin"),
+                                value: stats.userAnalytics.roleStats.superadmin,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.roleStats.superadmin / stats.userAnalytics.roleStats.total) * 100
+                                ),
+                                color: "#ef4444"
+                            },
+                            {
+                                label: t("roles.admin"),
+                                value: stats.userAnalytics.roleStats.admin,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.roleStats.admin / stats.userAnalytics.roleStats.total) * 100
+                                ),
+                                color: "#f59e0b"
+                            },
+                            {
+                                label: t("roles.reviewer"),
+                                value: stats.userAnalytics.roleStats.reviewer,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.roleStats.reviewer / stats.userAnalytics.roleStats.total) * 100
+                                ),
+                                color: "#3b82f6"
+                            }
+                        ]}
+                    />
+
+                    {/* User Activity */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.userActivity")}
+                        value={stats.userAnalytics.activityStats.total}
+                        icon={Activity}
+                        iconVariant="success"
+                        gradientColor="#10b981"
+                        breakdowns={[
+                            {
+                                label: t("common.active"),
+                                value: stats.userAnalytics.activityStats.active,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.activityStats.active / stats.userAnalytics.activityStats.total) * 100
+                                ),
+                                color: "#10b981"
+                            },
+                            {
+                                label: t("common.inactive"),
+                                value: stats.userAnalytics.activityStats.inactive,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.activityStats.inactive / stats.userAnalytics.activityStats.total) * 100
+                                ),
+                                color: "#6b7280"
+                            }
+                        ]}
+                    />
+
+                    {/* Recent Active Users */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.recentActivity")}
+                        value={stats.userAnalytics.activityStats.recentlyActive}
+                        icon={Activity}
+                        iconVariant="info"
+                        gradientColor="#8b5cf6"
+                        breakdowns={[
+                            {
+                                label: t("dashboard.superAdmin.activeLastMonth"),
+                                value: stats.userAnalytics.activityStats.recentlyActive,
+                                percentage: Math.round(
+                                    (stats.userAnalytics.activityStats.recentlyActive / stats.userAnalytics.activityStats.total) * 100
+                                ),
+                                color: "#8b5cf6"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.dormant"),
+                                value: stats.userAnalytics.activityStats.total - stats.userAnalytics.activityStats.recentlyActive,
+                                percentage: Math.round(
+                                    ((stats.userAnalytics.activityStats.total - stats.userAnalytics.activityStats.recentlyActive) / stats.userAnalytics.activityStats.total) * 100
+                                ),
+                                color: "#94a3b8"
+                            }
+                        ]}
+                    />
+
+                    {/* Total Users Summary */}
+                    <DashboardWidgetCompact
+                        title={t("dashboard.superAdmin.totalUsers")}
+                        value={stats.totalUsers}
+                        icon={Users}
+                        iconVariant="primary"
+                        iconColor="text-blue-600 dark:text-blue-400"
+                        iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                        gradientColor={usersGradient.from}
+                        description={t("dashboard.superAdmin.registeredUsers")}
+                    />
+                </div>
+            </div>
+
+            {/* Platform Services Section */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <Briefcase className="w-5 h-5" />
+                    {t("dashboard.superAdmin.platformServices")}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {/* Team Reviews */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.teamReviews")}
+                        value={stats.platformServices.reviews.total}
+                        icon={Activity}
+                        iconVariant="success"
+                        gradientColor="#10b981"
+                        breakdowns={[
+                            {
+                                label: t("dashboard.superAdmin.strongHire"),
+                                value: stats.platformServices.reviews.strongHire,
+                                percentage: stats.platformServices.reviews.total > 0 ? Math.round(
+                                    (stats.platformServices.reviews.strongHire / stats.platformServices.reviews.total) * 100
+                                ) : 0,
+                                color: "#10b981"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.recommended"),
+                                value: stats.platformServices.reviews.recommended,
+                                percentage: stats.platformServices.reviews.total > 0 ? Math.round(
+                                    (stats.platformServices.reviews.recommended / stats.platformServices.reviews.total) * 100
+                                ) : 0,
+                                color: "#3b82f6"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.neutral"),
+                                value: stats.platformServices.reviews.neutral,
+                                percentage: stats.platformServices.reviews.total > 0 ? Math.round(
+                                    (stats.platformServices.reviews.neutral / stats.platformServices.reviews.total) * 100
+                                ) : 0,
+                                color: "#f59e0b"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.notRecommended"),
+                                value: stats.platformServices.reviews.notRecommended + stats.platformServices.reviews.strongNo,
+                                percentage: stats.platformServices.reviews.total > 0 ? Math.round(
+                                    ((stats.platformServices.reviews.notRecommended + stats.platformServices.reviews.strongNo) / stats.platformServices.reviews.total) * 100
+                                ) : 0,
+                                color: "#ef4444"
+                            }
+                        ]}
+                    />
+
+                    {/* Interviews */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.interviews")}
+                        value={stats.platformServices.interviews.total}
+                        icon={Users}
+                        iconVariant="warning"
+                        gradientColor="#f59e0b"
+                        breakdowns={[
+                            {
+                                label: t("dashboard.superAdmin.scheduled"),
+                                value: stats.platformServices.interviews.scheduled,
+                                percentage: stats.platformServices.interviews.total > 0 ? Math.round(
+                                    (stats.platformServices.interviews.scheduled / stats.platformServices.interviews.total) * 100
+                                ) : 0,
+                                color: "#f59e0b"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.confirmed"),
+                                value: stats.platformServices.interviews.confirmed,
+                                percentage: stats.platformServices.interviews.total > 0 ? Math.round(
+                                    (stats.platformServices.interviews.confirmed / stats.platformServices.interviews.total) * 100
+                                ) : 0,
+                                color: "#3b82f6"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.completed"),
+                                value: stats.platformServices.interviews.completed,
+                                percentage: stats.platformServices.interviews.total > 0 ? Math.round(
+                                    (stats.platformServices.interviews.completed / stats.platformServices.interviews.total) * 100
+                                ) : 0,
+                                color: "#10b981"
+                            }
+                        ]}
+                    />
+
+                    {/* Responses */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.candidateResponses")}
+                        value={stats.platformServices.responses.total}
+                        icon={Activity}
+                        iconVariant="info"
+                        gradientColor="#8b5cf6"
+                        breakdowns={[
+                            {
+                                label: t("dashboard.superAdmin.textResponse"),
+                                value: stats.platformServices.responses.text,
+                                percentage: stats.platformServices.responses.total > 0 ? Math.round(
+                                    (stats.platformServices.responses.text / stats.platformServices.responses.total) * 100
+                                ) : 0,
+                                color: "#3b82f6"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.voiceResponse"),
+                                value: stats.platformServices.responses.voice,
+                                percentage: stats.platformServices.responses.total > 0 ? Math.round(
+                                    (stats.platformServices.responses.voice / stats.platformServices.responses.total) * 100
+                                ) : 0,
+                                color: "#8b5cf6"
+                            },
+                            {
+                                label: t("dashboard.superAdmin.fileResponse"),
+                                value: stats.platformServices.responses.file,
+                                percentage: stats.platformServices.responses.total > 0 ? Math.round(
+                                    (stats.platformServices.responses.file / stats.platformServices.responses.total) * 100
+                                ) : 0,
+                                color: "#f59e0b"
+                            }
+                        ]}
+                    />
+
+                    {/* Applications */}
+                    <DashboardWidgetAnalytics
+                        title={t("dashboard.superAdmin.applications")}
+                        value={stats.platformServices.applicants.total}
+                        icon={Briefcase}
+                        iconVariant="primary"
+                        gradientColor="#06b6d4"
+                        breakdowns={[
+                            {
+                                label: t("applicants.status.new"),
+                                value: stats.platformServices.applicants.new,
+                                percentage: stats.platformServices.applicants.total > 0 ? Math.round(
+                                    (stats.platformServices.applicants.new / stats.platformServices.applicants.total) * 100
+                                ) : 0,
+                                color: "#3b82f6"
+                            },
+                            {
+                                label: t("applicants.status.evaluated"),
+                                value: stats.platformServices.applicants.evaluated,
+                                percentage: stats.platformServices.applicants.total > 0 ? Math.round(
+                                    (stats.platformServices.applicants.evaluated / stats.platformServices.applicants.total) * 100
+                                ) : 0,
+                                color: "#f59e0b"
+                            },
+                            {
+                                label: t("applicants.status.interview"),
+                                value: stats.platformServices.applicants.interview,
+                                percentage: stats.platformServices.applicants.total > 0 ? Math.round(
+                                    (stats.platformServices.applicants.interview / stats.platformServices.applicants.total) * 100
+                                ) : 0,
+                                color: "#8b5cf6"
+                            },
+                            {
+                                label: t("applicants.status.hired"),
+                                value: stats.platformServices.applicants.hired,
+                                percentage: stats.platformServices.applicants.total > 0 ? Math.round(
+                                    (stats.platformServices.applicants.hired / stats.platformServices.applicants.total) * 100
+                                ) : 0,
+                                color: "#10b981"
+                            }
+                        ]}
+                    />
+                </div>
             </div>
 
             {/* User Management */}
-            <Card>
+            <Card
+                className="border bg-card"
+                gradientFrom={usersGradient.from}
+                gradientTo={usersGradient.to}
+            >
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>

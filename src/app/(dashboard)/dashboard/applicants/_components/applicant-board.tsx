@@ -24,8 +24,17 @@ import {
     UserCheck,
     Crown,
     Shield,
+    Clock,
+    Calendar,
 } from "lucide-react"
 import type { Applicant, ApplicantStatus, EvaluationData, KanbanColumn, ReviewsByApplicant } from "./types"
+import { IBM_Plex_Sans_Arabic } from "next/font/google"
+
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+    subsets: ["arabic"],
+    weight: ["300", "400", "500", "600", "700"],
+    display: "swap",
+})
 
 interface ApplicantBoardProps {
     applicants: Applicant[]
@@ -33,6 +42,7 @@ interface ApplicantBoardProps {
     reviewsByApplicant: ReviewsByApplicant
     onApplicantClick: (applicant: Applicant) => void
     onStatusChange?: (applicantId: string, newStatus: ApplicantStatus) => void
+    onScheduleInterview?: (applicant: Applicant) => void
     userRole: UserRole
 }
 
@@ -109,6 +119,7 @@ export function ApplicantBoard({
     reviewsByApplicant,
     onApplicantClick,
     onStatusChange,
+    onScheduleInterview,
     userRole,
 }: ApplicantBoardProps) {
     const { t, isRTL } = useTranslate()
@@ -168,14 +179,22 @@ export function ApplicantBoard({
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+            dir={isRTL ? "rtl" : "ltr"}
+            className={cn(
+                "grid gap-3 sm:gap-4",
+                // Responsive columns: 1 on mobile, 2 on sm, 2 on md, 4 on lg+
+                "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
+                ibmPlexArabic.className
+            )}
+        >
             {KANBAN_COLUMNS.map((column) => {
                 const columnApplicants = getApplicantsByColumn(column)
                 const count = columnApplicants.length
                 const isDragOver = dragOverColumn === column.id
 
                 return (
-                    <div key={column.id} className="min-h-[400px]">
+                    <div key={column.id} className="min-h-[350px] sm:min-h-[400px]">
                         <Card
                             className={cn(
                                 "h-full flex flex-col transition-all duration-200",
@@ -186,22 +205,28 @@ export function ApplicantBoard({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, column)}
                         >
-                            <CardHeader className="pb-3 px-3 pt-3">
-                                <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                            <CardHeader className={cn(
+                                "pb-2 px-3 pt-3 sm:pb-3",
+                                isRTL ? "text-right" : "text-left"
+                            )}>
+                                <CardTitle className={cn(
+                                    "text-sm font-semibold flex items-center justify-between",
+                                    isRTL ? "flex-row-reverse" : "flex-row"
+                                )}>
                                     <span className={column.color}>
                                         {t(`applicants.kanban.${column.title}`)}
                                     </span>
                                     <Badge
                                         variant="secondary"
-                                        className="ms-2 bg-background/50"
+                                        className="bg-background/50"
                                     >
                                         {count}
                                     </Badge>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="flex-1 p-2 pt-0">
-                                <ScrollArea className="h-[calc(100vh-320px)] lg:h-[calc(100vh-280px)]">
-                                    <div className="space-y-2 pe-2">
+                                <ScrollArea className="h-[calc(100vh-350px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-280px)]">
+                                    <div className="space-y-2.5 sm:space-y-3 pe-2">
                                         {columnApplicants.length === 0 ? (
                                             <div className="text-center py-8 text-sm text-muted-foreground">
                                                 <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -215,38 +240,49 @@ export function ApplicantBoard({
                                                 return (
                                                     <Card
                                                         key={applicant.id}
+                                                        dir={isRTL ? "rtl" : "ltr"}
                                                         draggable
                                                         onDragStart={(e) => handleDragStart(e, applicant)}
                                                         className={cn(
-                                                            "p-3 cursor-grab active:cursor-grabbing",
+                                                            "p-4 sm:p-5 cursor-grab active:cursor-grabbing",
                                                             "hover:shadow-md transition-all duration-200",
                                                             "bg-background border hover:border-primary/30",
-                                                            draggedApplicant?.id === applicant.id && "opacity-50 scale-95"
+                                                            draggedApplicant?.id === applicant.id && "opacity-50 scale-95",
+                                                            ibmPlexArabic.className
                                                         )}
                                                         onClick={() => onApplicantClick(applicant)}
                                                     >
-                                                        <div className="space-y-2.5">
+                                                        <div className="space-y-3">
                                                             {/* Header with Avatar and Name */}
-                                                            <div className="flex items-start gap-2.5">
+                                                            <div className="flex items-start gap-3">
                                                                 <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1 hidden sm:block" />
                                                                 <div
                                                                     className={cn(
-                                                                        "w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm shrink-0",
+                                                                        "w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-semibold text-base shrink-0",
                                                                         getAvatarGradient(applicant.displayName || applicant.personalData?.name || "A")
                                                                     )}
                                                                 >
                                                                     {(applicant.displayName || applicant.personalData?.name)?.charAt(0)?.toUpperCase() || 'A'}
                                                                 </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <h4 className="font-semibold text-sm truncate">
+                                                                <div className={cn(
+                                                                    "flex-1 min-w-0",
+                                                                    isRTL ? "text-right" : "text-left"
+                                                                )}>
+                                                                    <div className={cn(
+                                                                        "flex items-center gap-1.5",
+                                                                        isRTL ? "flex-row-reverse justify-end" : "flex-row"
+                                                                    )}>
+                                                                        <h4 className="font-semibold text-base truncate">
                                                                             {applicant.displayName || applicant.personalData?.name || "Unnamed"}
                                                                         </h4>
                                                                         {applicant.isSuspicious && (
                                                                             <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                                                                         )}
                                                                     </div>
-                                                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                                    <div className={cn(
+                                                                        "flex items-center gap-1 text-xs text-muted-foreground mt-0.5",
+                                                                        isRTL ? "flex-row-reverse justify-end" : "flex-row"
+                                                                    )}>
                                                                         <Briefcase className="h-3 w-3 shrink-0" />
                                                                         <span className="truncate">
                                                                             {applicant.jobId?.title || "N/A"}
@@ -262,7 +298,7 @@ export function ApplicantBoard({
                                                                         <Badge
                                                                             key={index}
                                                                             variant="secondary"
-                                                                            className="text-[10px] h-5 bg-muted/60"
+                                                                            className="text-[10px] h-5 px-2 bg-muted/60"
                                                                         >
                                                                             {tag}
                                                                         </Badge>
@@ -270,11 +306,40 @@ export function ApplicantBoard({
                                                                     {applicant.tags.length > 2 && (
                                                                         <Badge
                                                                             variant="secondary"
-                                                                            className="text-[10px] h-5 bg-muted/40"
+                                                                            className="text-[10px] h-5 px-2 bg-muted/40"
                                                                         >
                                                                             +{applicant.tags.length - 2}
                                                                         </Badge>
                                                                     )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Interview Date/Time - Only show for interview status */}
+                                                            {applicant.status === 'interview' && applicant.interview && (
+                                                                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <div className={cn(
+                                                                            "flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300",
+                                                                            isRTL ? "flex-row-reverse" : "flex-row"
+                                                                        )}>
+                                                                            <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                                                            <span className="font-medium">
+                                                                                {new Date(applicant.interview.scheduledDate).toLocaleDateString(
+                                                                                    isRTL ? 'ar-SA' : 'en-US',
+                                                                                    { weekday: 'short', month: 'short', day: 'numeric' }
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className={cn(
+                                                                            "flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300",
+                                                                            isRTL ? "flex-row-reverse" : "flex-row"
+                                                                        )}>
+                                                                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                                                                            <span className="font-medium">
+                                                                                {applicant.interview.scheduledTime} ({applicant.interview.duration} min)
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             )}
 
@@ -290,7 +355,7 @@ export function ApplicantBoard({
                                                                                     <TooltipTrigger asChild>
                                                                                         <div
                                                                                             className={cn(
-                                                                                                "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border cursor-default",
+                                                                                                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border cursor-default",
                                                                                                 style.bg,
                                                                                                 style.text,
                                                                                                 style.border
@@ -316,8 +381,11 @@ export function ApplicantBoard({
                                                                 </TooltipProvider>
                                                             )}
 
-                                                            {/* Score and Action */}
-                                                            <div className="flex items-center justify-between pt-1.5 border-t">
+                                                            {/* Score and Action Footer - Balanced Layout */}
+                                                            {/* RTL: Score on RIGHT (start), Button on LEFT (end) */}
+                                                            {/* LTR: Score on LEFT (start), Button on RIGHT (end) */}
+                                                            <div className="flex items-center justify-between pt-2 border-t w-full">
+                                                                {/* AI Match Score */}
                                                                 <div className="flex items-center gap-1.5">
                                                                     <Star className="h-3.5 w-3.5 text-yellow-500" />
                                                                     <span className={cn(
@@ -329,18 +397,37 @@ export function ApplicantBoard({
                                                                         {score ? `${score}%` : "-"}
                                                                     </span>
                                                                 </div>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-6 px-2 text-xs"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        onApplicantClick(applicant)
-                                                                    }}
-                                                                >
-                                                                    {t("common.view")}
-                                                                    <ChevronRight className="h-3 w-3 ms-0.5" />
-                                                                </Button>
+                                                                {/* Action Buttons */}
+                                                                <div className="flex items-center gap-1">
+                                                                    {/* Edit Time Button - Only for interview status */}
+                                                                    {applicant.status === 'interview' && onScheduleInterview && (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-7 px-2 text-xs"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                onScheduleInterview(applicant)
+                                                                            }}
+                                                                        >
+                                                                            <Clock className="h-3 w-3 me-1" />
+                                                                            {t("applicants.editTime") || "Edit Time"}
+                                                                        </Button>
+                                                                    )}
+                                                                    {/* View Button */}
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 px-2 text-xs"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            onApplicantClick(applicant)
+                                                                        }}
+                                                                    >
+                                                                        {t("common.view")}
+                                                                        <ChevronRight className="h-3 w-3 ms-0.5 rtl:rotate-180" />
+                                                                    </Button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </Card>

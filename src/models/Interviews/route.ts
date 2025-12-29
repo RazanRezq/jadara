@@ -13,7 +13,7 @@ const createInterviewSchema = z.object({
     scheduledDate: z.string().min(1, 'Scheduled date is required'),
     scheduledTime: z.string().min(1, 'Scheduled time is required'),
     duration: z.number().min(15).max(240).optional().default(60),
-    meetingLink: z.string().url('Meeting link must be a valid URL'),
+    meetingLink: z.string().min(1, 'Meeting link is required'),
     notes: z.string().optional(),
     internalNotes: z.string().optional(),
     sendEmail: z.boolean().optional().default(true),
@@ -23,7 +23,7 @@ const updateInterviewSchema = z.object({
     scheduledDate: z.string().optional(),
     scheduledTime: z.string().optional(),
     duration: z.number().min(15).max(240).optional(),
-    meetingLink: z.string().url().optional(),
+    meetingLink: z.string().optional(),
     notes: z.string().optional(),
     internalNotes: z.string().optional(),
     status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled']).optional(),
@@ -366,6 +366,98 @@ app.get('/count', authenticate, async (c) => {
         return c.json({
             success: true,
             counts: { upcoming, completed },
+        })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        }, 500)
+    }
+})
+
+// Get interviews by date range (for calendar view)
+app.get('/by-date-range', authenticate, async (c) => {
+    try {
+        await dbConnect()
+
+        const start = c.req.query('start')
+        const end = c.req.query('end')
+        const status = c.req.query('status')
+        const jobId = c.req.query('jobId')
+        const scheduledBy = c.req.query('scheduledBy')
+        const search = c.req.query('search')
+
+        if (!start || !end) {
+            return c.json({
+                success: false,
+                error: 'Start and end dates are required',
+            }, 400)
+        }
+
+        // Build query
+        const query: Record<string, unknown> = {
+            scheduledDate: {
+                $gte: new Date(start),
+                $lte: new Date(end)
+            }
+        }
+
+        if (status && status !== 'all') {
+            query.status = { $in: status.split(',') }
+        }
+        if (jobId && jobId !== 'all') {
+            query.jobId = jobId
+        }
+        if (scheduledBy && scheduledBy !== 'all') {
+            query.scheduledBy = scheduledBy
+        }
+
+        // Fetch with populated relations
+        let interviews = await Interview.find(query)
+            .populate('applicantId', 'personalData.name personalData.email')
+            .populate('jobId', 'title')
+            .populate('scheduledBy', 'name email')
+            .sort({ scheduledDate: 1, scheduledTime: 1 })
+            .lean()
+
+        // Filter by candidate name if search term provided
+        if (search) {
+            interviews = interviews.filter((i: any) =>
+                i.applicantId?.personalData?.name
+                    ?.toLowerCase()
+                    .includes(search.toLowerCase())
+            )
+        }
+
+        // Transform to frontend format
+        const transformedInterviews = interviews.map((i: any) => ({
+            id: i._id.toString(),
+            applicantId: i.applicantId?._id.toString() || '',
+            applicantName: i.applicantId?.personalData?.name || 'Unknown',
+            applicantEmail: i.applicantId?.personalData?.email || '',
+            jobId: i.jobId?._id.toString() || '',
+            jobTitle: i.jobId?.title || 'Unknown',
+            scheduledDate: i.scheduledDate,
+            scheduledTime: i.scheduledTime,
+            duration: i.duration,
+            meetingLink: i.meetingLink,
+            notes: i.notes,
+            internalNotes: i.internalNotes,
+            status: i.status,
+            scheduledBy: {
+                id: i.scheduledBy?._id.toString() || '',
+                name: i.scheduledBy?.name || 'Unknown',
+                email: i.scheduledBy?.email || '',
+            },
+            createdAt: i.createdAt,
+            updatedAt: i.updatedAt,
+        }))
+
+        return c.json({
+            success: true,
+            interviews: transformedInterviews,
+            count: transformedInterviews.length
         })
     } catch (error) {
         return c.json({

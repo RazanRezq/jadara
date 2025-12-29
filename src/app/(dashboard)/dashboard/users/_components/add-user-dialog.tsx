@@ -60,12 +60,13 @@ export function AddUserDialog({
                 body: JSON.stringify(formData),
             })
 
-            const data = await response.json()
-
             if (!response.ok) {
+                const data = await response.json()
                 toast.error(data.error || t("auth.loginFailed"))
                 return
             }
+
+            const data = await response.json()
 
             toast.success(t("users.userCreated"))
             onOpenChange(false)

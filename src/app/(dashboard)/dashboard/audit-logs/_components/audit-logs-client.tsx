@@ -154,7 +154,7 @@ export function AuditLogsClient() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">{t("auditLogs.title")}</h1>
@@ -261,6 +261,8 @@ export function AuditLogsClient() {
                         </div>
                     ) : (
                         <div className="space-y-4">
+                            {/* Desktop Table View - hidden on mobile */}
+                            <div className="hidden md:block overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -325,6 +327,70 @@ export function AuditLogsClient() {
                                     ))}
                                 </TableBody>
                             </Table>
+                            </div>
+
+                            {/* Mobile Card View - shown on mobile only */}
+                            <div className="md:hidden space-y-3">
+                                {logs.map((log) => (
+                                    <Card key={log._id} className="border-l-4" style={{ borderLeftColor: log.severity === 'critical' ? '#ef4444' : log.severity === 'error' ? '#f97316' : log.severity === 'warning' ? '#eab308' : '#3b82f6' }}>
+                                        <CardContent className="p-4 space-y-3">
+                                            {/* Header */}
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-mono text-xs text-muted-foreground mb-1">
+                                                        {format(new Date(log.timestamp), "yyyy-MM-dd HH:mm:ss")}
+                                                    </p>
+                                                    <h4 className="font-medium truncate">{log.userName}</h4>
+                                                    <p className="text-sm text-muted-foreground truncate">{log.userEmail}</p>
+                                                </div>
+                                                <Badge className={getSeverityColor(log.severity)}>
+                                                    <span className="flex items-center gap-1">
+                                                        {getSeverityIcon(log.severity)}
+                                                        {log.severity}
+                                                    </span>
+                                                </Badge>
+                                            </div>
+
+                                            {/* Details */}
+                                            <div className="space-y-2 pt-2 border-t">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">{t("auditLogs.action")}</p>
+                                                        <p className="text-sm font-mono">{log.action}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">{t("auditLogs.resource")}</p>
+                                                        <p className="text-sm">{log.resource}</p>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("auditLogs.details")}</p>
+                                                    <p className="text-sm">{log.description}</p>
+                                                </div>
+                                                {log.resourceName && (
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground mb-1">Resource Name</p>
+                                                        <p className="text-sm truncate">{log.resourceName}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Action */}
+                                            <div className="flex justify-end pt-2 border-t">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleViewDetails(log)}
+                                                    className="gap-2"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    {t("common.view")} Details
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
 
                             {/* Pagination */}
                             <div className="flex items-center justify-between">

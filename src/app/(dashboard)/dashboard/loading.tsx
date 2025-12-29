@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export default function DashboardLoading() {
     return (
-        <div className="flex flex-col gap-4">
+        <div className="dashboard-container flex flex-col gap-4">
             {/* Stats Cards Skeleton */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (

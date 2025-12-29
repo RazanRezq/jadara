@@ -1,10 +1,8 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-    BookOpen,
     LayoutDashboard,
     Users,
     Settings,
@@ -26,7 +24,6 @@ import {
     SidebarFooter,
     SidebarHeader,
     SidebarMenu,
-    SidebarMenuButton,
     SidebarMenuItem,
     SidebarGroup,
     SidebarGroupLabel,
@@ -35,6 +32,8 @@ import {
 import { useTranslate } from "@/hooks/useTranslate"
 import { type UserRole } from "@/lib/auth"
 import { hasRolePermission } from "@/lib/authClient"
+import { SidebarMenuItemContent } from "@/components/sidebar-menu-item"
+import { SidebarHeaderContent } from "@/components/sidebar-header-content"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     user: {
@@ -58,6 +57,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.dashboard"),
                         url: "/dashboard",
                         icon: LayoutDashboard,
+                        iconColor: "text-cyan-400",
                         isActive: pathname === "/dashboard",
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -65,6 +65,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.jobs"),
                         url: "/dashboard/jobs",
                         icon: Briefcase,
+                        iconColor: "text-violet-400",
                         isActive: pathname.startsWith("/dashboard/jobs"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -72,6 +73,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.candidates"),
                         url: "/dashboard/applicants",
                         icon: Users,
+                        iconColor: "text-emerald-400",
                         isActive: pathname.startsWith("/dashboard/applicants"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -79,6 +81,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.calendar"),
                         url: "/dashboard/calendar",
                         icon: Calendar,
+                        iconColor: "text-pink-400",
                         isActive: pathname.startsWith("/dashboard/calendar"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -91,6 +94,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.questionBank"),
                         url: "/dashboard/questions",
                         icon: Library,
+                        iconColor: "text-amber-400",
                         isActive: pathname.startsWith("/dashboard/questions"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -98,6 +102,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.scorecards"),
                         url: "/dashboard/scorecards",
                         icon: ClipboardCheck,
+                        iconColor: "text-blue-400",
                         isActive: pathname.startsWith("/dashboard/scorecards"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -105,6 +110,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.interviews"),
                         url: "/dashboard/interviews",
                         icon: Video,
+                        iconColor: "text-rose-400",
                         isActive: pathname.startsWith("/dashboard/interviews"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -117,6 +123,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.users"),
                         url: "/dashboard/users",
                         icon: UserCog,
+                        iconColor: "text-indigo-400",
                         isActive: pathname.startsWith("/dashboard/users"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -124,6 +131,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.sessions"),
                         url: "/dashboard/sessions",
                         icon: Activity,
+                        iconColor: "text-lime-400",
                         isActive: pathname.startsWith("/dashboard/sessions"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -131,6 +139,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.auditLogs"),
                         url: "/dashboard/audit-logs",
                         icon: ScrollText,
+                        iconColor: "text-orange-400",
                         isActive: pathname.startsWith("/dashboard/audit-logs"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -138,6 +147,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.permissions"),
                         url: "/dashboard/permissions",
                         icon: Shield,
+                        iconColor: "text-fuchsia-400",
                         isActive: pathname.startsWith("/dashboard/permissions"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -145,6 +155,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.systemHealth"),
                         url: "/dashboard/system-health",
                         icon: Activity,
+                        iconColor: "text-teal-400",
                         isActive: pathname.startsWith("/dashboard/system-health"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -152,6 +163,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         title: t("sidebar.settings"),
                         url: "/dashboard/settings",
                         icon: Settings,
+                        iconColor: "text-sky-400",
                         isActive: pathname.startsWith("/dashboard/settings"),
                         requiredRole: "admin" as UserRole,
                     },
@@ -170,21 +182,11 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard">
-                                <div className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white flex aspect-square size-8 items-center justify-center rounded-lg shadow-lg shadow-cyan-500/20">
-                                    <BookOpen className="size-4" />
-                                </div>
-                                <div className="grid flex-1 text-start text-sm leading-tight">
-                                    <span className="truncate font-bold bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-                                        GoIELTS
-                                    </span>
-                                    <span className="truncate text-xs text-muted-foreground">
-                                        {t("branding.adminPortal")}
-                                    </span>
-                                </div>
-                            </Link>
-                        </SidebarMenuButton>
+                        <SidebarHeaderContent
+                            isRTL={isRTL}
+                            brandingText="GoIELTS"
+                            adminPortalText={t("branding.adminPortal")}
+                        />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
@@ -205,16 +207,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                                 <SidebarMenu>
                                     {filteredItems.map((item) => (
                                         <SidebarMenuItem key={item.url}>
-                                            <SidebarMenuButton
-                                                asChild
-                                                tooltip={item.title}
+                                            <SidebarMenuItemContent
+                                                title={item.title}
+                                                url={item.url}
+                                                icon={item.icon}
+                                                iconColor={item.iconColor}
                                                 isActive={item.isActive}
-                                            >
-                                                <Link href={item.url}>
-                                                    <item.icon />
-                                                    <span>{item.title}</span>
-                                                </Link>
-                                            </SidebarMenuButton>
+                                            />
                                         </SidebarMenuItem>
                                     ))}
                                 </SidebarMenu>

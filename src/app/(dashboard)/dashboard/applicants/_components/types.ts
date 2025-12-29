@@ -19,7 +19,7 @@ export type ViewMode = 'list' | 'board'
 
 export interface Applicant {
     id: string
-    jobId: { _id: string; title: string }
+    jobId: { _id: string; title: string; currency?: string }
     // NORMALIZED: Always provided by API for UI consistency
     displayName: string
     personalData: {
@@ -47,6 +47,16 @@ export interface Applicant {
     isComplete: boolean
     submittedAt?: string
     createdAt: string
+    // Interview data (when includeRelations is true and applicant has a scheduled interview)
+    interview?: {
+        id: string
+        scheduledDate: string
+        scheduledTime: string
+        duration: number
+        meetingLink: string
+        notes?: string
+        status: 'scheduled' | 'confirmed'
+    }
 }
 
 // Bilingual content types

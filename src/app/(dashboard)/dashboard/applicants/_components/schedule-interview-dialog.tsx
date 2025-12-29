@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     Dialog,
     DialogContent,
@@ -40,6 +40,14 @@ interface ScheduleInterviewDialogProps {
     applicantName: string
     applicantEmail: string
     onSuccess: () => void
+    existingInterview?: {
+        id?: string
+        scheduledDate: string
+        scheduledTime: string
+        duration: number
+        meetingLink: string
+        notes?: string
+    }
 }
 
 const timeSlots = [
@@ -64,6 +72,7 @@ export function ScheduleInterviewDialog({
     applicantName,
     applicantEmail,
     onSuccess,
+    existingInterview,
 }: ScheduleInterviewDialogProps) {
     const { t, dir } = useTranslate()
     const [submitting, setSubmitting] = useState(false)
@@ -73,46 +82,89 @@ export function ScheduleInterviewDialog({
     const [meetingLink, setMeetingLink] = useState("")
     const [notes, setNotes] = useState("")
     const [sendEmail, setSendEmail] = useState(true)
+    const [errors, setErrors] = useState<{
+        date?: string
+        time?: string
+        meetingLink?: string
+    }>({})
+
+    // Load existing interview data when dialog opens
+    useEffect(() => {
+        if (open && existingInterview) {
+            setDate(new Date(existingInterview.scheduledDate))
+            setTime(existingInterview.scheduledTime)
+            setDuration(existingInterview.duration)
+            setMeetingLink(existingInterview.meetingLink)
+            setNotes(existingInterview.notes || "")
+            setErrors({})
+        } else if (!open) {
+            // Reset form when dialog closes
+            setDate(undefined)
+            setTime("")
+            setDuration(60)
+            setMeetingLink("")
+            setNotes("")
+            setErrors({})
+        }
+    }, [open, existingInterview])
+
+    const validateForm = () => {
+        const newErrors: typeof errors = {}
+
+        if (!date) {
+            newErrors.date = "Interview date is required"
+        }
+        if (!time) {
+            newErrors.time = "Interview time is required"
+        }
+        if (!meetingLink || meetingLink.trim().length === 0) {
+            newErrors.meetingLink = "Meeting link is required"
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
 
     const handleSubmit = async () => {
-        if (!date || !time || !meetingLink) {
-            toast.error("Please fill in all required fields")
+        if (!validateForm()) {
+            toast.error("Please fill in all required fields correctly")
             return
         }
 
         setSubmitting(true)
         try {
-            const response = await fetch("/api/interviews/create", {
+            const isEditing = !!existingInterview?.id
+            const url = isEditing
+                ? `/api/interviews/update/${existingInterview.id}`
+                : "/api/interviews/create"
+
+            const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    applicantId,
-                    jobId,
-                    scheduledDate: date.toISOString(),
+                    ...(isEditing ? {} : { applicantId, jobId }), // Only needed for create
+                    scheduledDate: date!.toISOString(),
                     scheduledTime: time,
                     duration,
                     meetingLink,
                     notes,
-                    sendEmail,
+                    ...(!isEditing && { sendEmail }), // Only for create
                 }),
             })
 
             const data = await response.json()
             if (data.success) {
                 toast.success(
-                    data.emailSent
-                        ? "Interview scheduled and email sent!"
-                        : "Interview scheduled successfully"
+                    isEditing
+                        ? "Interview updated successfully"
+                        : data.emailSent
+                            ? "Interview scheduled and email sent!"
+                            : "Interview scheduled successfully"
                 )
                 onSuccess()
                 onOpenChange(false)
-                // Reset form
-                setDate(undefined)
-                setTime("")
-                setMeetingLink("")
-                setNotes("")
             } else {
-                toast.error(data.error || "Failed to schedule interview")
+                toast.error(data.error || `Failed to ${isEditing ? 'update' : 'schedule'} interview`)
             }
         } catch (error) {
             toast.error("An error occurred while scheduling the interview")
@@ -121,16 +173,30 @@ export function ScheduleInterviewDialog({
         }
     }
 
+    const handleDialogClose = (isOpen: boolean) => {
+        if (!isOpen) {
+            // Reset errors when closing
+            setErrors({})
+        }
+        onOpenChange(isOpen)
+    }
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleDialogClose}>
             <DialogContent className="sm:max-w-[500px]" dir={dir}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <CalendarIcon className="h-5 w-5 text-primary" />
-                        {t("applicants.interview.schedule") || "Schedule Interview"}
+                        {existingInterview?.id
+                            ? (t("applicants.interview.edit") || "Edit Interview")
+                            : (t("applicants.interview.schedule") || "Schedule Interview")
+                        }
                     </DialogTitle>
                     <DialogDescription className="text-start">
-                        {t("applicants.interview.scheduleWith") || "Schedule an interview with"}{" "}
+                        {existingInterview?.id
+                            ? `${t("applicants.interview.editFor") || "Update interview details for"} `
+                            : `${t("applicants.interview.scheduleWith") || "Schedule an interview with"} `
+                        }
                         <span className="font-medium">{applicantName}</span>
                     </DialogDescription>
                 </DialogHeader>
@@ -145,7 +211,8 @@ export function ScheduleInterviewDialog({
                                     variant="outline"
                                     className={cn(
                                         "w-full justify-start text-start font-normal",
-                                        !date && "text-muted-foreground"
+                                        !date && "text-muted-foreground",
+                                        errors.date && "border-red-500"
                                     )}
                                 >
                                     <CalendarIcon className="h-4 w-4 me-2" />
@@ -156,19 +223,31 @@ export function ScheduleInterviewDialog({
                                 <Calendar
                                     mode="single"
                                     selected={date}
-                                    onSelect={setDate}
+                                    onSelect={(newDate) => {
+                                        setDate(newDate)
+                                        setErrors({ ...errors, date: undefined })
+                                    }}
                                     initialFocus
                                     disabled={(date) => date < new Date()}
                                 />
                             </PopoverContent>
                         </Popover>
+                        {errors.date && (
+                            <p className="text-sm text-red-500 text-start">{errors.date}</p>
+                        )}
                     </div>
 
                     {/* Time Select */}
                     <div className="grid gap-2">
                         <Label>{t("applicants.interview.time") || "Interview Time"} *</Label>
-                        <Select value={time} onValueChange={setTime}>
-                            <SelectTrigger>
+                        <Select
+                            value={time}
+                            onValueChange={(newTime) => {
+                                setTime(newTime)
+                                setErrors({ ...errors, time: undefined })
+                            }}
+                        >
+                            <SelectTrigger className={cn(errors.time && "border-red-500")}>
                                 <SelectValue placeholder={t("applicants.interview.selectTime") || "Select time"}>
                                     {time && (
                                         <span className="flex items-center gap-2">
@@ -186,6 +265,9 @@ export function ScheduleInterviewDialog({
                                 ))}
                             </SelectContent>
                         </Select>
+                        {errors.time && (
+                            <p className="text-sm text-red-500 text-start">{errors.time}</p>
+                        )}
                     </div>
 
                     {/* Duration Select */}
@@ -214,16 +296,23 @@ export function ScheduleInterviewDialog({
                         <div className="relative">
                             <Video className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
                             <Input
-                                placeholder="https://meet.google.com/..."
+                                placeholder="https://meet.google.com/... or meeting room name"
                                 value={meetingLink}
-                                onChange={(e) => setMeetingLink(e.target.value)}
-                                className="ps-10"
+                                onChange={(e) => {
+                                    setMeetingLink(e.target.value)
+                                    setErrors({ ...errors, meetingLink: undefined })
+                                }}
+                                className={cn("ps-10", errors.meetingLink && "border-red-500")}
                                 dir="ltr"
                             />
                         </div>
-                        <p className="text-xs text-muted-foreground text-start">
-                            {t("applicants.interview.meetingLinkHelp") || "Google Meet, Zoom, or any video conferencing link"}
-                        </p>
+                        {errors.meetingLink ? (
+                            <p className="text-sm text-red-500 text-start">{errors.meetingLink}</p>
+                        ) : (
+                            <p className="text-xs text-muted-foreground text-start">
+                                {t("applicants.interview.meetingLinkHelp") || "Google Meet, Zoom, meeting room, or any location"}
+                            </p>
+                        )}
                     </div>
 
                     {/* Notes for Candidate */}
@@ -238,35 +327,46 @@ export function ScheduleInterviewDialog({
                         />
                     </div>
 
-                    {/* Send Email Toggle */}
-                    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
-                        <div className="flex items-center gap-3">
-                            <Mail className="h-5 w-5 text-primary" />
-                            <div className="text-start">
-                                <p className="text-sm font-medium">{t("applicants.interview.sendEmailInvite") || "Send Email Invitation"}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {t("applicants.interview.to") || "to"} {applicantEmail}
-                                </p>
+                    {/* Send Email Toggle - Only show when creating new interview */}
+                    {!existingInterview?.id && (
+                        <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+                            <div className="flex items-center gap-3">
+                                <Mail className="h-5 w-5 text-primary" />
+                                <div className="text-start">
+                                    <p className="text-sm font-medium">{t("applicants.interview.sendEmailInvite") || "Send Email Invitation"}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t("applicants.interview.to") || "to"} {applicantEmail}
+                                    </p>
+                                </div>
                             </div>
+                            <Button
+                                type="button"
+                                variant={sendEmail ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setSendEmail(!sendEmail)}
+                            >
+                                {sendEmail ? (t("common.yes") || "Yes") : (t("common.no") || "No")}
+                            </Button>
                         </div>
-                        <Button
-                            type="button"
-                            variant={sendEmail ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSendEmail(!sendEmail)}
-                        >
-                            {sendEmail ? (t("common.yes") || "Yes") : (t("common.no") || "No")}
-                        </Button>
-                    </div>
+                    )}
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button variant="outline" onClick={() => handleDialogClose(false)}>
                         {t("common.cancel") || "Cancel"}
                     </Button>
                     <Button onClick={handleSubmit} disabled={submitting}>
                         {submitting && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-                        {submitting ? (t("applicants.interview.scheduling") || "Scheduling...") : (t("applicants.interview.schedule") || "Schedule Interview")}
+                        {submitting
+                            ? (existingInterview?.id
+                                ? (t("applicants.interview.updating") || "Updating...")
+                                : (t("applicants.interview.scheduling") || "Scheduling...")
+                            )
+                            : (existingInterview?.id
+                                ? (t("applicants.interview.update") || "Update Interview")
+                                : (t("applicants.interview.schedule") || "Schedule Interview")
+                            )
+                        }
                     </Button>
                 </DialogFooter>
             </DialogContent>

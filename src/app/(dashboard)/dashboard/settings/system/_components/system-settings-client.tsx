@@ -27,6 +27,11 @@ export function SystemSettingsClient() {
         try {
             setLoading(true)
             const response = await fetch("/api/system-config")
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -66,6 +71,10 @@ export function SystemSettingsClient() {
                 body: JSON.stringify(updates),
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -92,6 +101,10 @@ export function SystemSettingsClient() {
             const response = await fetch("/api/system-config/reset", {
                 method: "POST",
             })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
 
             const result = await response.json()
 
@@ -122,7 +135,7 @@ export function SystemSettingsClient() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-96">
+            <div className="dashboard-container flex items-center justify-center h-96">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
@@ -130,7 +143,7 @@ export function SystemSettingsClient() {
 
     if (!config) {
         return (
-            <div className="text-center py-12" dir={dir}>
+            <div className="dashboard-container text-center py-12" dir={dir}>
                 <p className="text-muted-foreground">{t("settings.system.failedToLoad")}</p>
                 <Button onClick={fetchConfig} className="mt-4">
                     {t("settings.system.retry")}
@@ -140,7 +153,7 @@ export function SystemSettingsClient() {
     }
 
     return (
-        <div className="space-y-6" dir={dir}>
+        <div className="dashboard-container space-y-6" dir={dir}>
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="text-start">

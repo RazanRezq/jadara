@@ -165,7 +165,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -266,6 +266,9 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                             <p className="text-sm">{t("users.tryAdjusting")}</p>
                         </div>
                     ) : (
+                        <>
+                        {/* Desktop Table View - hidden on mobile */}
+                        <div className="hidden md:block overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -345,6 +348,85 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                 ))}
                             </TableBody>
                         </Table>
+                        </div>
+
+                        {/* Mobile Card View - shown on mobile only */}
+                        <div className="md:hidden p-4 space-y-3">
+                            {users.map((user) => (
+                                <Card key={user.id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary/30">
+                                    <CardContent className="p-4 space-y-3">
+                                        {/* Header with avatar and name */}
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center text-white font-semibold shrink-0">
+                                                    {user.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="font-semibold text-base truncate">{user.name}</h4>
+                                                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                                                </div>
+                                            </div>
+                                            <Badge className={cn("border-0 shrink-0", getRoleColor(user.role))}>
+                                                {t(`roles.${user.role}`)}
+                                            </Badge>
+                                        </div>
+
+                                        {/* Details grid */}
+                                        <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                                            {/* Status */}
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">{t("common.status")}</p>
+                                                {user.isActive ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                                                        <UserCheck className="h-4 w-4" />
+                                                        {t("common.active")}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+                                                        <UserX className="h-4 w-4" />
+                                                        {t("common.inactive")}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Last Login */}
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">{t("users.lastLogin")}</p>
+                                                <p className="text-sm">{formatDate(user.lastLogin)}</p>
+                                            </div>
+
+                                            {/* Joined */}
+                                            <div className="col-span-2">
+                                                <p className="text-xs text-muted-foreground mb-1">{t("users.joined")}</p>
+                                                <p className="text-sm">{formatDate(user.createdAt)}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Action buttons */}
+                                        <div className="flex justify-end gap-2 pt-2 border-t">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleEditUser(user)}
+                                            >
+                                                <Pencil className="h-4 w-4 me-2" />
+                                                {t("common.edit")}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleDeleteUser(user)}
+                                                className="text-destructive hover:text-destructive"
+                                            >
+                                                <Trash2 className="h-4 w-4 me-2" />
+                                                {t("common.delete")}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                        </>
                     )}
 
                     {/* Pagination */}

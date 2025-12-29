@@ -25,6 +25,11 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
     const handleDownloadTemplate = async () => {
         try {
             const response = await fetch("/api/users/import-template")
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const blob = await response.blob()
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement("a")
@@ -91,6 +96,10 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                 body: JSON.stringify({ users, dryRun: true }),
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const result = await response.json()
 
             if (result.success) {
@@ -117,6 +126,10 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ users, dryRun: false }),
             })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
 
             const result = await response.json()
 

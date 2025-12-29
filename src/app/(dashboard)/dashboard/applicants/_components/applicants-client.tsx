@@ -15,6 +15,7 @@ import { ApplicantBoard } from "./applicant-board"
 import { ApplicantList, ApplicantListMobile } from "./applicant-list"
 import { DashboardStats } from "./dashboard-stats"
 import { ViewApplicantDialog } from "./view-applicant-dialog"
+import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
 
 // Types
 import type {
@@ -89,6 +90,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
     const [selectedTab, setSelectedTab] = useState<string>("overview")
+    const [scheduleInterviewDialogOpen, setScheduleInterviewDialogOpen] = useState(false)
+    const [applicantForInterview, setApplicantForInterview] = useState<Applicant | null>(null)
 
     // Request deduplication refs
     const isFetchingApplicants = useRef(false)
@@ -101,6 +104,11 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
         try {
             const response = await fetch("/api/jobs/list?limit=100")
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const data = await response.json()
             if (data.success) {
                 setJobs(data.jobs.map((j: { id: string; title: string }) => ({ id: j.id, title: j.title })))
@@ -112,65 +120,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }, [])
 
-    // Fetch evaluation data for applicants using batch endpoint
-    const fetchEvaluations = useCallback(async (applicantIds: string[]) => {
-        if (applicantIds.length === 0) {
-            setEvaluations(new Map())
-            return
-        }
-
-        try {
-            const response = await fetch(`/api/evaluations/batch-by-applicants?role=${currentUserRole}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ applicantIds })
-            })
-            const data = await response.json()
-
-            if (data.success && data.evaluations) {
-                const evaluationsMap = new Map<string, EvaluationData>(
-                    Object.entries(data.evaluations)
-                )
-                setEvaluations(evaluationsMap)
-            } else {
-                setEvaluations(new Map())
-            }
-        } catch (error) {
-            console.error("Failed to fetch evaluations:", error)
-            setEvaluations(new Map())
-        }
-    }, [currentUserRole])
-
-    // Fetch reviewer badges for applicants (for transparency display)
-    const fetchReviewBadges = useCallback(async (applicantIds: string[]) => {
-        if (applicantIds.length === 0) {
-            setReviewsByApplicant(new Map())
-            return
-        }
-
-        try {
-            const response = await fetch('/api/reviews/batch-badges', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ applicantIds })
-            })
-            const data = await response.json()
-
-            if (data.success && data.reviewsByApplicant) {
-                const reviewsMap = new Map<string, ReviewerBadge[]>(
-                    Object.entries(data.reviewsByApplicant)
-                )
-                setReviewsByApplicant(reviewsMap)
-            } else {
-                setReviewsByApplicant(new Map())
-            }
-        } catch (error) {
-            console.error("Failed to fetch review badges:", error)
-            setReviewsByApplicant(new Map())
-        }
-    }, [])
-
-    // Fetch applicants with evaluations
+    // Fetch applicants with evaluations (OPTIMIZED: Single API call)
     const fetchApplicants = useCallback(async () => {
         if (isFetchingApplicants.current) return
         isFetchingApplicants.current = true
@@ -181,6 +131,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 page: page.toString(),
                 limit: "50",
                 role: currentUserRole,
+                includeRelations: "true", // Fetch evaluations and reviews in single call
             })
             if (filters.searchTerm) params.append("search", filters.searchTerm)
             if (filters.statusFilters.size > 0 && !filters.statusFilters.has("all")) {
@@ -190,6 +141,11 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             if (filters.minScore > 0) params.append("minScore", filters.minScore.toString())
 
             const response = await fetch(`/api/applicants/list?${params}`)
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const data = await response.json()
 
             if (data.success) {
@@ -197,12 +153,21 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 setTotalPages(data.pagination.totalPages)
                 setTotal(data.pagination.total)
 
-                // Fetch evaluations and review badges for applicants
-                const applicantIds = data.applicants.map((a: Applicant) => a.id)
-                await Promise.all([
-                    fetchEvaluations(applicantIds),
-                    fetchReviewBadges(applicantIds)
-                ])
+                // OPTIMIZED: Extract evaluations and review badges from response
+                const evaluationsMap = new Map<string, EvaluationData>()
+                const reviewsMap = new Map<string, any[]>()
+
+                data.applicants.forEach((applicant: any) => {
+                    if (applicant.evaluation) {
+                        evaluationsMap.set(applicant.id, applicant.evaluation)
+                    }
+                    if (applicant.reviewBadges && applicant.reviewBadges.length > 0) {
+                        reviewsMap.set(applicant.id, applicant.reviewBadges)
+                    }
+                })
+
+                setEvaluations(evaluationsMap)
+                setReviewsByApplicant(reviewsMap)
 
                 // Calculate stats
                 const evaluated = data.applicants.filter((a: Applicant) => a.aiScore !== undefined)
@@ -225,7 +190,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             isFetchingApplicants.current = false
             setLoading(false)
         }
-    }, [page, filters, currentUserRole, t, fetchEvaluations, fetchReviewBadges])
+    }, [page, filters, currentUserRole, t])
 
     useEffect(() => {
         fetchJobs()
@@ -288,23 +253,54 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         setViewDialogOpen(true)
     }
 
+    const handleScheduleInterview = (applicant: Applicant) => {
+        setApplicantForInterview(applicant)
+        setScheduleInterviewDialogOpen(true)
+    }
+
     const handleStatusChange = async (applicantId: string, newStatus: ApplicantStatus) => {
+        // Optimistic update - update UI immediately
+        setApplicants(prev =>
+            prev.map(applicant =>
+                applicant.id === applicantId
+                    ? { ...applicant, status: newStatus }
+                    : applicant
+            )
+        )
+
         try {
             const response = await fetch(`/api/applicants/${applicantId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const data = await response.json()
             if (data.success) {
                 toast.success(t("applicants.statusUpdated"))
-                fetchApplicants()
+
+                // If status changed to interview, open the schedule interview dialog
+                if (newStatus === 'interview') {
+                    const applicant = applicants.find(a => a.id === applicantId)
+                    if (applicant) {
+                        setApplicantForInterview({ ...applicant, status: newStatus })
+                        setScheduleInterviewDialogOpen(true)
+                    }
+                }
             } else {
+                // Revert optimistic update on error
                 toast.error(data.error || t("common.error"))
+                fetchApplicants()
             }
         } catch (error) {
             console.error("Failed to update status:", error)
             toast.error(t("common.error"))
+            // Revert optimistic update on error
+            fetchApplicants()
         }
     }
 
@@ -328,7 +324,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     })
 
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="dashboard-container flex flex-col min-h-screen">
             {/* Toolbar */}
             <ApplicantsToolbar
                 viewMode={viewMode}
@@ -370,6 +366,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                 reviewsByApplicant={reviewsByApplicant}
                                 onApplicantClick={handleViewApplicant}
                                 onStatusChange={handleStatusChange}
+                                onScheduleInterview={handleScheduleInterview}
                                 userRole={currentUserRole}
                             />
                         )}
@@ -448,6 +445,24 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     />
                 )
             })()}
+
+            {/* Schedule Interview Dialog */}
+            {applicantForInterview && (
+                <ScheduleInterviewDialog
+                    open={scheduleInterviewDialogOpen}
+                    onOpenChange={setScheduleInterviewDialogOpen}
+                    applicantId={applicantForInterview.id}
+                    jobId={applicantForInterview.jobId}
+                    applicantName={applicantForInterview.personalData.name}
+                    applicantEmail={applicantForInterview.personalData.email}
+                    existingInterview={applicantForInterview.interview}
+                    onSuccess={() => {
+                        setScheduleInterviewDialogOpen(false)
+                        setApplicantForInterview(null)
+                        fetchApplicants()
+                    }}
+                />
+            )}
         </div>
     )
 }

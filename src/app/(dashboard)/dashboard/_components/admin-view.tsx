@@ -42,6 +42,7 @@ import { ar, enUS } from "date-fns/locale"
 import { ViewApplicantDialog } from "@/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog"
 import type { Applicant, EvaluationData } from "@/app/(dashboard)/dashboard/applicants/_components/types"
 import type { UserRole } from "@/lib/auth"
+import { DashboardWidget } from "@/components/dashboard/dashboard-widget"
 
 // Types
 interface AdminStats {
@@ -93,86 +94,6 @@ interface AdminViewProps {
     userId: string
 }
 
-// Stat Card Component - Optime Style
-function StatCard({
-    title,
-    value,
-    trend,
-    icon: Icon,
-    iconColor,
-    iconBgColor,
-    href,
-    dir,
-}: {
-    title: string
-    value: number
-    trend: number
-    icon: React.ElementType
-    iconColor: string
-    iconBgColor: string
-    href: string
-    dir: "ltr" | "rtl"
-}) {
-    const { t } = useTranslate()
-    const isPositive = trend >= 0
-    const ArrowIcon = dir === "rtl" ? ArrowLeft : ArrowRight
-
-    return (
-        <Link href={href}>
-            <Card className="group relative overflow-hidden border-border/50 bg-card hover:shadow-lg hover:border-border transition-all duration-300 cursor-pointer">
-                <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-3 flex-1">
-                            <p className="text-sm font-medium text-muted-foreground line-clamp-1">
-                                {title}
-                            </p>
-                            <p className="text-3xl font-bold tracking-tight text-foreground">
-                                {value.toLocaleString()}
-                            </p>
-                            {trend !== 0 && (
-                                <div className="flex items-center gap-1.5">
-                                    <div
-                                        className={cn(
-                                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium",
-                                            isPositive
-                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                                : "bg-red-500/10 text-red-600 dark:text-red-400"
-                                        )}
-                                    >
-                                        {isPositive ? (
-                                            <TrendingUp className="w-3 h-3" />
-                                        ) : (
-                                            <TrendingDown className="w-3 h-3" />
-                                        )}
-                                        <span>
-                                            {isPositive ? "+" : ""}
-                                            {trend}%
-                                        </span>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                        {t("dashboard.admin.vsLastMonth")}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                        <div
-                            className={cn(
-                                "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
-                                iconBgColor
-                            )}
-                        >
-                            <Icon className={cn("w-7 h-7", iconColor)} />
-                        </div>
-                    </div>
-                    {/* Hover arrow indicator */}
-                    <div className="absolute bottom-3 end-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ArrowIcon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                </CardContent>
-            </Card>
-        </Link>
-    )
-}
 
 // Star Rating Component
 function StarRating({ rating, showValue = false }: { rating: number; showValue?: boolean }) {
@@ -279,11 +200,13 @@ function ActionCenter({
 
     return (
         <>
-        <Card className="border-border/50 bg-card h-full">
+        <Card className="border h-full bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        {candidates.length > 0 && (
+                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
                         <CardTitle className="text-base font-semibold">
                             {t("dashboard.admin.actionCenter")}
                         </CardTitle>
@@ -393,7 +316,7 @@ function UpcomingSchedule({
     const tomorrowInterviews = interviews.filter((i) => i.isTomorrow)
 
     return (
-        <Card className="border-border/50 bg-card h-full">
+        <Card className="border h-full bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
@@ -622,7 +545,7 @@ function RecentCandidatesTable({
 
     return (
         <>
-            <Card className="border-border/50 bg-card">
+            <Card className="border bg-card">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <div>
@@ -881,8 +804,10 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             value: stats.totalApplicants,
             trend: stats.totalApplicantsTrend,
             icon: Users,
-            iconColor: "text-teal-600",
+            iconVariant: 'info' as const,
+            iconColor: "text-teal-600 dark:text-teal-400",
             iconBgColor: "bg-teal-100 dark:bg-teal-900/30",
+            gradientColor: "#14b8a6",
             href: "/dashboard/applicants",
         },
         {
@@ -890,8 +815,10 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             value: stats.activeJobs,
             trend: stats.activeJobsTrend,
             icon: Briefcase,
-            iconColor: "text-blue-600",
+            iconVariant: 'primary' as const,
+            iconColor: "text-blue-600 dark:text-blue-400",
             iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
+            gradientColor: "#3b82f6",
             href: "/dashboard/jobs?status=active",
         },
         {
@@ -899,8 +826,10 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             value: stats.upcomingInterviewsCount,
             trend: stats.upcomingInterviewsTrend,
             icon: Calendar,
-            iconColor: "text-purple-600",
+            iconVariant: 'warning' as const,
+            iconColor: "text-purple-600 dark:text-purple-400",
             iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
+            gradientColor: "#9333ea",
             href: "/dashboard/calendar",
         },
         {
@@ -908,20 +837,22 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             value: stats.totalHired,
             trend: stats.totalHiredTrend,
             icon: UserCheck,
-            iconColor: "text-emerald-600",
+            iconVariant: 'success' as const,
+            iconColor: "text-emerald-600 dark:text-emerald-400",
             iconBgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+            gradientColor: "#10b981",
             href: "/dashboard/applicants?status=hired",
         },
     ]
 
     return (
-        <div className="space-y-6" dir={dir}>
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <div className="dashboard-container space-y-6" dir={dir}>
+            {/* Header - Clean and simple */}
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
                     {t("dashboard.admin.title")}
                 </h1>
-                <p className="text-muted-foreground mt-1 text-sm">
+                <p className="text-muted-foreground text-base">
                     {t("dashboard.admin.subtitle")}
                 </p>
             </div>
@@ -929,16 +860,21 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             {/* Row 1: Stats Grid - 4 columns on xl, 2 on md, 1 on mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {statCards.map((stat, index) => (
-                    <StatCard
+                    <DashboardWidget
                         key={index}
                         title={stat.title}
                         value={stat.value}
-                        trend={stat.trend}
+                        trend={{
+                            value: stat.trend,
+                            label: t("dashboard.admin.vsLastMonth"),
+                            isPositive: stat.trend >= 0,
+                        }}
                         icon={stat.icon}
+                        iconVariant={stat.iconVariant}
                         iconColor={stat.iconColor}
                         iconBgColor={stat.iconBgColor}
+                        gradientColor={stat.gradientColor}
                         href={stat.href}
-                        dir={dir}
                     />
                 ))}
             </div>

@@ -1,17 +1,63 @@
-import * as React from "react"
+"use client"
 
+import * as React from "react"
+import { useTheme } from "next-themes"
+import { MagicCard } from "@/components/magicui/magic-card"
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+interface CardProps extends React.ComponentProps<"div"> {
+  useMagic?: boolean
+  gradientFrom?: string
+  gradientTo?: string
+  gradientSize?: number
+}
+
+function Card({
+  className,
+  useMagic = true,
+  gradientFrom = "#4f46e5",
+  gradientTo = "#9333ea",
+  gradientSize = 200,
+  ...props
+}: CardProps) {
+  const { theme, systemTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Determine if we're in dark mode
+  const isDark = mounted && (theme === "dark" || (theme === "system" && systemTheme === "dark"))
+
+  // If useMagic is false or not in dark mode, return regular card
+  if (!useMagic || !isDark || !mounted) {
+    return (
+      <div
+        data-slot="card"
+        className={cn(
+          "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+
+  // Wrap with MagicCard in dark mode
   return (
-    <div
-      data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      )}
-      {...props}
-    />
+    <MagicCard
+      className={cn("rounded-xl", className)}
+      gradientFrom={gradientFrom}
+      gradientTo={gradientTo}
+      gradientSize={gradientSize}
+    >
+      <div
+        data-slot="card"
+        className="bg-transparent text-card-foreground flex flex-col gap-6 py-6"
+        {...props}
+      />
+    </MagicCard>
   )
 }
 

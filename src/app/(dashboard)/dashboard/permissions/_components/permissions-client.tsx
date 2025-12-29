@@ -60,6 +60,14 @@ export function PermissionsClient() {
                 fetch("/api/permissions/metadata"),
             ])
 
+            if (!setsResponse.ok) {
+                throw new Error(`HTTP error! status: ${setsResponse.status}`)
+            }
+
+            if (!metadataResponse.ok) {
+                throw new Error(`HTTP error! status: ${metadataResponse.status}`)
+            }
+
             const setsData = await setsResponse.json()
             const metadataData = await metadataResponse.json()
 
@@ -105,6 +113,10 @@ export function PermissionsClient() {
                 }),
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const data = await response.json()
 
             if (data.success) {
@@ -139,6 +151,10 @@ export function PermissionsClient() {
                 method: "POST",
             })
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
             const data = await response.json()
 
             if (data.success) {
@@ -159,7 +175,7 @@ export function PermissionsClient() {
     const currentPermissionSet = permissionSets.find((set) => set.role === activeTab)
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
