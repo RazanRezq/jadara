@@ -20,7 +20,7 @@ import { type UserRole } from "@/lib/auth"
 import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
-import { X, Archive, Trash2 } from "lucide-react"
+import { X, Archive, Trash2, Users } from "lucide-react"
 
 // Components
 import { ApplicantsToolbar } from "./applicants-toolbar"
@@ -529,27 +529,47 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                             <>
                                 {/* Desktop Table */}
                                 <div className="hidden md:block">
-                                    <ApplicantList
-                                        applicants={filteredApplicants}
-                                        evaluations={evaluations}
-                                        onApplicantClick={handleViewApplicant}
-                                        userRole={currentUserRole}
-                                        selectedApplicants={selectedApplicants}
-                                        onSelectAll={handleSelectAll}
-                                        onSelectApplicant={handleSelectApplicant}
-                                    />
+                                    {filteredApplicants.length === 0 ? (
+                                        <Card>
+                                            <CardContent className="p-0">
+                                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                                                    <Users className="h-12 w-12 mb-4 opacity-50" />
+                                                    <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
+                                                    <p className="text-sm">{t("applicants.tryAdjusting")}</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ) : (
+                                        <ApplicantList
+                                            applicants={filteredApplicants}
+                                            evaluations={evaluations}
+                                            onApplicantClick={handleViewApplicant}
+                                            userRole={currentUserRole}
+                                            selectedApplicants={selectedApplicants}
+                                            onSelectAll={handleSelectAll}
+                                            onSelectApplicant={handleSelectApplicant}
+                                        />
+                                    )}
                                 </div>
 
                                 {/* Mobile Card List */}
                                 <div className="block md:hidden">
-                                    <ApplicantListMobile
-                                        applicants={filteredApplicants}
-                                        evaluations={evaluations}
-                                        onApplicantClick={handleViewApplicant}
-                                        userRole={currentUserRole}
-                                        selectedApplicants={selectedApplicants}
-                                        onSelectApplicant={handleSelectApplicant}
-                                    />
+                                    {filteredApplicants.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                                            <Users className="h-12 w-12 mb-4 opacity-50" />
+                                            <p className="text-lg font-medium">{t("applicants.noApplicantsFound")}</p>
+                                            <p className="text-sm">{t("applicants.tryAdjusting")}</p>
+                                        </div>
+                                    ) : (
+                                        <ApplicantListMobile
+                                            applicants={filteredApplicants}
+                                            evaluations={evaluations}
+                                            onApplicantClick={handleViewApplicant}
+                                            userRole={currentUserRole}
+                                            selectedApplicants={selectedApplicants}
+                                            onSelectApplicant={handleSelectApplicant}
+                                        />
+                                    )}
                                 </div>
                             </>
                         )}

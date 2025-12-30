@@ -205,30 +205,48 @@ export function ApplicantBoard({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, column)}
                         >
-                            <CardHeader className={cn(
-                                "pb-2 px-3 pt-3 sm:pb-3",
-                                isRTL ? "text-right" : "text-left"
-                            )}>
-                                <CardTitle className={cn(
-                                    "text-sm font-semibold flex items-center justify-between",
-                                    isRTL ? "flex-row-reverse" : "flex-row"
-                                )}>
-                                    <span className={column.color}>
-                                        {t(`applicants.kanban.${column.title}`)}
-                                    </span>
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-background/50"
-                                    >
-                                        {count}
-                                    </Badge>
+                            <CardHeader
+                                dir={isRTL ? "rtl" : "ltr"}
+                                className={cn(
+                                    "pb-2 px-3 pt-3 sm:pb-3",
+                                    isRTL ? "text-right" : "text-left"
+                                )}
+                            >
+                                <CardTitle className="text-sm font-semibold flex items-center justify-between w-full">
+                                    {isRTL ? (
+                                        <>
+                                            {/* RTL: Label on RIGHT (start), Badge on LEFT (end) */}
+                                            <span className={column.color}>
+                                                {t(`applicants.kanban.${column.title}`)}
+                                            </span>
+                                            <Badge
+                                                variant="secondary"
+                                                className="bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100 dark:ring-1 dark:ring-slate-600 font-bold px-2.5"
+                                            >
+                                                {count}
+                                            </Badge>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* LTR: Label on LEFT (start), Badge on RIGHT (end) */}
+                                            <span className={column.color}>
+                                                {t(`applicants.kanban.${column.title}`)}
+                                            </span>
+                                            <Badge
+                                                variant="secondary"
+                                                className="bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100 dark:ring-1 dark:ring-slate-600 font-bold px-2.5"
+                                            >
+                                                {count}
+                                            </Badge>
+                                        </>
+                                    )}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="flex-1 p-2 pt-0">
                                 <ScrollArea className="h-[calc(100vh-350px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-280px)]">
                                     <div className="space-y-2.5 sm:space-y-3 pe-2">
                                         {columnApplicants.length === 0 ? (
-                                            <div className="text-center py-8 text-sm text-muted-foreground">
+                                            <div className="text-center py-8 text-sm text-muted-foreground" dir={isRTL ? "rtl" : "ltr"}>
                                                 <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
                                                 <p>{t("applicants.noApplicants")}</p>
                                             </div>
