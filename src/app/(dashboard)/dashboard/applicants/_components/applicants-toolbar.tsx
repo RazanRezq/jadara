@@ -61,21 +61,50 @@ export function ApplicantsToolbar({
     return (
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
             <div className="flex flex-col gap-4 p-4">
-                {/* Top Row: Title + Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    {/* Left: Title + Badge */}
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                            <Users className="h-5 w-5 text-primary" />
+                {/* Title Row */}
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-xl font-bold">
+                            {t("applicants.title")}
+                        </h1>
+                        <Badge variant="secondary" className="text-xs">
+                            {totalApplicants}
+                        </Badge>
+                    </div>
+                </div>
+
+                {/* Controls Row: Search + Dropdown + Actions */}
+                <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+                    {/* Left: Search + Job Filter */}
+                    <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                        {/* Search Input */}
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
+                            <Input
+                                placeholder={t("applicants.searchPlaceholder")}
+                                value={searchTerm}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                className="h-10 ps-10"
+                            />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold">
-                                {t("applicants.title")}
-                            </h1>
-                            <Badge variant="secondary" className="text-xs">
-                                {totalApplicants}
-                            </Badge>
-                        </div>
+
+                        {/* Job Filter */}
+                        <Select value={jobFilter} onValueChange={onJobFilterChange}>
+                            <SelectTrigger className="w-full sm:w-[200px] h-10">
+                                <SelectValue placeholder={t("applicants.selectJob")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t("applicants.allJobs")}</SelectItem>
+                                {jobs.map((job) => (
+                                    <SelectItem key={job.id} value={job.id}>
+                                        {job.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Right: View Toggle + Filter Button + Refresh */}
@@ -122,35 +151,6 @@ export function ApplicantsToolbar({
                             )} />
                         </Button>
                     </div>
-                </div>
-
-                {/* Bottom Row: Search + Job Filter */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    {/* Search Input */}
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground start-3" />
-                        <Input
-                            placeholder={t("applicants.searchPlaceholder")}
-                            value={searchTerm}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                            className="h-10 ps-10"
-                        />
-                    </div>
-
-                    {/* Job Filter */}
-                    <Select value={jobFilter} onValueChange={onJobFilterChange}>
-                        <SelectTrigger className="w-full sm:w-[200px] h-10">
-                            <SelectValue placeholder={t("applicants.selectJob")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">{t("applicants.allJobs")}</SelectItem>
-                            {jobs.map((job) => (
-                                <SelectItem key={job.id} value={job.id}>
-                                    {job.title}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
             </div>
         </div>

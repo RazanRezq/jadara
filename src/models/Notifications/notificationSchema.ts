@@ -18,6 +18,9 @@ export interface INotification extends Document {
     priority: NotificationPriority
     title: string
     message: string
+    titleKey?: string // i18n translation key for title
+    messageKey?: string // i18n translation key for message
+    params?: Record<string, any> // Parameters for interpolation
     actionUrl?: string // Optional link to related resource
     relatedId?: mongoose.Types.ObjectId // Related applicant/job/evaluation ID
     isRead: boolean
@@ -53,6 +56,17 @@ const notificationSchema = new Schema<INotification>(
             type: String,
             required: [true, 'Message is required'],
             trim: true,
+        },
+        titleKey: {
+            type: String,
+            trim: true,
+        },
+        messageKey: {
+            type: String,
+            trim: true,
+        },
+        params: {
+            type: Schema.Types.Mixed,
         },
         actionUrl: {
             type: String,

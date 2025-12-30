@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
@@ -20,9 +21,11 @@ interface CalendarClientProps {
 
 export function CalendarClient({ userRole }: CalendarClientProps) {
   const { t } = useTranslate()
+  const searchParams = useSearchParams()
 
   // View state
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [highlightedDate, setHighlightedDate] = useState<Date | null>(null)
 
   // Data state
   const [interviews, setInterviews] = useState<CalendarInterview[]>([])
@@ -137,6 +140,29 @@ export function CalendarClient({ userRole }: CalendarClientProps) {
     }
   }, [canFilterByInterviewer])
 
+  // Handle URL parameters for date navigation
+  useEffect(() => {
+    const dateParam = searchParams.get('date')
+    const applicantIdParam = searchParams.get('applicantId')
+
+    if (dateParam) {
+      try {
+        const targetDate = new Date(dateParam)
+        if (!isNaN(targetDate.getTime())) {
+          setCurrentDate(targetDate)
+          setHighlightedDate(targetDate)
+
+          // If applicant ID is provided, we'll open their interview details after data loads
+          if (applicantIdParam) {
+            // This will be handled after interviews are fetched
+          }
+        }
+      } catch (error) {
+        console.error('Invalid date parameter:', error)
+      }
+    }
+  }, [searchParams])
+
   // Initial data fetch
   useEffect(() => {
     fetchInterviews()
@@ -147,6 +173,20 @@ export function CalendarClient({ userRole }: CalendarClientProps) {
     fetchJobs()
     fetchInterviewers()
   }, [fetchJobs, fetchInterviewers])
+
+  // Open interview details if applicant ID is provided in URL
+  useEffect(() => {
+    const applicantIdParam = searchParams.get('applicantId')
+    if (applicantIdParam && interviews.length > 0) {
+      const interview = interviews.find(
+        (int) => int.applicantId === applicantIdParam
+      )
+      if (interview) {
+        setSelectedInterview(interview)
+        setDetailDialogOpen(true)
+      }
+    }
+  }, [searchParams, interviews])
 
   // Navigation handlers
   const handlePreviousMonth = () => {
@@ -233,6 +273,7 @@ export function CalendarClient({ userRole }: CalendarClientProps) {
             onEventClick={handleEventClick}
             canCreateInterview={canCreateInterview}
             EventBlock={CalendarEventBlock}
+            highlightedDate={highlightedDate}
           />
         )}
       </div>

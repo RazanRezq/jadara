@@ -41,11 +41,24 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
         email: string
         role: UserRole
     }
+    initialDirection?: "ltr" | "rtl"
 }
 
-export function AppSidebar({ user, ...props }: AppSidebarProps) {
-    const { t, isRTL, locale } = useTranslate()
+export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps) {
+    const { t, isRTL, locale, mounted } = useTranslate()
     const pathname = usePathname()
+
+    // Use initial direction from server to prevent hydration mismatch
+    const [sidebarSide, setSidebarSide] = React.useState<"left" | "right">(
+        initialDirection === "rtl" ? "right" : "left"
+    )
+
+    // Update sidebar side when language changes (user switches language)
+    React.useEffect(() => {
+        if (mounted) {
+            setSidebarSide(isRTL ? "right" : "left")
+        }
+    }, [isRTL, mounted])
 
     // Navigation structure with grouped sections for ATS
     const navSections = React.useMemo(() => {
@@ -175,55 +188,57 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     return (
         <Sidebar
             collapsible="icon"
-            side={isRTL ? "right" : "left"}
+            side={sidebarSide}
             className="top-[var(--header-height)] h-[calc(100svh-var(--header-height))]!"
             {...props}
         >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarHeaderContent
-                            isRTL={isRTL}
-                            brandingText="GoIELTS"
-                            adminPortalText={t("branding.adminPortal")}
-                        />
+                        {mounted && (
+                            <SidebarHeaderContent
+                                isRTL={isRTL}
+                                brandingText="GoIELTS"
+                                adminPortalText={t("branding.adminPortal")}
+                            />
+                        )}
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                {navSections.map((section) => {
-                    // Filter items based on user role permissions
-                    const filteredItems = section.items.filter((item) =>
-                        hasRolePermission(user.role, item.requiredRole)
-                    )
+                {mounted && navSections.map((section) => {
+                        // Filter items based on user role permissions
+                        const filteredItems = section.items.filter((item) =>
+                            hasRolePermission(user.role, item.requiredRole)
+                        )
 
-                    // Only render section if there are visible items
-                    if (filteredItems.length === 0) return null
+                        // Only render section if there are visible items
+                        if (filteredItems.length === 0) return null
 
-                    return (
-                        <SidebarGroup key={section.title}>
-                            <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
-                            <SidebarGroupContent>
-                                <SidebarMenu>
-                                    {filteredItems.map((item) => (
-                                        <SidebarMenuItem key={item.url}>
-                                            <SidebarMenuItemContent
-                                                title={item.title}
-                                                url={item.url}
-                                                icon={item.icon}
-                                                iconColor={item.iconColor}
-                                                isActive={item.isActive}
-                                            />
-                                        </SidebarMenuItem>
-                                    ))}
-                                </SidebarMenu>
-                            </SidebarGroupContent>
-                        </SidebarGroup>
-                    )
-                })}
+                        return (
+                            <SidebarGroup key={section.title}>
+                                <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+                                <SidebarGroupContent>
+                                    <SidebarMenu>
+                                        {filteredItems.map((item) => (
+                                            <SidebarMenuItem key={item.url}>
+                                                <SidebarMenuItemContent
+                                                    title={item.title}
+                                                    url={item.url}
+                                                    icon={item.icon}
+                                                    iconColor={item.iconColor}
+                                                    isActive={item.isActive}
+                                                />
+                                            </SidebarMenuItem>
+                                        ))}
+                                    </SidebarMenu>
+                                </SidebarGroupContent>
+                            </SidebarGroup>
+                        )
+                    })}
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={user} />
+                {mounted && <NavUser user={user} />}
             </SidebarFooter>
         </Sidebar>
     )

@@ -65,10 +65,12 @@ export function NavUser({ user }: NavUserProps) {
                             </Avatar>
                             <div className="grid flex-1 text-start text-sm leading-tight">
                                 <span className="truncate font-medium">{user.name}</span>
-                                <span className={cn(
-                                    "truncate text-xs px-1.5 py-0.5 rounded w-fit",
-                                    getRoleColor(user.role)
-                                )}>
+                                <span
+                                    className={cn(
+                                        "truncate text-xs px-1.5 py-0.5 rounded w-fit",
+                                        getRoleColor(user.role)
+                                    )}
+                                >
                                     {t(`roles.${user.role}`)}
                                 </span>
                             </div>
@@ -97,7 +99,7 @@ export function NavUser({ user }: NavUserProps) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                             <LogOut />
-                            {t("header.logout")}
+                            <span>{t("header.logout")}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

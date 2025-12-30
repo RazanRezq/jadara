@@ -18,9 +18,10 @@ type Translations = { [key: string]: TranslationValue }
 export interface LanguageContextType {
     locale: Locale
     setLocale: (locale: Locale) => void
-    t: (key: string) => string
+    t: (key: string, params?: Record<string, string | number>) => string
     dir: "rtl" | "ltr"
     isRTL: boolean
+    mounted: boolean
 }
 
 const translations: Record<Locale, Translations> = {
@@ -50,6 +51,7 @@ const defaultContextValue: LanguageContextType = {
     t: (key: string) => getNestedValue(translations.ar, key),
     dir: "rtl",
     isRTL: true,
+    mounted: false,
 }
 
 export const LanguageContext = createContext<LanguageContextType>(defaultContextValue)
@@ -63,37 +65,44 @@ export function LanguageProvider({
     children,
     defaultLocale = "ar",
 }: LanguageProviderProps) {
+    // Initialize state from cookie (passed from server) or default
     const [locale, setLocaleState] = useState<Locale>(defaultLocale)
     const [mounted, setMounted] = useState(false)
 
-    // Set initial direction immediately to avoid flash
+    // On mount, sync with server-set direction (no need to set dir - server already did)
     useEffect(() => {
-        const savedLocale = localStorage.getItem("locale") as Locale | null
-        const initialLocale = (savedLocale === "ar" || savedLocale === "en") ? savedLocale : defaultLocale
-
-        // Set direction immediately
-        document.documentElement.dir = initialLocale === "ar" ? "rtl" : "ltr"
-        document.documentElement.lang = initialLocale
-
-        if (savedLocale && (savedLocale === "ar" || savedLocale === "en")) {
-            setLocaleState(savedLocale)
-        }
         setMounted(true)
-    }, [defaultLocale])
+    }, [])
 
-    // Update direction when locale changes
+    // Update document attributes when locale changes (user switches language)
     useEffect(() => {
-        document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
-        document.documentElement.lang = locale
-    }, [locale])
+        if (mounted) {
+            document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
+            document.documentElement.lang = locale
+            document.body.dir = locale === "ar" ? "rtl" : "ltr"
+        }
+    }, [locale, mounted])
 
     const setLocale = (newLocale: Locale) => {
-        setLocaleState(newLocale)
-        localStorage.setItem("locale", newLocale)
+        // Store in cookie with 1 year expiry
+        document.cookie = `locale=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
+
+        // Reload the page to let the server re-render with new direction
+        // This ensures SidebarProvider and all layouts remount with correct direction
+        window.location.reload()
     }
 
-    const t = (key: string): string => {
-        return getNestedValue(translations[locale], key)
+    const t = (key: string, params?: Record<string, string | number>): string => {
+        let translation = getNestedValue(translations[locale], key)
+
+        // Replace {{param}} with actual values
+        if (params) {
+            Object.entries(params).forEach(([key, value]) => {
+                translation = translation.replace(new RegExp(`{{${key}}}`, 'g'), String(value))
+            })
+        }
+
+        return translation
     }
 
     const value: LanguageContextType = {
@@ -102,6 +111,7 @@ export function LanguageProvider({
         t,
         dir: locale === "ar" ? "rtl" : "ltr",
         isRTL: locale === "ar",
+        mounted,
     }
 
     return (

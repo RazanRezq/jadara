@@ -108,6 +108,11 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
         fetchJob()
     }, [fetchJob])
 
+    // Scroll to top on page load
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+    }, [])
+
     /**
      * Handle starting the application - just initializes the wizard
      */
@@ -130,12 +135,7 @@ export function ApplyClient({ jobId }: ApplyClientProps) {
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center space-y-4">
-                    <Spinner className="size-10" />
-                    <p className="text-muted-foreground animate-pulse">
-                        {t("common.loading")}
-                    </p>
-                </div>
+                <Spinner className="size-10" />
             </div>
         )
     }

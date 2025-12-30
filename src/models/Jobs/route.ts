@@ -232,7 +232,7 @@ app.get('/list', authenticate, async (c) => {
 
         // Build sort object
         const sortDirection = sortOrder === 'asc' ? 1 : -1
-        const sortObject: Record<string, number> = {}
+        const sortObject: Record<string, 1 | -1> = {}
 
         // Handle applicantsCount sorting differently (will be done after aggregation)
         if (sortBy !== 'applicantsCount') {

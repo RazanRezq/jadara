@@ -17,6 +17,7 @@ interface CalendarMonthViewProps {
     interview: CalendarInterview
     onClick: () => void
   }>
+  highlightedDate?: Date | null
 }
 
 function generateCalendarDays(
@@ -51,6 +52,7 @@ export function CalendarMonthView({
   onEventClick,
   canCreateInterview,
   EventBlock,
+  highlightedDate,
 }: CalendarMonthViewProps) {
   const { t, locale, isRTL } = useTranslate()
 
@@ -88,14 +90,16 @@ export function CalendarMonthView({
         {calendarDays.map((day, index) => {
           const visibleEvents = day.interviews.slice(0, MAX_VISIBLE_EVENTS)
           const hiddenCount = day.interviews.length - MAX_VISIBLE_EVENTS
+          const isHighlighted = highlightedDate && isSameDay(day.date, highlightedDate)
 
           return (
             <div
               key={index}
               className={cn(
-                "min-h-[100px] md:min-h-[120px] border-b border-r border-border p-1.5 md:p-2 transition-colors",
+                "min-h-[100px] md:min-h-[120px] border-b border-r border-border p-1.5 md:p-2 transition-all duration-300",
                 !day.isCurrentMonth && "bg-muted/20",
                 day.isToday && "bg-primary/5",
+                isHighlighted && "bg-amber-50 dark:bg-amber-950/20 ring-2 ring-amber-400 dark:ring-amber-600 animate-pulse-glow",
                 canCreateInterview && "cursor-pointer hover:bg-accent/50",
                 (index + 1) % 7 === 0 && "border-r-0"
               )}
@@ -111,7 +115,8 @@ export function CalendarMonthView({
                   className={cn(
                     "text-sm font-medium",
                     !day.isCurrentMonth && "text-muted-foreground",
-                    day.isToday && "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                    day.isToday && "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground",
+                    isHighlighted && !day.isToday && "flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white font-bold"
                   )}
                 >
                   {format(day.date, "d")}

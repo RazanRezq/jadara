@@ -30,12 +30,16 @@ export function MagicCard({
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (cardRef.current) {
-        const { left, top } = cardRef.current.getBoundingClientRect();
-        const clientX = e.clientX;
-        const clientY = e.clientY;
-        mouseX.set(clientX - left);
-        mouseY.set(clientY - top);
+      if (cardRef.current && cardRef.current.parentNode) {
+        try {
+          const { left, top } = cardRef.current.getBoundingClientRect();
+          const clientX = e.clientX;
+          const clientY = e.clientY;
+          mouseX.set(clientX - left);
+          mouseY.set(clientY - top);
+        } catch (error) {
+          // Silently handle errors during animation
+        }
       }
     },
     [mouseX, mouseY],
@@ -43,30 +47,48 @@ export function MagicCard({
 
   const handleMouseOut = useCallback(
     (e: MouseEvent) => {
-      if (!e.relatedTarget) {
-        document.removeEventListener("mousemove", handleMouseMove);
-        mouseX.set(-gradientSize);
-        mouseY.set(-gradientSize);
+      try {
+        if (!e.relatedTarget) {
+          document.removeEventListener("mousemove", handleMouseMove);
+          mouseX.set(-gradientSize);
+          mouseY.set(-gradientSize);
+        }
+      } catch (error) {
+        // Silently handle errors during animation
       }
     },
     [handleMouseMove, mouseX, gradientSize, mouseY],
   );
 
   const handleMouseEnter = useCallback(() => {
-    document.addEventListener("mousemove", handleMouseMove);
-    mouseX.set(-gradientSize);
-    mouseY.set(-gradientSize);
+    try {
+      document.addEventListener("mousemove", handleMouseMove);
+      mouseX.set(-gradientSize);
+      mouseY.set(-gradientSize);
+    } catch (error) {
+      // Silently handle errors during animation
+    }
   }, [handleMouseMove, mouseX, gradientSize, mouseY]);
 
   useEffect(() => {
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseout", handleMouseOut);
-    document.addEventListener("mouseenter", handleMouseEnter);
+    if (typeof window === 'undefined') return;
+
+    try {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseout", handleMouseOut);
+      document.addEventListener("mouseenter", handleMouseEnter);
+    } catch (error) {
+      // Silently handle errors during animation
+    }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseout", handleMouseOut);
-      document.removeEventListener("mouseenter", handleMouseEnter);
+      try {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseout", handleMouseOut);
+        document.removeEventListener("mouseenter", handleMouseEnter);
+      } catch (error) {
+        // Silently handle cleanup errors
+      }
     };
   }, [handleMouseEnter, handleMouseMove, handleMouseOut]);
 

@@ -791,11 +791,15 @@ function RecentCandidatesTable({
 
 // Main AdminView Component - Optime Grid Layout
 export function AdminView({ stats, userRole, userId }: AdminViewProps) {
-    const { t, dir, locale } = useTranslate()
+    const { t, dir, locale, mounted } = useTranslate()
 
     // Refresh function - reload the page to get fresh data
     const handleRefresh = () => {
         window.location.reload()
+    }
+
+    if (!mounted) {
+        return null
     }
 
     const statCards = [

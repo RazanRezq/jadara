@@ -11,6 +11,7 @@ export interface PersonalData {
     name: string
     email: string
     phone: string
+    gender?: string
     age?: number
     major?: string
     yearsOfExperience?: number

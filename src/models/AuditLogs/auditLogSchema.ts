@@ -14,9 +14,12 @@ export type AuditAction =
     | 'job.created'
     | 'job.updated'
     | 'job.deleted'
+    | 'job.bulk_deleted'
     | 'job.published'
     | 'job.closed'
     | 'job.archived'
+    | 'job.bulk_archived'
+    | 'job.bulk_status_changed'
     // Applicant actions
     | 'applicant.created'
     | 'applicant.updated'

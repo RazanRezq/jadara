@@ -8,6 +8,7 @@ import Evaluation from '@/models/Evaluations/evaluationSchema'
 import Review from '@/models/Reviews/reviewSchema'
 import User from '@/models/Users/userSchema'
 import Interview from '@/models/Interviews/interviewSchema'
+import { revalidatePath } from 'next/cache'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GOLDEN LIST STATUS NORMALIZATION
@@ -457,6 +458,9 @@ app.post('/update/:id', authenticate, async (c) => {
                 console.error('❌ Failed to send email:', emailError)
                 // Don't fail the status update if email fails
             }
+
+            // Revalidate dashboard to update "My Reviews" lists
+            revalidatePath('/dashboard')
         }
 
         return c.json({
@@ -584,6 +588,9 @@ app.patch('/:id/status', authenticate, async (c) => {
                 // Don't fail the status update if email fails
             }
         }
+
+        // Revalidate dashboard to update "My Reviews" lists
+        revalidatePath('/dashboard')
 
         return c.json({
             success: true,
@@ -767,6 +774,135 @@ app.get('/stats/:jobId', authenticate, async (c) => {
                 },
                 averageScore: avgScore[0]?.avg || 0,
             },
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// ===========================
+// Bulk Delete Applicants
+// ===========================
+app.post('/bulk-delete', async (c) => {
+    try {
+        await dbConnect()
+
+        const { applicantIds } = await c.req.json()
+
+        if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Applicant IDs are required',
+                },
+                400
+            )
+        }
+
+        const result = await Applicant.deleteMany({
+            _id: { $in: applicantIds },
+        })
+
+        return c.json({
+            success: true,
+            count: result.deletedCount,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// ===========================
+// Bulk Archive Applicants
+// ===========================
+app.post('/bulk-archive', async (c) => {
+    try {
+        await dbConnect()
+
+        const { applicantIds } = await c.req.json()
+
+        if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Applicant IDs are required',
+                },
+                400
+            )
+        }
+
+        const result = await Applicant.updateMany(
+            { _id: { $in: applicantIds } },
+            { $set: { status: 'archived' } }
+        )
+
+        return c.json({
+            success: true,
+            count: result.modifiedCount,
+        })
+    } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// ===========================
+// Bulk Status Change
+// ===========================
+app.post('/bulk-status', async (c) => {
+    try {
+        await dbConnect()
+
+        const { applicantIds, status } = await c.req.json()
+
+        if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Applicant IDs are required',
+                },
+                400
+            )
+        }
+
+        if (!status) {
+            return c.json(
+                {
+                    success: false,
+                    error: 'Status is required',
+                },
+                400
+            )
+        }
+
+        const result = await Applicant.updateMany(
+            { _id: { $in: applicantIds } },
+            { $set: { status } }
+        )
+
+        return c.json({
+            success: true,
+            count: result.modifiedCount,
         })
     } catch (error) {
         return c.json(

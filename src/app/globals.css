@@ -399,4 +399,99 @@
   .max-w-none {
     max-width: none;
   }
+
+  /* ========================================
+     SIDEBAR LTR/RTL LAYOUT FIXES
+     ======================================== */
+
+  /* Ensure sidebar wrapper doesn't interfere */
+  [data-slot="sidebar"] {
+    flex-shrink: 0;
+  }
+
+  /* Make sidebar start below header instead of at top of viewport */
+  [data-slot="sidebar-container"] {
+    top: var(--header-height) !important;
+    bottom: 0 !important;
+    height: calc(100vh - var(--header-height)) !important;
+  }
+
+  /* Position sidebar based on direction - ALL combinations with !important */
+  /* LTR mode: left sidebar */
+  [dir="ltr"] [data-side="left"][data-slot="sidebar-container"] {
+    left: 0 !important;
+    right: auto !important;
+  }
+
+  /* LTR mode: right sidebar (shouldn't happen but handle it) */
+  [dir="ltr"] [data-side="right"][data-slot="sidebar-container"] {
+    right: 0 !important;
+    left: auto !important;
+  }
+
+  /* RTL mode: right sidebar */
+  [dir="rtl"] [data-side="right"][data-slot="sidebar-container"] {
+    right: 0 !important;
+    left: auto !important;
+  }
+
+  /* RTL mode: left sidebar (shouldn't happen but handle it) */
+  [dir="rtl"] [data-side="left"][data-slot="sidebar-container"] {
+    left: 0 !important;
+    right: auto !important;
+  }
+
+  /* Ensure gap div maintains proper spacing and is visible */
+  [data-slot="sidebar-gap"] {
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+
+  /* Ensure sidebar content is properly layered */
+  [data-slot="sidebar-container"] {
+    z-index: 10;
+  }
+
+  /* Header should be above sidebar */
+  header {
+    z-index: 50;
+  }
+
+  /* Fix for content area to not overlap */
+  [data-slot="sidebar-inset"] {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ========================================
+     GLOWING ANIMATION FOR INTERVIEW DATE
+     ======================================== */
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(251, 191, 36, 0.4), 0 0 10px rgba(251, 191, 36, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.3), 0 0 30px rgba(251, 191, 36, 0.1);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* ========================================
+     SHIMMER ANIMATION FOR PROGRESS BAR
+     ======================================== */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
+  }
 }

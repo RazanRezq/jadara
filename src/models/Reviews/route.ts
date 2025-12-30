@@ -634,4 +634,61 @@ app.post('/batch-badges', authenticate, async (c) => {
     }
 })
 
+// Get rating distribution for a specific reviewer
+app.get('/rating-distribution', authenticate, async (c) => {
+    try {
+        await dbConnect()
+        const reviewerId = c.req.query('reviewerId')
+        const user = getAuthUser(c)
+
+        // Use current user if reviewerId not provided or if non-admin trying to view others
+        const targetReviewerId = reviewerId && (user.role === 'admin' || user.role === 'superadmin')
+            ? reviewerId
+            : user.id
+
+        const result = await Review.aggregate([
+            {
+                $match: {
+                    reviewerId: new mongoose.Types.ObjectId(targetReviewerId),
+                },
+            },
+            {
+                $group: {
+                    _id: '$rating',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: -1 },
+            },
+        ])
+
+        // Transform result to ensure all star ratings are present
+        const distribution = [5, 4, 3, 2, 1].map((rating) => {
+            const found = result.find((r) => r._id === rating)
+            return {
+                rating,
+                count: found?.count || 0,
+            }
+        })
+
+        const total = distribution.reduce((acc, item) => acc + item.count, 0)
+
+        return c.json({
+            success: true,
+            data: {
+                distribution,
+                total,
+            },
+        })
+    } catch (error) {
+        console.error('[Rating Distribution] Error:', error)
+        return c.json({
+            success: false,
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        }, 500)
+    }
+})
+
 export default app

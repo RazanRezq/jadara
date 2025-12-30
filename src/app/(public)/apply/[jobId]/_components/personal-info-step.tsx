@@ -29,7 +29,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
-import { ArrowRight, Info } from "lucide-react"
+import { ArrowRight, ArrowLeft, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { getLocalizedLanguageName } from "@/lib/language-translations"
@@ -80,6 +80,7 @@ const getPersonalDataSchema = (
         name: z.string().min(2, t("apply.validation.nameMin")),
         email: z.string().email(t("apply.validation.emailInvalid")),
         phone: z.string().min(6, t("apply.validation.phoneMin")),
+        gender: z.string().optional(),
         age: z.union([
             z.coerce
                 .number()
@@ -119,6 +120,7 @@ const getPersonalDataSchema = (
 export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmitting = false }: PersonalInfoStepProps) {
     const { t, locale } = useTranslate()
     const isRTL = locale === "ar"
+    const ArrowNext = isRTL ? ArrowLeft : ArrowRight
 
     const personalDataSchema = getPersonalDataSchema(job, t)
 
@@ -146,6 +148,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
             name: "",
             email: "",
             phone: "",
+            gender: "",
             age: undefined,
             major: "",
             yearsOfExperience: undefined,
@@ -181,9 +184,9 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
     }
 
     return (
-        <Card className="border-2 border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <CardHeader>
-                <CardTitle className="text-xl">
+        <Card className="border shadow-sm">
+            <CardHeader className="space-y-1 pb-6">
+                <CardTitle className="text-2xl font-semibold">
                     {t("apply.personalInfo")}
                 </CardTitle>
                 <p className="text-muted-foreground text-sm">
@@ -194,23 +197,28 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(handleSubmit)}
-                        className="space-y-5"
+                        className="space-y-8"
                         noValidate
                     >
-                        {/* Basic Info */}
-                        <div className="grid md:grid-cols-2 gap-3">
+                        {/* Contact Information */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                {t("apply.contactInformation")}
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
-                                            {t("common.name")} *
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("common.name")} <span className="text-destructive">*</span>
                                         </FormLabel>
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.namePlaceholder")}
                                                 dir={locale === "ar" ? "rtl" : "ltr"}
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -223,14 +231,15 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
-                                            {t("common.email")} *
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("common.email")} <span className="text-destructive">*</span>
                                         </FormLabel>
                                         <FormControl>
                                             <Input
                                                 type="email"
                                                 placeholder="example@email.com"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -238,24 +247,59 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     </FormItem>
                                 )}
                             />
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-3">
                             <FormField
                                 control={form.control}
                                 name="phone"
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("applicants.phone")} *
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("applicants.phone")} <span className="text-destructive">*</span>
                                         </FormLabel>
                                         <FormControl>
                                             <Input
                                                 placeholder="+966 5XX XXX XXXX"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            </div>
+                        </div>
+
+                        {/* Professional Background */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                {t("apply.professionalBackground")}
+                            </h3>
+                            <div className="grid md:grid-cols-3 gap-x-4 gap-y-4">
+                            <FormField
+                                control={form.control}
+                                name="gender"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("applicants.gender")}
+                                        </FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value}
+                                            dir={isRTL ? "rtl" : "ltr"}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="h-10">
+                                                    <SelectValue placeholder={t("apply.selectGender")} />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="male">{t("apply.male")}</SelectItem>
+                                                <SelectItem value="female">{t("apply.female")}</SelectItem>
+                                                <SelectItem value="other">{t("apply.other")}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -265,7 +309,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 name="age"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
+                                        <FormLabel className="text-sm font-medium">
                                             {t("applicants.age")}
                                         </FormLabel>
                                         <FormControl>
@@ -275,6 +319,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                 max={100}
                                                 placeholder="25"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                                 value={field.value || ""}
                                             />
@@ -288,13 +333,14 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 name="major"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
+                                        <FormLabel className="text-sm font-medium">
                                             {t("applicants.major")}
                                         </FormLabel>
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.majorPlaceholder")}
                                                 dir={locale === "ar" ? "rtl" : "ltr"}
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -302,15 +348,21 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     </FormItem>
                                 )}
                             />
+                            </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-3">
+                        {/* Additional Information */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                {t("apply.additionalInformation")}
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="yearsOfExperience"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
+                                        <FormLabel className="text-sm font-medium">
                                             {t("apply.yearsOfExperience")}
                                         </FormLabel>
                                         <FormControl>
@@ -320,6 +372,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                 max={50}
                                                 placeholder="5"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                                 value={field.value || ""}
                                             />
@@ -334,7 +387,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     name="salaryExpectation"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>
+                                            <FormLabel className="text-sm font-medium">
                                                 {t("applicants.salaryExpectation")}
                                             </FormLabel>
                                             <FormControl>
@@ -344,6 +397,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                     min={0}
                                                     placeholder="10000"
                                                     dir="ltr"
+                                                    className="h-10"
                                                     {...field}
                                                     value={field.value || ""}
                                                 />
@@ -353,14 +407,17 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     )}
                                 />
                             )}
+                            </div>
                         </div>
 
                         {/* Screening Questions */}
                         {Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0 && (
-                            <>
-                                <Separator className="my-4" />
-                                
-                                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 mb-4">
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                    {t("apply.screeningQuestions")}
+                                </h3>
+
+                                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
                                     <Info className="h-4 w-4 text-blue-600" />
                                     <AlertTitle className="text-blue-900 dark:text-blue-100">
                                         {t("apply.screeningGuidance.title")}
@@ -369,7 +426,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         {t("apply.screeningGuidance.message")}
                                     </AlertDescription>
                                 </Alert>
-                                
+
                                 <div className="space-y-3">
                                     {job.screeningQuestions.map((sq, index) => (
                                         <FormField
@@ -377,9 +434,9 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             control={form.control}
                                             name={`screeningAnswers.${sq.question}` as any}
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center justify-between gap-2 text-sm">
-                                                        <span>
+                                                <FormItem className="p-4 rounded-lg border bg-muted/20">
+                                                    <FormLabel className="flex items-center justify-between gap-2 text-sm font-medium">
+                                                        <span className="leading-relaxed">
                                                             {index + 1}. {sq.question}
                                                         </span>
                                                         {sq.disqualify && (
@@ -424,14 +481,16 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         />
                                     ))}
                                 </div>
-                            </>
+                            </div>
                         )}
 
-                        {/* Languages */}
+                        {/* Language Proficiency */}
                         {Array.isArray(job.languages) && job.languages.length > 0 && (
-                            <>
-                                <Separator className="my-4" />
-                                <div className="grid md:grid-cols-2 gap-3">
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                    {t("apply.languageProficiency")}
+                                </h3>
+                                <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
                                     {job.languages.map((lang, index) => (
                                         <FormField
                                             key={index}
@@ -439,50 +498,56 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             name={`languageProficiency.${lang.language}` as any}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm">
+                                                    <FormLabel className="text-sm font-medium">
                                                         {getLocalizedLanguageName(lang.language, locale)}
                                                     </FormLabel>
-                                                    <FormControl>
-                                                        <Select
-                                                            onValueChange={field.onChange}
-                                                            value={field.value}
-                                                            dir={isRTL ? "rtl" : "ltr"}
-                                                        >
-                                                            <SelectTrigger>
+                                                    <Select
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                        dir={isRTL ? "rtl" : "ltr"}
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger className="h-10">
                                                                 <SelectValue placeholder={t("apply.languageProficiency")} />
                                                             </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="beginner">{t("apply.beginner")}</SelectItem>
-                                                                <SelectItem value="intermediate">{t("apply.intermediate")}</SelectItem>
-                                                                <SelectItem value="advanced">{t("apply.advanced")}</SelectItem>
-                                                                <SelectItem value="native">{t("apply.native")}</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </FormControl>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="beginner">{t("apply.beginner")}</SelectItem>
+                                                            <SelectItem value="intermediate">{t("apply.intermediate")}</SelectItem>
+                                                            <SelectItem value="advanced">{t("apply.advanced")}</SelectItem>
+                                                            <SelectItem value="native">{t("apply.native")}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
                                     ))}
                                 </div>
-                            </>
+                            </div>
                         )}
 
-                        {/* Links */}
-                        <div className="grid md:grid-cols-2 gap-3">
+                        {/* Professional Links */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
+                                {t("apply.professionalLinks")}
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="linkedinUrl"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
-                                            LinkedIn{" "}
-                                            {job.candidateDataConfig.requireLinkedIn && "*"}
+                                        <FormLabel className="text-sm font-medium">
+                                            LinkedIn
+                                            {job.candidateDataConfig.requireLinkedIn && <span className="text-destructive"> *</span>}
                                         </FormLabel>
                                         <FormControl>
                                             <Input
-                                                placeholder="https://linkedin.com/in/..."
+                                                type="url"
+                                                placeholder="https://linkedin.com/in/yourprofile"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -495,14 +560,16 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 name="portfolioUrl"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>
-                                            {t("apply.portfolio")}{" "}
-                                            {job.candidateDataConfig.requirePortfolio && "*"}
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("apply.portfolio")}
+                                            {job.candidateDataConfig.requirePortfolio && <span className="text-destructive"> *</span>}
                                         </FormLabel>
                                         <FormControl>
                                             <Input
-                                                placeholder="https://portfolio.com/..."
+                                                type="url"
+                                                placeholder="https://yourportfolio.com"
                                                 dir="ltr"
+                                                className="h-10"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -510,9 +577,11 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     </FormItem>
                                 )}
                             />
+                            </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        {/* Submit Buttons */}
+                        <div className="flex gap-3 pt-6 border-t">
                             {onBack && (
                                 <Button
                                     type="button"
@@ -538,8 +607,9 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     </>
                                 ) : (
                                     <>
-                                        {t("common.next")}
-                                        <ArrowRight className="size-4" />
+                                        {isRTL && t("common.next")}
+                                        <ArrowNext className="size-4" />
+                                        {!isRTL && t("common.next")}
                                     </>
                                 )}
                             </Button>

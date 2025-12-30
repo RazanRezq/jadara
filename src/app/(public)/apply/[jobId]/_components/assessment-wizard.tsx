@@ -88,6 +88,11 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
     const currentQuestion = job.questions[currentQuestionIndex]
     const totalQuestions = job.questions.length
 
+    // Scroll to top on wizard step change or question change
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, [wizardStep, currentQuestionIndex])
+
     // Define wizard steps for the indicator
     const wizardSteps = [
         { id: "personalInfo", number: 1, label: t("apply.personalInfo") },
@@ -340,7 +345,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                     {/* Top Row: Logo, Title, and Controls */}
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                            <div className="size-10 rounded-xl bg-primary flex items-center justify-center">
                                 <Sparkles className="size-5 text-primary-foreground" />
                             </div>
                             <div>
@@ -423,7 +428,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
 
                     {/* Instructions Step */}
                     {wizardStep === "instructions" && (
-                        <Card className="border-2 border-border bg-card shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card className="border-2 border-border bg-card shadow-sm">
                             <CardHeader className="text-center">
                                 <div className="mx-auto mb-4 size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                                     <AlertCircle className="size-8 text-primary" />
@@ -499,8 +504,9 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                             className="h-12 text-base gap-2"
                                             onClick={handleGoBack}
                                         >
+                                            {isRTL && t("common.back")}
                                             <ArrowPrev className="size-4" />
-                                            {t("common.back")}
+                                            {!isRTL && t("common.back")}
                                         </Button>
                                     )}
                                     <Button
@@ -519,11 +525,9 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                             }
                                         }}
                                     >
-                                        {totalQuestions === 0
-                                            ? t("common.next")
-                                            : t("apply.startAssessment")
-                                        }
+                                        {isRTL && (totalQuestions === 0 ? t("common.next") : t("apply.startAssessment"))}
                                         <ArrowNext className="size-4" />
+                                        {!isRTL && (totalQuestions === 0 ? t("common.next") : t("apply.startAssessment"))}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -557,8 +561,9 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                                     className="h-12 text-base gap-2"
                                                     onClick={handleGoBack}
                                                 >
+                                                    {isRTL && t("common.back")}
                                                     <ArrowPrev className="size-4" />
-                                                    {t("common.back")}
+                                                    {!isRTL && t("common.back")}
                                                 </Button>
                                             )}
                                             <Button
@@ -572,8 +577,9 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                                     }
                                                 }}
                                             >
-                                                {t("common.next")}
+                                                {isRTL && t("common.next")}
                                                 <ArrowNext className="size-4" />
+                                                {!isRTL && t("common.next")}
                                             </Button>
                                         </div>
                                     </CardContent>

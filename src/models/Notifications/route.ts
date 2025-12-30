@@ -1,42 +1,76 @@
 import { Hono } from 'hono'
+import mongoose from 'mongoose'
 import dbConnect from '@/lib/mongodb'
 import Notification from './notificationSchema'
 
 const app = new Hono()
 
-// GET /api/notifications - Get all notifications for current user
+// GET /api/notifications - Get all notifications for current user (with pagination, filtering, search)
 app.get('/', async (c) => {
     try {
         await dbConnect()
 
         const userId = c.req.query('userId')
-        const isRead = c.req.query('isRead')
-        const limit = parseInt(c.req.query('limit') || '50')
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '10')
+        const status = c.req.query('status')
+        const type = c.req.query('type')
+        const priority = c.req.query('priority')
+        const search = c.req.query('search')
 
         if (!userId) {
             return c.json({ success: false, error: 'User ID is required' }, 400)
         }
 
-        const query: any = { userId }
-        if (isRead !== undefined) {
-            query.isRead = isRead === 'true'
+        // Build query
+        const query: any = { userId: new mongoose.Types.ObjectId(userId as string) }
+
+        // Status filter
+        if (status === 'read') {
+            query.isRead = true
+        } else if (status === 'unread') {
+            query.isRead = false
         }
 
-        const notifications = await Notification.find(query)
-            .sort({ createdAt: -1 })
-            .limit(limit)
-            .lean()
+        // Type filter
+        if (type && type !== 'all') {
+            query.type = type
+        }
 
-        const unreadCount = await Notification.countDocuments({
-            userId,
-            isRead: false,
-        })
+        // Priority filter
+        if (priority && priority !== 'all') {
+            query.priority = priority
+        }
+
+        // Search filter (title or message)
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { message: { $regex: search, $options: 'i' } },
+            ]
+        }
+
+        const skip = (page - 1) * limit
+
+        // Execute queries in parallel
+        const [notifications, total, unreadCount] = await Promise.all([
+            Notification.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Notification.countDocuments(query),
+            Notification.countDocuments({ userId: query.userId, isRead: false }),
+        ])
 
         return c.json({
             success: true,
             data: {
                 notifications,
+                total,
                 unreadCount,
+                page,
+                totalPages: Math.ceil(total / limit),
             },
         })
     } catch (error: any) {
@@ -174,6 +208,40 @@ app.delete('/:id', async (c) => {
             {
                 success: false,
                 error: 'Failed to delete notification',
+                details: error.message,
+            },
+            500
+        )
+    }
+})
+
+// DELETE /api/notifications/delete-read - Bulk delete all read notifications for user
+app.delete('/delete-read', async (c) => {
+    try {
+        await dbConnect()
+
+        const userId = c.req.query('userId')
+
+        if (!userId) {
+            return c.json({ success: false, error: 'User ID is required' }, 400)
+        }
+
+        const result = await Notification.deleteMany({
+            userId: new mongoose.Types.ObjectId(userId as string),
+            isRead: true,
+        })
+
+        return c.json({
+            success: true,
+            data: { deletedCount: result.deletedCount },
+            message: `${result.deletedCount} read notifications deleted successfully`,
+        })
+    } catch (error: any) {
+        console.error('Error deleting read notifications:', error)
+        return c.json(
+            {
+                success: false,
+                error: 'Failed to delete read notifications',
                 details: error.message,
             },
             500

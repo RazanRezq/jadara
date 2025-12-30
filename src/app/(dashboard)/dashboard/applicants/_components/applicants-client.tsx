@@ -4,9 +4,23 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { type UserRole } from "@/lib/auth"
+import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
+import { X, Archive, Trash2 } from "lucide-react"
 
 // Components
 import { ApplicantsToolbar } from "./applicants-toolbar"
@@ -78,6 +92,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
 
+    // Bulk selection
+    const [selectedApplicants, setSelectedApplicants] = useState<Set<string>>(new Set())
+
     // Stats
     const [stats, setStats] = useState({
         totalApplicants: 0,
@@ -92,6 +109,15 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     const [selectedTab, setSelectedTab] = useState<string>("overview")
     const [scheduleInterviewDialogOpen, setScheduleInterviewDialogOpen] = useState(false)
     const [applicantForInterview, setApplicantForInterview] = useState<Applicant | null>(null)
+
+    // Alert dialog for bulk operations
+    const [alertOpen, setAlertOpen] = useState(false)
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string
+        description: string
+        onConfirm: () => void
+        variant?: 'default' | 'destructive'
+    } | null>(null)
 
     // Request deduplication refs
     const isFetchingApplicants = useRef(false)
@@ -200,6 +226,11 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         fetchApplicants()
     }, [fetchApplicants])
 
+    // Clear selections when page changes
+    useEffect(() => {
+        setSelectedApplicants(new Set())
+    }, [page])
+
     useEffect(() => {
         if (jobIdFromUrl || statusFromUrl || minScoreFromUrl) {
             setFilters(prev => ({
@@ -304,6 +335,128 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }
 
+    // Bulk selection handlers
+    const handleSelectAll = () => {
+        if (selectedApplicants.size === filteredApplicants.length) {
+            setSelectedApplicants(new Set())
+        } else {
+            setSelectedApplicants(new Set(filteredApplicants.map(applicant => applicant.id)))
+        }
+    }
+
+    const handleSelectApplicant = (applicantId: string) => {
+        const newSelected = new Set(selectedApplicants)
+        if (newSelected.has(applicantId)) {
+            newSelected.delete(applicantId)
+        } else {
+            newSelected.add(applicantId)
+        }
+        setSelectedApplicants(newSelected)
+    }
+
+    const handleBulkDelete = () => {
+        if (selectedApplicants.size === 0) return
+
+        setAlertConfig({
+            title: t("applicants.confirmBulkDelete").replace("{count}", selectedApplicants.size.toString()),
+            description: t("applicants.confirmBulkDeleteDescription"),
+            variant: 'destructive',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch('/api/applicants/bulk-delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ applicantIds: Array.from(selectedApplicants) }),
+                    })
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                        toast.success(t("applicants.bulkDeleteSuccess").replace("{count}", data.count.toString()))
+                        setSelectedApplicants(new Set())
+                        fetchApplicants()
+                    } else {
+                        toast.error(data.error || t("common.error"))
+                    }
+                } catch (error) {
+                    console.error("Failed to bulk delete:", error)
+                    toast.error(t("common.error"))
+                }
+            }
+        })
+        setAlertOpen(true)
+    }
+
+    const handleBulkArchive = () => {
+        if (selectedApplicants.size === 0) return
+
+        setAlertConfig({
+            title: t("applicants.confirmBulkArchive").replace("{count}", selectedApplicants.size.toString()),
+            description: t("applicants.confirmBulkArchiveDescription"),
+            variant: 'default',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch('/api/applicants/bulk-archive', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ applicantIds: Array.from(selectedApplicants) }),
+                    })
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                        toast.success(t("applicants.bulkArchiveSuccess").replace("{count}", data.count.toString()))
+                        setSelectedApplicants(new Set())
+                        fetchApplicants()
+                    } else {
+                        toast.error(data.error || t("common.error"))
+                    }
+                } catch (error) {
+                    console.error("Failed to bulk archive:", error)
+                    toast.error(t("common.error"))
+                }
+            }
+        })
+        setAlertOpen(true)
+    }
+
+    const handleBulkStatusChange = async (newStatus: string) => {
+        if (selectedApplicants.size === 0) return
+
+        try {
+            const response = await fetch('/api/applicants/bulk-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ applicantIds: Array.from(selectedApplicants), status: newStatus }),
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+
+            if (data.success) {
+                toast.success(t("applicants.bulkStatusChangeSuccess").replace("{count}", data.count.toString()))
+                setSelectedApplicants(new Set())
+                fetchApplicants()
+            } else {
+                toast.error(data.error || t("common.error"))
+            }
+        } catch (error) {
+            console.error("Failed to bulk status change:", error)
+            toast.error(t("common.error"))
+        }
+    }
+
     // Filter applicants client-side for additional filters
     const filteredApplicants = applicants.filter(applicant => {
         // Experience filter
@@ -381,6 +534,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                         evaluations={evaluations}
                                         onApplicantClick={handleViewApplicant}
                                         userRole={currentUserRole}
+                                        selectedApplicants={selectedApplicants}
+                                        onSelectAll={handleSelectAll}
+                                        onSelectApplicant={handleSelectApplicant}
                                     />
                                 </div>
 
@@ -391,6 +547,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                         evaluations={evaluations}
                                         onApplicantClick={handleViewApplicant}
                                         userRole={currentUserRole}
+                                        selectedApplicants={selectedApplicants}
+                                        onSelectApplicant={handleSelectApplicant}
                                     />
                                 </div>
                             </>
@@ -452,7 +610,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     open={scheduleInterviewDialogOpen}
                     onOpenChange={setScheduleInterviewDialogOpen}
                     applicantId={applicantForInterview.id}
-                    jobId={applicantForInterview.jobId}
+                    jobId={typeof applicantForInterview.jobId === 'string' ? applicantForInterview.jobId : applicantForInterview.jobId._id}
                     applicantName={applicantForInterview.personalData.name}
                     applicantEmail={applicantForInterview.personalData.email}
                     existingInterview={applicantForInterview.interview}
@@ -463,6 +621,118 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     }}
                 />
             )}
+
+            {/* Bulk Action Bar */}
+            {selectedApplicants.size > 0 && hasPermission(currentUserRole, "applicants.delete") && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 w-[calc(100%-2rem)] max-w-2xl">
+                    <Card className="shadow-2xl border-2">
+                        <CardContent className="p-4">
+                            {/* Mobile Layout */}
+                            <div className="md:hidden flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            checked={selectedApplicants.size === filteredApplicants.length}
+                                            onCheckedChange={handleSelectAll}
+                                        />
+                                        <span className="font-medium text-sm">
+                                            {selectedApplicants.size} {t("applicants.selectedCount")}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedApplicants(new Set())}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleBulkArchive} className="w-full">
+                                        <Archive className="h-4 w-4 me-2" />
+                                        {t("applicants.bulkArchive")}
+                                    </Button>
+                                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="w-full">
+                                        <Trash2 className="h-4 w-4 me-2" />
+                                        {t("applicants.bulkDelete")}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Desktop Layout */}
+                            <div className="hidden md:flex items-center justify-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        checked={selectedApplicants.size === filteredApplicants.length}
+                                        onCheckedChange={handleSelectAll}
+                                    />
+                                    <span className="font-medium">
+                                        {selectedApplicants.size} {t("applicants.selectedCount")}
+                                    </span>
+                                </div>
+
+                                <div className="h-6 w-px bg-border" />
+
+                                <div className="flex items-center gap-2">
+                                    {/* Bulk Archive */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleBulkArchive}
+                                    >
+                                        <Archive className="h-4 w-4 me-2" />
+                                        {t("applicants.bulkArchive")}
+                                    </Button>
+
+                                    {/* Bulk Delete */}
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={handleBulkDelete}
+                                    >
+                                        <Trash2 className="h-4 w-4 me-2" />
+                                        {t("applicants.bulkDelete")}
+                                    </Button>
+
+                                    {/* Cancel Selection */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedApplicants(new Set())}
+                                    >
+                                        <X className="h-4 w-4 me-2" />
+                                        {t("common.cancel")}
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Custom Alert Dialog for Bulk Operations */}
+            <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertConfig?.title}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {alertConfig?.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                alertConfig?.onConfirm()
+                                setAlertOpen(false)
+                            }}
+                            className={alertConfig?.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                        >
+                            {t("common.confirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

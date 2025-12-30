@@ -23,7 +23,7 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ userId }: SiteHeaderProps) {
-    const { t } = useTranslate()
+    const { t, mounted } = useTranslate()
     const pathname = usePathname()
     const [jobTitle, setJobTitle] = React.useState<string | null>(null)
 
@@ -86,32 +86,38 @@ export function SiteHeader({ userId }: SiteHeaderProps) {
 
     return (
         <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
-            <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
-                <SidebarTrigger className="h-8 w-8" />
-                <Separator orientation="vertical" className="me-2" />
-            <Breadcrumb className="hidden sm:block">
-                <BreadcrumbList>
-                    {breadcrumbs.map((crumb, index) => (
-                        <React.Fragment key={crumb.href}>
-                            {index > 0 && <BreadcrumbSeparator />}
-                            <BreadcrumbItem>
-                                {crumb.isLast ? (
-                                    <BreadcrumbPage>{crumb.name}</BreadcrumbPage>
-                                ) : (
-                                    <BreadcrumbLink href={crumb.href}>
-                                        {crumb.name}
-                                    </BreadcrumbLink>
-                                )}
-                            </BreadcrumbItem>
-                        </React.Fragment>
-                    ))}
-                </BreadcrumbList>
-            </Breadcrumb>
-            <div className="flex items-center gap-2 ms-auto">
-                <NotificationsDropdown userId={userId} />
-                <ThemeToggle />
-                <LanguageSwitcher />
-            </div>
+            <div className="flex h-(--header-height) w-full items-center gap-2 ps-4 pe-4">
+                <SidebarTrigger className="h-8 w-8 shrink-0" />
+                <Separator orientation="vertical" className="me-2 shrink-0" />
+                {mounted && (
+                    <Breadcrumb className="hidden sm:block flex-1 min-w-0">
+                        <BreadcrumbList>
+                            {breadcrumbs.map((crumb, index) => (
+                                <React.Fragment key={crumb.href}>
+                                    {index > 0 && <BreadcrumbSeparator />}
+                                    <BreadcrumbItem>
+                                        {crumb.isLast ? (
+                                            <BreadcrumbPage>{crumb.name}</BreadcrumbPage>
+                                        ) : (
+                                            <BreadcrumbLink href={crumb.href}>
+                                                {crumb.name}
+                                            </BreadcrumbLink>
+                                        )}
+                                    </BreadcrumbItem>
+                                </React.Fragment>
+                            ))}
+                        </BreadcrumbList>
+                    </Breadcrumb>
+                )}
+                <div className="flex items-center gap-2 ms-auto shrink-0">
+                    {mounted && (
+                        <>
+                            <NotificationsDropdown userId={userId} />
+                            <ThemeToggle />
+                            <LanguageSwitcher />
+                        </>
+                    )}
+                </div>
             </div>
         </header>
     )

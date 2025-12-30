@@ -65,10 +65,10 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-lg bg-primary flex items-center justify-center">
+                        <div className="size-10 rounded-xl bg-primary flex items-center justify-center">
                             <Sparkles className="size-5 text-primary-foreground" />
                         </div>
                         <span className="font-bold text-lg">SmartRecruit</span>
@@ -122,7 +122,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                     {/* Job Details View */}
                     <div className="space-y-6">
                         {/* Description Card */}
-                        <Card>
+                        <Card className="border shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <FileText className="size-5 text-primary" />
@@ -141,7 +141,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
 
                         {/* Skills */}
                         {job.skills.length > 0 && (
-                            <Card>
+                            <Card className="border shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Star className="size-5 text-amber-500" />
@@ -167,7 +167,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                         )}
 
                         {/* Assessment Info */}
-                        <Card>
+                        <Card className="border shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Mic className="size-5 text-purple-500" />

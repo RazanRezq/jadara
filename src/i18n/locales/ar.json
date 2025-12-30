@@ -59,6 +59,7 @@
     },
     "branding": {
         "goielts": "GoIELTS",
+        "title": "GoIELTS - لوحة الإدارة",
         "adminPortal": "لوحة الإدارة",
         "tagline": "أتقن اختبار IELTS بثقة",
         "description": "منصتك الشاملة لإدارة محتوى التحضير لاختبار IELTS، تتبع تقدم الطلاب، وضمان جودة التعليم."
@@ -79,7 +80,7 @@
     "sidebar": {
         "dashboard": "لوحة التحكم",
         "jobs": "الوظائف",
-        "candidates": "المرشحين",
+        "candidates": "المتقدمون",
         "calendar": "التقويم",
         "questionBank": "بنك الأسئلة",
         "scorecards": "نماذج التقييم",
@@ -259,7 +260,22 @@
             "startReviewingApplicants": "ابدأ بمراجعة المرشحين لتراهم هنا",
             "viewAllApplicants": "عرض جميع المرشحين",
             "myTopRated": "الأعلى تقييماً من قِبلي",
-            "noRatedCandidates": "لا يوجد مرشحون مُقيّمون بعد"
+            "noRatedCandidates": "لا يوجد مرشحون مُقيّمون بعد",
+            "stars": "نجوم",
+            "candidates": "مرشحون",
+            "startReviewingToSeeDistribution": "ابدأ بمراجعة المرشحين لرؤية توزيع تقييماتك",
+            "last7Days": "آخر 7 أيام",
+            "reviews": "مراجعات",
+            "bestScore": "أفضل تقييم",
+            "rating": "تقييم",
+            "ratingConsistency": "اتساق التقييمات",
+            "consistent": "متسق",
+            "moderate": "متوسط",
+            "varied": "متنوع",
+            "mostCommon": "الأكثر شيوعاً",
+            "times": "مرات",
+            "highRatings": "تقييمات عالية",
+            "myRatingBreakdown": "توزيع تقييماتي"
         },
         "superAdmin": {
             "title": "إدارة المنصة",
@@ -556,6 +572,7 @@
         "submitted": "تاريخ التقديم",
         "phone": "الهاتف",
         "age": "العمر",
+        "gender": "الجنس",
         "major": "التخصص",
         "salaryExpectation": "الراتب المتوقع",
         "expectedSalary": "الراتب المتوقع",
@@ -564,6 +581,7 @@
         "status": {
             "title": "الحالة",
             "new": "جديد",
+            "pending": "قيد الانتظار",
             "evaluated": "تم التقييم",
             "interview": "مقابلة",
             "hired": "تم التوظيف",
@@ -794,7 +812,18 @@
             "hired": "تم التوظيف",
             "screening": "فرز",
             "interviewing": "مقابلة"
-        }
+        },
+        "selectAll": "تحديد الكل",
+        "selectedCount": "محدد",
+        "bulkDelete": "حذف جماعي",
+        "bulkArchive": "أرشفة جماعية",
+        "confirmBulkDelete": "حذف {count} متقدم؟",
+        "confirmBulkDeleteDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع المتقدمين المحددين وبياناتهم نهائياً.",
+        "confirmBulkArchive": "أرشفة {count} متقدم؟",
+        "confirmBulkArchiveDescription": "سيتم نقل المتقدمين المحددين إلى حالة الأرشيف.",
+        "bulkDeleteSuccess": "تم حذف {count} متقدم بنجاح",
+        "bulkArchiveSuccess": "تمت أرشفة {count} متقدم بنجاح",
+        "bulkStatusChangeSuccess": "تم تحديث حالة {count} متقدم بنجاح"
     },
     "calendar": {
         "title": "التقويم",
@@ -890,10 +919,18 @@
         "startApplication": "ابدأ التقديم",
         "personalInfo": "المعلومات الشخصية",
         "personalInfoDescription": "أدخل معلوماتك الأساسية للمتابعة",
+        "contactInformation": "معلومات الاتصال",
+        "professionalBackground": "الخلفية المهنية",
+        "additionalInformation": "معلومات إضافية",
+        "professionalLinks": "الروابط المهنية",
         "namePlaceholder": "الاسم الكامل",
         "majorPlaceholder": "مثال: علوم الحاسب",
         "yearsOfExperience": "سنوات الخبرة",
         "portfolio": "معرض الأعمال",
+        "selectGender": "اختر الجنس",
+        "male": "ذكر",
+        "female": "أنثى",
+        "other": "آخر",
         "continueToAssessment": "المتابعة للتقييم",
         "applicationStarted": "تم بدء التقديم بنجاح",
         "validation": {
@@ -1260,7 +1297,64 @@
         "markAllRead": "تعليم الكل كمقروء",
         "noNotifications": "لا توجد إشعارات بعد",
         "viewDetails": "عرض التفاصيل",
-        "viewAll": "عرض كل الإشعارات"
+        "viewAll": "عرض كل الإشعارات",
+        "types": {
+            "new_applicant": {
+                "title": "متقدم جديد",
+                "message": "تقدم {{candidateName}} لوظيفة {{jobTitle}}"
+            },
+            "review_assigned": {
+                "title": "تعيين مراجعة",
+                "message": "تم تعيينك لمراجعة {{candidateName}}"
+            },
+            "review_completed": {
+                "title": "اكتملت المراجعة",
+                "message": "أكمل {{reviewerName}} تقييم {{candidateName}} لوظيفة {{jobTitle}}. التقييم: {{rating}}/5"
+            },
+            "comment_added": {
+                "title": "تعليق جديد",
+                "message": "علق {{userName}} على طلب {{candidateName}}"
+            },
+            "applicant_hired": {
+                "title": "تم توظيف المتقدم",
+                "message": "تم توظيف {{candidateName}} لوظيفة {{jobTitle}}"
+            },
+            "job_expired": {
+                "title": "انتهت صلاحية الوظيفة",
+                "message": "انتهت صلاحية إعلان الوظيفة '{{jobTitle}}'"
+            },
+            "system_alert": {
+                "title": "تنبيه النظام",
+                "message": "{{message}}"
+            }
+        },
+        "priority": {
+            "urgent": "عاجل",
+            "high": "عالي",
+            "medium": "متوسط",
+            "low": "منخفض"
+        },
+        "page": {
+            "title": "جميع الإشعارات",
+            "filters": "الفلاتر",
+            "filterByStatus": "الحالة",
+            "filterByType": "النوع",
+            "filterByPriority": "الأولوية",
+            "searchPlaceholder": "ابحث في الإشعارات...",
+            "statusAll": "الكل",
+            "statusUnread": "غير مقروءة",
+            "statusRead": "مقروءة",
+            "typeAll": "جميع الأنواع",
+            "priorityAll": "جميع الأولويات",
+            "bulkActions": "إجراءات جماعية",
+            "deleteRead": "حذف المقروءة",
+            "emptyState": "لا توجد إشعارات",
+            "emptyStateDescription": "لقد أنهيت جميع الإشعارات!",
+            "showing": "عرض",
+            "to": "إلى",
+            "of": "من",
+            "notifications": "إشعارات"
+        }
     },
     "settings": {
         "title": "الإعدادات",

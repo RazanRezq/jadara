@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Table,
     TableBody,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
+import { hasPermission } from "@/lib/authClient"
 import type { UserRole } from "@/lib/auth"
 import {
     MoreHorizontal,
@@ -73,6 +75,9 @@ interface ApplicantListProps {
     evaluations: Map<string, EvaluationData>
     onApplicantClick: (applicant: Applicant) => void
     userRole: UserRole
+    selectedApplicants: Set<string>
+    onSelectAll: () => void
+    onSelectApplicant: (id: string) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -83,9 +88,13 @@ export function ApplicantList({
     evaluations,
     onApplicantClick,
     userRole,
+    selectedApplicants,
+    onSelectAll,
+    onSelectApplicant,
 }: ApplicantListProps) {
     const { t, isRTL, locale } = useTranslate()
     const hideSensitiveData = userRole === 'reviewer'
+    const canDelete = hasPermission(userRole, "applicants.delete")
 
     // Check if any applicant has interview data to conditionally show the Interview column
     const hasInterviews = applicants.some(a => a.interview)
@@ -118,6 +127,7 @@ export function ApplicantList({
     const getStatusBadge = (status: string) => {
         const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
             new: { variant: "secondary", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
+            pending: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300" },
             evaluated: { variant: "secondary", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
             interview: { variant: "secondary", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
             hired: { variant: "secondary", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
@@ -131,132 +141,154 @@ export function ApplicantList({
             <CardContent className="p-0">
                 {/* Desktop table view - hidden on mobile */}
                 <div className="hidden md:block overflow-x-auto">
-                <Table className="w-full table-auto font-ibm-plex">
-                    <TableHeader>
-                        <TableRow className="border-b">
-                            {/* Column 1: Candidate (primary column, grows with content) */}
-                            <TableHead
-                                className={cn(
-                                    "px-6 h-12 min-w-[250px] w-auto",
-                                    isRTL ? "text-right" : "text-left"
+                    <Table className="w-full table-auto font-ibm-plex">
+                        <TableHeader>
+                            <TableRow className="border-b">
+                                {/* Checkbox Column */}
+                                {canDelete && (
+                                    <TableHead className="w-12 px-4">
+                                        <Checkbox
+                                            checked={selectedApplicants.size === applicants.length && applicants.length > 0}
+                                            onCheckedChange={onSelectAll}
+                                            aria-label={t("applicants.selectAll")}
+                                        />
+                                    </TableHead>
                                 )}
-                            >
-                                {t("applicants.candidate")}
-                            </TableHead>
 
-                            <TableHead className="hidden md:table-cell px-6 text-start">
-                                {t("applicants.appliedDate")}
-                            </TableHead>
-
-                            <TableHead className="hidden lg:table-cell px-6 text-start">
-                                {t("applicants.role")}
-                            </TableHead>
-
-                            <TableHead className="px-6 text-start">
-                                {t("applicants.aiScore")}
-                            </TableHead>
-
-                            {!hideSensitiveData && (
-                                <TableHead className="hidden xl:table-cell px-6 text-start">
-                                    {t("applicants.expectedSalary")}
+                                {/* Column 1: Candidate (primary column, grows with content) */}
+                                <TableHead
+                                    className={cn(
+                                        "px-6 h-12 min-w-[250px] w-auto",
+                                        isRTL ? "text-right" : "text-left"
+                                    )}
+                                >
+                                    {t("applicants.candidate")}
                                 </TableHead>
-                            )}
 
-                            <TableHead className="px-6 text-start">
-                                {t("applicants.status.title")}
-                            </TableHead>
+                                <TableHead className="hidden md:table-cell px-6 text-start">
+                                    {t("applicants.appliedDate")}
+                                </TableHead>
 
-                            {hasInterviews && (
                                 <TableHead className="hidden lg:table-cell px-6 text-start">
-                                    {t("applicants.interviewDate")}
+                                    {t("applicants.role")}
                                 </TableHead>
-                            )}
 
-                            <TableHead className="px-6 text-end">{t("common.actions")}</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {applicants.map((applicant) => {
-                            const evaluation = evaluations.get(applicant.id)
-                            const score = evaluation?.overallScore ?? applicant.aiScore
-                            const jobCurrency = applicant.jobId?.currency || 'SAR'
-                            const statusBadge = getStatusBadge(applicant.status)
+                                <TableHead className="px-6 text-start">
+                                    {t("applicants.aiScore")}
+                                </TableHead>
 
-                            return (
-                                <TableRow key={applicant.id} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors duration-150" onClick={() => onApplicantClick(applicant)}>
+                                {!hideSensitiveData && (
+                                    <TableHead className="hidden xl:table-cell px-6 text-start">
+                                        {t("applicants.expectedSalary")}
+                                    </TableHead>
+                                )}
 
-                                    {/* Candidate column: flex-start with RTL-aware direction */}
-                                    <TableCell
-                                        className={cn("px-6 py-4", isRTL ? "text-right" : "text-left")}
-                                        dir={isRTL ? "rtl" : "ltr"}
-                                    >
-                                        <div className="flex items-center gap-3 justify-start w-full">
-                                            {/* Avatar with gradient background like jobs page */}
-                                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
-                                                <Users className="h-5 w-5" />
-                                            </div>
+                                <TableHead className="px-6 text-start">
+                                    {t("applicants.status.title")}
+                                </TableHead>
 
-                                            {/* Text following the avatar naturally */}
-                                            <div className="min-w-0 flex-1 leading-tight">
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                    <span className="font-semibold truncate">
-                                                        {applicant.displayName || applicant.personalData?.name}
-                                                    </span>
-                                                    {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
-                                                </div>
-                                                <span className="text-sm text-muted-foreground truncate block">
-                                                    {applicant.personalData?.email}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </TableCell>
+                                {hasInterviews && (
+                                    <TableHead className="hidden lg:table-cell px-6 text-start">
+                                        {t("applicants.interviewDate")}
+                                    </TableHead>
+                                )}
 
-                                    <TableCell className="hidden md:table-cell px-6 py-4 text-start text-muted-foreground">
-                                        {formatDate(applicant.submittedAt || applicant.createdAt)}
-                                    </TableCell>
+                                <TableHead className="px-6 text-end">{t("common.actions")}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {applicants.map((applicant) => {
+                                const evaluation = evaluations.get(applicant.id)
+                                const score = evaluation?.overallScore ?? applicant.aiScore
+                                const jobCurrency = applicant.jobId?.currency || 'SAR'
+                                const statusBadge = getStatusBadge(applicant.status)
 
-                                    <TableCell className="hidden lg:table-cell px-6 py-4 text-start truncate">
-                                        {applicant.jobId?.title || "-"}
-                                    </TableCell>
+                                return (
+                                    <TableRow key={applicant.id} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors duration-150" onClick={() => onApplicantClick(applicant)}>
 
-                                    <TableCell className="px-6 py-4 text-start">
-                                        <div className="flex items-center gap-1 font-semibold">
-                                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                            <span>{score ? `${score}%` : "-"}</span>
-                                        </div>
-                                    </TableCell>
+                                        {/* Checkbox Cell */}
+                                        {canDelete && (
+                                            <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    checked={selectedApplicants.has(applicant.id)}
+                                                    onCheckedChange={() => onSelectApplicant(applicant.id)}
+                                                    aria-label={`Select ${applicant.displayName || applicant.personalData?.name}`}
+                                                />
+                                            </TableCell>
+                                        )}
 
-                                    {!hideSensitiveData && (
-                                        <TableCell className="hidden xl:table-cell px-6 py-4 text-start font-semibold">
-                                            {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency, locale)}
-                                        </TableCell>
-                                    )}
-
-                                    <TableCell className="px-6 py-4 text-start">
-                                        <Badge
-                                            variant={statusBadge.variant}
-                                            className={cn("inline-flex border-0 gap-1.5", statusBadge.className)}
+                                        {/* Candidate column: flex-start with RTL-aware direction */}
+                                        <TableCell
+                                            className={cn("px-6 py-4", isRTL ? "text-right" : "text-left")}
+                                            dir={isRTL ? "rtl" : "ltr"}
                                         >
-                                            {t(`applicants.status.${applicant.status}`)}
-                                        </Badge>
-                                    </TableCell>
+                                            <div className="flex items-center gap-3 justify-start w-full">
+                                                {/* Avatar with gradient background like jobs page */}
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                                    <Users className="h-5 w-5" />
+                                                </div>
 
-                                    {hasInterviews && (
-                                        <TableCell className="hidden lg:table-cell px-6 py-4 text-start text-muted-foreground">
-                                            {applicant.interview ? formatInterviewDateTime(applicant.interview) : "-"}
+                                                {/* Text following the avatar naturally */}
+                                                <div className="min-w-0 flex-1 leading-tight">
+                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                        <span className="font-semibold truncate">
+                                                            {applicant.displayName || applicant.personalData?.name}
+                                                        </span>
+                                                        {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
+                                                    </div>
+                                                    <span className="text-sm text-muted-foreground truncate block">
+                                                        {applicant.personalData?.email}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </TableCell>
-                                    )}
 
-                                    <TableCell className="px-6 py-4 text-end">
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            )
-                        })}
-                    </TableBody>
-                </Table>
+                                        <TableCell className="hidden md:table-cell px-6 py-4 text-start text-muted-foreground">
+                                            {formatDate(applicant.submittedAt || applicant.createdAt)}
+                                        </TableCell>
+
+                                        <TableCell className="hidden lg:table-cell px-6 py-4 text-start truncate">
+                                            {applicant.jobId?.title || "-"}
+                                        </TableCell>
+
+                                        <TableCell className="px-6 py-4 text-start">
+                                            <div className="flex items-center gap-1 font-semibold">
+                                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                                <span>{score ? `${score}%` : "-"}</span>
+                                            </div>
+                                        </TableCell>
+
+                                        {!hideSensitiveData && (
+                                            <TableCell className="hidden xl:table-cell px-6 py-4 text-start font-semibold">
+                                                {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency, locale)}
+                                            </TableCell>
+                                        )}
+
+                                        <TableCell className="px-6 py-4 text-start">
+                                            <Badge
+                                                variant={statusBadge.variant}
+                                                className={cn("inline-flex border-0 gap-1.5", statusBadge.className)}
+                                            >
+                                                {t(`applicants.status.${applicant.status}`)}
+                                            </Badge>
+                                        </TableCell>
+
+                                        {hasInterviews && (
+                                            <TableCell className="hidden lg:table-cell px-6 py-4 text-start text-muted-foreground">
+                                                {applicant.interview ? formatInterviewDateTime(applicant.interview) : "-"}
+                                            </TableCell>
+                                        )}
+
+                                        <TableCell className="px-6 py-4 text-end">
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
                 </div>
 
                 {/* Mobile card view - shown on mobile only */}
@@ -277,6 +309,16 @@ export function ApplicantList({
                                     {/* Header with name and avatar */}
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            {/* Checkbox */}
+                                            {canDelete && (
+                                                <div onClick={(e) => e.stopPropagation()} className="pt-1">
+                                                    <Checkbox
+                                                        checked={selectedApplicants.has(applicant.id)}
+                                                        onCheckedChange={() => onSelectApplicant(applicant.id)}
+                                                    />
+                                                </div>
+                                            )}
+
                                             <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
                                                 <Users className="h-6 w-6" />
                                             </div>
@@ -369,26 +411,39 @@ export function ApplicantListMobile({
     evaluations,
     onApplicantClick,
     userRole,
-}: ApplicantListProps) {
+    selectedApplicants,
+    onSelectApplicant,
+}: Omit<ApplicantListProps, 'onSelectAll'>) {
     const { t, isRTL } = useTranslate()
     const hideSensitiveData = userRole === 'reviewer'
+    const canDelete = hasPermission(userRole, "applicants.delete")
 
     return (
         <div className={cn("space-y-3", ibmPlexArabic.className)} dir={isRTL ? "rtl" : "ltr"}>
             {applicants.map((applicant) => (
                 <Card key={applicant.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onApplicantClick(applicant)}>
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                    <CardContent className="p-4 flex items-center gap-3">
+                        {/* Checkbox */}
+                        {canDelete && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                    checked={selectedApplicants.has(applicant.id)}
+                                    onCheckedChange={() => onSelectApplicant(applicant.id)}
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Gradient avatar like jobs page */}
                             <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
                                 <Users className="h-6 w-6" />
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex-1 min-w-0">
                                 <h4 className="font-semibold text-base truncate">{applicant.displayName || applicant.personalData?.name}</h4>
-                                <p className="text-sm text-muted-foreground">{applicant.jobId?.title}</p>
+                                <p className="text-sm text-muted-foreground truncate">{applicant.jobId?.title}</p>
                             </div>
                         </div>
-                        <ChevronRight className={cn("h-5 w-5 text-slate-300", isRTL && "rotate-180")} />
+                        <ChevronRight className={cn("h-5 w-5 text-slate-300 shrink-0", isRTL && "rotate-180")} />
                     </CardContent>
                 </Card>
             ))}

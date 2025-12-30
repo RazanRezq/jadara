@@ -52,6 +52,7 @@ import {
     ExternalLink,
     Star,
     ArrowUpDown,
+    ArrowUp,
     ArrowDown,
     X,
     FileText,

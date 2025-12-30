@@ -165,8 +165,9 @@ export function TextQuestion({
                                 className="h-12 text-base gap-2"
                                 onClick={onBack}
                             >
+                                {isRTL && t("common.back")}
                                 <ArrowPrev className="size-4" />
-                                {t("common.back")}
+                                {!isRTL && t("common.back")}
                             </Button>
                         )}
                         <Button
@@ -176,13 +177,15 @@ export function TextQuestion({
                         >
                             {questionNumber < totalQuestions ? (
                                 <>
-                                    {t("apply.nextQuestion")}
+                                    {isRTL && t("apply.nextQuestion")}
                                     <ArrowIcon className="size-4" />
+                                    {!isRTL && t("apply.nextQuestion")}
                                 </>
                             ) : (
                                 <>
-                                    {t("apply.continueToUpload") || "Continue"}
+                                    {isRTL && (t("apply.continueToUpload") || "Continue")}
                                     <ArrowIcon className="size-4" />
+                                    {!isRTL && (t("apply.continueToUpload") || "Continue")}
                                 </>
                             )}
                         </Button>
@@ -197,8 +200,9 @@ export function TextQuestion({
                                 className="h-12 text-base gap-2"
                                 onClick={onBack}
                             >
+                                {isRTL && t("common.back")}
                                 <ArrowPrev className="size-4" />
-                                {t("common.back")}
+                                {!isRTL && t("common.back")}
                             </Button>
                         )}
                         <Button

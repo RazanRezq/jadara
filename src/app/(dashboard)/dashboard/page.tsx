@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/lib/session"
 import dbConnect from "@/lib/mongodb"
+import mongoose from "mongoose"
 import Applicant from "@/models/Applicants/applicantSchema"
 import Job from "@/models/Jobs/jobSchema"
 import User from "@/models/Users/userSchema"
@@ -338,10 +339,10 @@ async function getReviewerStats(userId: string, userName: string) {
     await dbConnect()
 
     // Fetch all non-archived applicants and all reviews by this reviewer in parallel
-    const [applicants, reviews, jobs] = await Promise.all([
-        // Get all applicants that are not archived (sorted by newest first)
+    const [applicants, reviews, jobs, ratingDistribution] = await Promise.all([
+        // Get all applicants with status 'evaluated' only (sorted by newest first)
         Applicant.find({
-            status: { $nin: ['archived', 'withdrawn'] },
+            status: 'evaluated',
             isComplete: true
         })
             .sort({ createdAt: -1 })
@@ -357,6 +358,24 @@ async function getReviewerStats(userId: string, userName: string) {
         Job.find({})
             .select('_id title')
             .lean(),
+
+        // Get rating distribution for this reviewer
+        Review.aggregate([
+            {
+                $match: {
+                    reviewerId: new mongoose.Types.ObjectId(userId),
+                },
+            },
+            {
+                $group: {
+                    _id: '$rating',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: -1 },
+            },
+        ]),
     ])
 
     // Create a Map of reviewed applicant IDs with their review data for O(1) lookup
@@ -405,7 +424,22 @@ async function getReviewerStats(userId: string, userName: string) {
     // Calculate stats based on reviewed applicants only
     const totalReviewed = completedApplicants.length
 
+    // Transform rating distribution to ensure all star ratings are present
+    const distribution = [5, 4, 3, 2, 1].map((rating) => {
+        const found = ratingDistribution.find((r: any) => r._id === rating)
+        return {
+            rating,
+            count: found?.count || 0,
+        }
+    })
+
+    const ratingDistributionData = {
+        distribution,
+        total: distribution.reduce((acc, item) => acc + item.count, 0),
+    }
+
     return {
+        userId,
         userName,
         stats: {
             total: totalReviewed,
@@ -415,6 +449,7 @@ async function getReviewerStats(userId: string, userName: string) {
         },
         pendingApplicants: [], // Empty since we only show reviewed applicants
         completedApplicants,
+        ratingDistribution: ratingDistributionData,
     }
 }
 

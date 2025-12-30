@@ -22,9 +22,29 @@ interface Notification {
     priority: "low" | "medium" | "high" | "urgent"
     title: string
     message: string
+    titleKey?: string
+    messageKey?: string
+    params?: Record<string, any>
     actionUrl?: string
     isRead: boolean
     createdAt: Date
+}
+
+// Helper to get localized notification text
+function getLocalizedText(
+    notification: Notification,
+    field: 'title' | 'message',
+    t: (key: string, params?: Record<string, string | number>) => string
+): string {
+    const key = field === 'title' ? notification.titleKey : notification.messageKey
+
+    // Use translation key if available
+    if (key) {
+        return t(key, notification.params || {})
+    }
+
+    // Fallback to legacy title/message for backward compatibility
+    return notification[field]
 }
 
 interface NotificationsDropdownProps {
@@ -32,7 +52,7 @@ interface NotificationsDropdownProps {
 }
 
 export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
-    const { t, locale } = useTranslate()
+    const { t, locale, dir, isRTL } = useTranslate()
     const dateLocale = locale === "ar" ? ar : enUS
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
@@ -139,7 +159,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
                     {unreadCount > 0 && (
                         <Badge
                             variant="destructive"
-                            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                            className="absolute -top-1 end-[-4px] h-5 w-5 flex items-center justify-center p-0 text-xs"
                         >
                             {unreadCount > 9 ? "9+" : unreadCount}
                         </Badge>
@@ -189,8 +209,8 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
                                     />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2">
-                                            <p className="font-medium text-sm">
-                                                {notification.title}
+                                            <p className={cn("font-medium text-sm", isRTL && "text-right")}>
+                                                {getLocalizedText(notification, 'title', t)}
                                             </p>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {!notification.isRead && (
@@ -215,8 +235,8 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
                                                 </Button>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            {notification.message}
+                                        <p className={cn("text-sm text-muted-foreground mt-1", isRTL && "text-right")}>
+                                            {getLocalizedText(notification, 'message', t)}
                                         </p>
                                         {notification.actionUrl && (
                                             <Link

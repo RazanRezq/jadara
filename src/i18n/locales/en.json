@@ -59,6 +59,7 @@
     },
     "branding": {
         "goielts": "GoIELTS",
+        "title": "GoIELTS - Admin Portal",
         "adminPortal": "Admin Portal",
         "tagline": "Master IELTS with Confidence",
         "description": "Your comprehensive platform for managing IELTS preparation content, tracking student progress, and ensuring quality education."
@@ -79,7 +80,7 @@
     "sidebar": {
         "dashboard": "Dashboard",
         "jobs": "Jobs",
-        "candidates": "Candidates",
+        "candidates": "Applicants",
         "calendar": "Calendar",
         "questionBank": "Question Bank",
         "scorecards": "Scorecards",
@@ -259,7 +260,22 @@
             "startReviewingApplicants": "Start reviewing applicants to see them here",
             "viewAllApplicants": "View All Applicants",
             "myTopRated": "My Top Rated",
-            "noRatedCandidates": "No rated candidates yet"
+            "noRatedCandidates": "No rated candidates yet",
+            "stars": "Stars",
+            "candidates": "Candidates",
+            "startReviewingToSeeDistribution": "Start reviewing candidates to see your rating distribution",
+            "last7Days": "Last 7 days",
+            "reviews": "reviews",
+            "bestScore": "Best score",
+            "rating": "rating",
+            "ratingConsistency": "Rating Consistency",
+            "consistent": "Consistent",
+            "moderate": "Moderate",
+            "varied": "Varied",
+            "mostCommon": "Most common",
+            "times": "times",
+            "highRatings": "High ratings",
+            "myRatingBreakdown": "My Rating Breakdown"
         },
         "superAdmin": {
             "title": "Platform Management",
@@ -556,6 +572,7 @@
         "submitted": "Submitted",
         "phone": "Phone",
         "age": "Age",
+        "gender": "Gender",
         "major": "Major",
         "salaryExpectation": "Salary Expectation",
         "expectedSalary": "Expected Salary",
@@ -564,6 +581,7 @@
         "status": {
             "title": "Status",
             "new": "New",
+            "pending": "Pending",
             "evaluated": "Evaluated",
             "interview": "Interview",
             "hired": "Hired",
@@ -794,7 +812,18 @@
             "hired": "Hired",
             "screening": "Screening",
             "interviewing": "Interviewing"
-        }
+        },
+        "selectAll": "Select all",
+        "selectedCount": "selected",
+        "bulkDelete": "Bulk Delete",
+        "bulkArchive": "Bulk Archive",
+        "confirmBulkDelete": "Delete {count} applicants?",
+        "confirmBulkDeleteDescription": "This action cannot be undone. All selected applicants and their data will be permanently deleted.",
+        "confirmBulkArchive": "Archive {count} applicants?",
+        "confirmBulkArchiveDescription": "The selected applicants will be moved to archived status.",
+        "bulkDeleteSuccess": "{count} applicants deleted successfully",
+        "bulkArchiveSuccess": "{count} applicants archived successfully",
+        "bulkStatusChangeSuccess": "{count} applicants status updated successfully"
     },
     "calendar": {
         "title": "Calendar",
@@ -890,10 +919,18 @@
         "startApplication": "Start Application",
         "personalInfo": "Personal Information",
         "personalInfoDescription": "Enter your basic information to continue",
+        "contactInformation": "Contact Information",
+        "professionalBackground": "Professional Background",
+        "additionalInformation": "Additional Information",
+        "professionalLinks": "Professional Links",
         "namePlaceholder": "Full Name",
         "majorPlaceholder": "e.g., Computer Science",
         "yearsOfExperience": "Years of Experience",
         "portfolio": "Portfolio",
+        "selectGender": "Select gender",
+        "male": "Male",
+        "female": "Female",
+        "other": "Other",
         "continueToAssessment": "Continue to Assessment",
         "applicationStarted": "Application started successfully",
         "validation": {
@@ -1260,7 +1297,64 @@
         "markAllRead": "Mark All Read",
         "noNotifications": "No notifications yet",
         "viewDetails": "View Details",
-        "viewAll": "View All Notifications"
+        "viewAll": "View All Notifications",
+        "types": {
+            "new_applicant": {
+                "title": "New Applicant",
+                "message": "{{candidateName}} applied for {{jobTitle}}"
+            },
+            "review_assigned": {
+                "title": "Review Assigned",
+                "message": "You have been assigned to review {{candidateName}}"
+            },
+            "review_completed": {
+                "title": "Review Completed",
+                "message": "{{reviewerName}} completed evaluation of {{candidateName}} for {{jobTitle}}. Rating: {{rating}}/5"
+            },
+            "comment_added": {
+                "title": "New Comment",
+                "message": "{{userName}} commented on {{candidateName}}'s application"
+            },
+            "applicant_hired": {
+                "title": "Applicant Hired",
+                "message": "{{candidateName}} has been hired for {{jobTitle}}"
+            },
+            "job_expired": {
+                "title": "Job Expired",
+                "message": "Job posting '{{jobTitle}}' has expired"
+            },
+            "system_alert": {
+                "title": "System Alert",
+                "message": "{{message}}"
+            }
+        },
+        "priority": {
+            "urgent": "Urgent",
+            "high": "High",
+            "medium": "Medium",
+            "low": "Low"
+        },
+        "page": {
+            "title": "All Notifications",
+            "filters": "Filters",
+            "filterByStatus": "Status",
+            "filterByType": "Type",
+            "filterByPriority": "Priority",
+            "searchPlaceholder": "Search notifications...",
+            "statusAll": "All",
+            "statusUnread": "Unread",
+            "statusRead": "Read",
+            "typeAll": "All Types",
+            "priorityAll": "All Priorities",
+            "bulkActions": "Bulk Actions",
+            "deleteRead": "Delete Read",
+            "emptyState": "No notifications found",
+            "emptyStateDescription": "You're all caught up!",
+            "showing": "Showing",
+            "to": "to",
+            "of": "of",
+            "notifications": "notifications"
+        }
     },
     "settings": {
         "title": "Settings",

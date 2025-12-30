@@ -316,7 +316,15 @@ export function ApplicantBoard({
 
                                                             {/* Interview Date/Time - Only show for interview status */}
                                                             {applicant.status === 'interview' && applicant.interview && (
-                                                                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2">
+                                                                <div
+                                                                    className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/30 animate-pulse-glow"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        if (!applicant.interview?.scheduledDate) return
+                                                                        const date = new Date(applicant.interview.scheduledDate).toISOString().split('T')[0]
+                                                                        window.location.href = `/dashboard/calendar?date=${date}&applicantId=${applicant.id}`
+                                                                    }}
+                                                                >
                                                                     <div className="flex flex-col gap-1">
                                                                         <div className={cn(
                                                                             "flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300",
@@ -324,7 +332,7 @@ export function ApplicantBoard({
                                                                         )}>
                                                                             <Calendar className="h-3.5 w-3.5 shrink-0" />
                                                                             <span className="font-medium">
-                                                                                {new Date(applicant.interview.scheduledDate).toLocaleDateString(
+                                                                                {applicant.interview?.scheduledDate && new Date(applicant.interview.scheduledDate).toLocaleDateString(
                                                                                     isRTL ? 'ar-SA' : 'en-US',
                                                                                     { weekday: 'short', month: 'short', day: 'numeric' }
                                                                                 )}
@@ -336,7 +344,7 @@ export function ApplicantBoard({
                                                                         )}>
                                                                             <Clock className="h-3.5 w-3.5 shrink-0" />
                                                                             <span className="font-medium">
-                                                                                {applicant.interview.scheduledTime} ({applicant.interview.duration} min)
+                                                                                {applicant.interview?.scheduledTime} ({applicant.interview?.duration} min)
                                                                             </span>
                                                                         </div>
                                                                     </div>

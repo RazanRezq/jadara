@@ -17,7 +17,9 @@ import {
 import type { UserRole } from "@/lib/auth"
 import { getRoleColor } from "@/lib/authClient"
 import { DashboardWidgetCompact, DashboardWidgetAnalytics } from "@/components/dashboard/dashboard-widget"
+import { AnalyticsCardWithChart } from "@/components/dashboard/analytics-card-with-chart"
 import { getCardGradient } from "@/lib/card-gradients"
+import { cn } from "@/lib/utils"
 
 interface SuperAdminStats {
     totalUsers: number
@@ -86,7 +88,7 @@ interface SuperAdminViewProps {
 }
 
 export function SuperAdminView({ stats }: SuperAdminViewProps) {
-    const { t } = useTranslate()
+    const { t, mounted } = useTranslate()
     const usersGradient = getCardGradient("users")
     const jobsGradient = getCardGradient("jobs")
     const successGradient = getCardGradient("success")
@@ -120,6 +122,10 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
     }
 
     const healthGradient = getHealthGradient(stats.systemHealth)
+
+    if (!mounted) {
+        return null
+    }
 
     return (
         <div className="dashboard-container space-y-6">
@@ -285,12 +291,13 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                     {/* Team Reviews */}
-                    <DashboardWidgetAnalytics
+                    <AnalyticsCardWithChart
                         title={t("dashboard.superAdmin.teamReviews")}
                         value={stats.platformServices.reviews.total}
                         icon={Activity}
                         iconVariant="success"
                         gradientColor="#10b981"
+                        chartType="donut"
                         breakdowns={[
                             {
                                 label: t("dashboard.superAdmin.strongHire"),
@@ -328,12 +335,13 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     />
 
                     {/* Interviews */}
-                    <DashboardWidgetAnalytics
+                    <AnalyticsCardWithChart
                         title={t("dashboard.superAdmin.interviews")}
                         value={stats.platformServices.interviews.total}
                         icon={Users}
                         iconVariant="warning"
                         gradientColor="#f59e0b"
+                        chartType="donut"
                         breakdowns={[
                             {
                                 label: t("dashboard.superAdmin.scheduled"),
@@ -363,12 +371,13 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     />
 
                     {/* Responses */}
-                    <DashboardWidgetAnalytics
+                    <AnalyticsCardWithChart
                         title={t("dashboard.superAdmin.candidateResponses")}
                         value={stats.platformServices.responses.total}
                         icon={Activity}
                         iconVariant="info"
                         gradientColor="#8b5cf6"
+                        chartType="donut"
                         breakdowns={[
                             {
                                 label: t("dashboard.superAdmin.textResponse"),
@@ -398,12 +407,13 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     />
 
                     {/* Applications */}
-                    <DashboardWidgetAnalytics
+                    <AnalyticsCardWithChart
                         title={t("dashboard.superAdmin.applications")}
                         value={stats.platformServices.applicants.total}
                         icon={Briefcase}
                         iconVariant="primary"
                         gradientColor="#06b6d4"
+                        chartType="donut"
                         breakdowns={[
                             {
                                 label: t("applicants.status.new"),

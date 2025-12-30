@@ -38,7 +38,7 @@ export function LanguageSwitcher() {
                 >
                     <span className="font-medium">{t("language.arabic")}</span>
                     {locale === "ar" && (
-                        <span className="mr-auto text-cyan-400">✓</span>
+                        <span className="ms-auto text-cyan-400">✓</span>
                     )}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -51,7 +51,7 @@ export function LanguageSwitcher() {
                 >
                     <span className="font-medium">{t("language.english")}</span>
                     {locale === "en" && (
-                        <span className="mr-auto text-cyan-400">✓</span>
+                        <span className="ms-auto text-cyan-400">✓</span>
                     )}
                 </DropdownMenuItem>
             </DropdownMenuContent>

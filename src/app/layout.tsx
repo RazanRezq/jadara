@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import { Outfit, IBM_Plex_Sans_Arabic } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { LanguageProvider } from "@/i18n/context"
@@ -23,27 +24,18 @@ export const metadata: Metadata = {
     description: "منصة التحضير لاختبار IELTS",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode
 }>) {
+    // Read locale from cookies on the server
+    const cookieStore = await cookies()
+    const locale = (cookieStore.get('locale')?.value || 'ar') as 'ar' | 'en'
+    const direction = locale === 'ar' ? 'rtl' : 'ltr'
+
     return (
-        <html suppressHydrationWarning>
-            <head>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            (function() {
-                                const savedLocale = localStorage.getItem('locale');
-                                const locale = (savedLocale === 'ar' || savedLocale === 'en') ? savedLocale : 'ar';
-                                document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
-                                document.documentElement.lang = locale;
-                            })();
-                        `,
-                    }}
-                />
-            </head>
+        <html lang={locale} dir={direction} suppressHydrationWarning>
             <body
                 className={`${outfit.variable} ${ibmPlexArabic.variable} font-sans antialiased`}
                 suppressHydrationWarning
@@ -54,7 +46,7 @@ export default function RootLayout({
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <LanguageProvider defaultLocale="ar">
+                    <LanguageProvider defaultLocale={locale}>
                         {children}
                         <Toaster />
                     </LanguageProvider>

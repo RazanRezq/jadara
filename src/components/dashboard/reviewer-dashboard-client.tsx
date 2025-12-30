@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { RatingDistribution } from "@/components/reviewer/rating-distribution"
 
 // --- Interfaces ---
 interface ApplicantData {
@@ -49,6 +50,7 @@ interface ApplicantData {
 }
 
 interface ReviewerDashboardData {
+    userId: string
     userName: string
     stats: {
         total: number
@@ -58,6 +60,10 @@ interface ReviewerDashboardData {
     }
     pendingApplicants: ApplicantData[]
     completedApplicants: ApplicantData[]
+    ratingDistribution?: {
+        distribution: Array<{ rating: number; count: number }>
+        total: number
+    }
 }
 
 interface ReviewerDashboardClientProps {
@@ -71,15 +77,15 @@ type MergedApplicant = ApplicantData & {
 }
 
 export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) {
-    const { t, isRTL, dir } = useTranslate()
+    const { t, isRTL, dir, mounted } = useTranslate()
     const router = useRouter()
 
-    const { userName, stats, pendingApplicants, completedApplicants } = data
+    const { userId, userName, stats, pendingApplicants, completedApplicants, ratingDistribution } = data
 
     // --- State ---
     const [searchQuery, setSearchQuery] = useState('')
 
-    // --- Data Processing ---
+    // --- Data Processing (ALL HOOKS MUST BE BEFORE EARLY RETURN) ---
     // Only show completed applicants (those reviewed by this reviewer)
     const filteredApplicants = useMemo(() => {
         let filtered = completedApplicants
@@ -107,6 +113,48 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
         if (rated.length === 0) return 0
         const sum = rated.reduce((acc, a) => acc + (a.myRating || 0), 0)
         return (sum / rated.length).toFixed(1)
+    }, [completedApplicants])
+
+    // Calculate recent reviews (last 7 days)
+    const recentReviews = useMemo(() => {
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        return completedApplicants.filter(a => {
+            const reviewDate = new Date(a.reviewedAt || a.createdAt)
+            return reviewDate >= sevenDaysAgo
+        }).length
+    }, [completedApplicants])
+
+    // Calculate rating consistency (standard deviation)
+    const ratingConsistency = useMemo(() => {
+        const rated = completedApplicants.filter(a => a.myRating !== undefined && a.myRating !== null)
+        if (rated.length < 2) return null
+
+        const avg = typeof avgMyRating === 'number' ? avgMyRating : parseFloat(avgMyRating)
+        const squareDiffs = rated.map(a => Math.pow((a.myRating || 0) - avg, 2))
+        const avgSquareDiff = squareDiffs.reduce((acc, val) => acc + val, 0) / rated.length
+        const stdDev = Math.sqrt(avgSquareDiff)
+
+        // Return consistency rating (lower std dev = more consistent)
+        if (stdDev < 0.5) return 'high'
+        if (stdDev < 1.0) return 'medium'
+        return 'low'
+    }, [completedApplicants, avgMyRating])
+
+    // Calculate rating breakdown (how many of each rating)
+    const ratingBreakdown = useMemo(() => {
+        const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        completedApplicants.forEach(a => {
+            if (a.myRating !== undefined && a.myRating !== null) {
+                breakdown[Math.round(a.myRating) as keyof typeof breakdown]++
+            }
+        })
+        return breakdown
+    }, [completedApplicants])
+
+    // Total rated applicants
+    const totalRated = useMemo(() => {
+        return completedApplicants.filter(a => a.myRating !== undefined && a.myRating !== null).length
     }, [completedApplicants])
 
     // --- Helpers ---
@@ -157,6 +205,10 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
 
     const handleViewAllApplicants = () => {
         router.push('/dashboard/applicants')
+    }
+
+    if (!mounted) {
+        return null
     }
 
     return (
@@ -231,104 +283,143 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                     </Card>
                 </div>
 
-                {/* Section 2: Hero + Activity Chart */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Hero Card */}
-                    <div className="lg:col-span-4">
-                        <Card className="rounded-3xl bg-gradient-to-br from-primary to-primary/80 text-white border shadow-lg relative overflow-hidden h-full">
-                            <CardContent className="p-8 flex flex-col justify-between h-full min-h-[300px] relative z-10">
+                {/* Section 2: Review Activity Widgets */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    {/* Review Performance Card */}
+                    <Card className="rounded-2xl border shadow-sm bg-card">
+                        <CardHeader className="pb-4 border-b">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className={cn("text-2xl md:text-3xl font-bold mb-2", isRTL ? "text-right" : "text-left")}>
+                                    <CardTitle className="text-lg font-bold text-foreground">
                                         {t("dashboard.reviewer.myReviewHistory")}
-                                    </h3>
-                                    <p className={cn("text-white/90 text-sm mb-8", isRTL ? "text-right" : "text-left")}>
+                                    </CardTitle>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         {t("dashboard.reviewer.trackYourReviews")}
                                     </p>
-
-                                    <div className="space-y-4 mb-8">
-                                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-white/90 text-sm">{t("dashboard.reviewer.totalReviews")}</span>
-                                                <CheckCircle2 className="w-5 h-5 text-white/90" />
-                                            </div>
-                                            <div className="text-3xl font-bold">{stats.total}</div>
-                                        </div>
-
-                                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-white/90 text-sm">{t("dashboard.reviewer.avgRating")}</span>
-                                                <Star className="w-5 h-5 text-amber-300 fill-amber-300" />
-                                            </div>
-                                            <div className="text-3xl font-bold">{avgMyRating} / 5</div>
-                                        </div>
+                                </div>
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <CheckCircle2 className="w-6 h-6 text-primary" />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            {/* Primary Stats */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                        <span className="text-xs text-muted-foreground">
+                                            {t("dashboard.reviewer.totalReviews")}
+                                        </span>
+                                    </div>
+                                    <div className="text-3xl font-bold text-foreground">{stats.total}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                        <span className="text-xs text-muted-foreground">
+                                            {t("dashboard.reviewer.avgRating")}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-bold text-amber-600">{avgMyRating}</span>
+                                        <span className="text-sm text-muted-foreground">/5</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <Button
-                                    onClick={handleViewAllApplicants}
-                                    className="w-full bg-white text-primary hover:bg-white/90 font-bold text-base shadow-lg py-6"
-                                    size="lg"
-                                >
-                                    {t("dashboard.reviewer.viewAllApplicants")}
-                                    {isRTL ? <ArrowLeft className="w-5 h-5 ms-2" /> : <ArrowRight className="w-5 h-5 ms-2" />}
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </div>
+                            {/* Secondary Metrics */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Recent Activity */}
+                                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                        <span className="text-xs font-medium text-blue-900 dark:text-blue-100">{t("dashboard.reviewer.last7Days")}</span>
+                                    </div>
+                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{recentReviews}</div>
+                                    <p className="text-xs text-blue-600/70 dark:text-blue-400/70">{t("dashboard.reviewer.reviews")}</p>
+                                </div>
+
+                                {/* Top Rating */}
+                                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Trophy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span className="text-xs font-medium text-emerald-900 dark:text-emerald-100">{t("dashboard.reviewer.bestScore")}</span>
+                                    </div>
+                                    <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                                        {topCandidates.length > 0 ? topCandidates[0].myRating : '-'}
+                                    </div>
+                                    <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">{t("dashboard.reviewer.rating")}</p>
+                                </div>
+                            </div>
+
+                            {/* Quick Rating Breakdown */}
+                            {totalRated > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-foreground">{t("dashboard.reviewer.myRatingBreakdown")}</span>
+                                        {ratingConsistency && (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    "text-xs",
+                                                    ratingConsistency === 'high' && "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
+                                                    ratingConsistency === 'medium' && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+                                                    ratingConsistency === 'low' && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                                                )}
+                                            >
+                                                {ratingConsistency === 'high' ? t("dashboard.reviewer.consistent") : ratingConsistency === 'medium' ? t("dashboard.reviewer.moderate") : t("dashboard.reviewer.varied")}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {[5, 4, 3, 2, 1].map((rating) => {
+                                            const count = ratingBreakdown[rating as keyof typeof ratingBreakdown]
+                                            const percentage = totalRated > 0 ? (count / totalRated) * 100 : 0
+                                            const barColor = rating >= 4 ? 'bg-emerald-500' : rating === 3 ? 'bg-amber-500' : 'bg-rose-500'
+
+                                            return (
+                                                <div key={rating} className="space-y-1">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Star className={cn("w-3 h-3 fill-current",
+                                                                rating >= 4 ? "text-emerald-500" : rating === 3 ? "text-amber-500" : "text-rose-500"
+                                                            )} />
+                                                            <span className="text-muted-foreground">{rating}</span>
+                                                        </div>
+                                                        <span className="font-medium text-foreground">{count}</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                                        <div
+                                                            className={cn("h-full rounded-full transition-all duration-500", barColor)}
+                                                            style={{ width: `${percentage}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <Button
+                                onClick={handleViewAllApplicants}
+                                className="w-full"
+                                variant="default"
+                            >
+                                {t("dashboard.reviewer.viewAllApplicants")}
+                                {isRTL ? <ArrowLeft className="w-4 h-4 ms-2" /> : <ArrowRight className="w-4 h-4 ms-2" />}
+                            </Button>
+                        </CardContent>
+                    </Card>
 
                     {/* Rating Distribution */}
-                    <div className="lg:col-span-8">
-                        <Card className="rounded-3xl h-full border border-border shadow-sm bg-card">
-                            <CardHeader className="pb-3 border-b border-border/40">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className={cn("text-lg md:text-xl font-bold text-foreground", isRTL ? "text-right" : "text-left")}>
-                                        {t("dashboard.reviewer.myRatingDistribution")}
-                                    </CardTitle>
-                                    <BarChart3 className="w-5 h-5 text-muted-foreground" />
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-8 p-6">
-                                <div className="space-y-5">
-                                    {/* Rating Distribution Bars */}
-                                    {[5, 4, 3, 2, 1].map((rating) => {
-                                        const count = completedApplicants.filter(a => a.myRating === rating).length
-                                        const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0
-                                        const colors = {
-                                            5: 'from-emerald-400/90 to-emerald-500',
-                                            4: 'from-blue-400/90 to-blue-500',
-                                            3: 'from-amber-400/90 to-amber-500',
-                                            2: 'from-orange-400/90 to-orange-500',
-                                            1: 'from-red-400/90 to-red-500'
-                                        }
-                                        return (
-                                            <div key={rating} className="flex items-center gap-3">
-                                                <div className={cn("w-20 text-sm font-medium shrink-0 text-foreground flex items-center gap-1", isRTL ? "text-right flex-row-reverse" : "text-left")}>
-                                                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                                                    <span>{rating}</span>
-                                                </div>
-                                                <div className="flex-1 h-11 border border-border rounded-xl overflow-hidden bg-transparent relative">
-                                                    <div
-                                                        className={cn(
-                                                            `h-full bg-gradient-to-r ${colors[rating as keyof typeof colors]} flex items-center px-4 transition-all duration-500 relative z-10`,
-                                                            isRTL ? "justify-start" : "justify-end"
-                                                        )}
-                                                        style={{ width: `${Math.max(percentage, count > 0 ? 12 : 0)}%` }}
-                                                    >
-                                                        {count > 0 && <span className="text-white font-bold text-sm">{count}</span>}
-                                                    </div>
-                                                    {count === 0 && (
-                                                        <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-muted-foreground">
-                                                            0
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                    <RatingDistribution
+                        reviewerId={userId}
+                        initialData={ratingDistribution}
+                        avgRating={typeof avgMyRating === 'number' ? avgMyRating : parseFloat(avgMyRating)}
+                    />
                 </div>
 
                 {/* Section 3: Bottom Content (Candidates + Sidebar) */}
