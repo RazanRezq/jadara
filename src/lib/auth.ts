@@ -56,7 +56,7 @@ export function getRoleLabel(role: UserRole): string {
 
 export function getRoleColor(role: UserRole): string {
     const colors: Record<UserRole, string> = {
-        superadmin: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white',
+        superadmin: 'bg-gradient-to-r from-gray-100 to-white text-gray-900 dark:from-gray-700 dark:to-gray-600 dark:text-white',
         admin: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white',
         reviewer: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white',
     }

@@ -224,7 +224,7 @@ export function ApplicantList({
                                         >
                                             <div className="flex items-center gap-3 justify-start w-full">
                                                 {/* Avatar with gradient background like jobs page */}
-                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
                                                     <Users className="h-5 w-5" />
                                                 </div>
 
@@ -319,7 +319,7 @@ export function ApplicantList({
                                                 </div>
                                             )}
 
-                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
                                                 <Users className="h-6 w-6" />
                                             </div>
                                             <div className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ export function ApplicantListMobile({
 
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Gradient avatar like jobs page */}
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
                                 <Users className="h-6 w-6" />
                             </div>
                             <div className="text-right flex-1 min-w-0">

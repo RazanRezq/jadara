@@ -27,9 +27,10 @@ import { ApplicantsToolbar } from "./applicants-toolbar"
 import { ApplicantFilters } from "./applicant-filters"
 import { ApplicantBoard } from "./applicant-board"
 import { ApplicantList, ApplicantListMobile } from "./applicant-list"
-import { DashboardStats } from "./dashboard-stats"
+import { ApplicantDashboardWidgets } from "@/components/dashboard/applicant-widgets"
 import { ViewApplicantDialog } from "./view-applicant-dialog"
 import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
+import { AIRecommendedSection } from "./ai-recommended-section"
 
 // Types
 import type {
@@ -501,8 +502,16 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
             {/* Main Content */}
             <div className="flex-1 p-4 space-y-6">
+                {/* AI Recommended Section - Above Everything */}
+                {!loading && (
+                    <AIRecommendedSection
+                        applicants={applicants}
+                        onApplicantClick={handleViewApplicant}
+                    />
+                )}
+
                 {/* Stats Cards */}
-                <DashboardStats stats={stats} />
+                <ApplicantDashboardWidgets stats={stats} loading={loading} />
 
                 {/* Loading State */}
                 {loading ? (

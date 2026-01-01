@@ -35,7 +35,7 @@ interface ViewJobDialogProps {
 const statusColors: Record<JobStatus, string> = {
     draft: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-    closed: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+    closed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     archived: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 }
 
@@ -71,10 +71,10 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shrink-0">
                             <Briefcase className="h-6 w-6" />
                         </div>
                         <div className="flex-1">
@@ -93,9 +93,9 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
 
                 <div className="space-y-6 mt-4">
                     {/* Share Section */}
-                    <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-2 border-indigo-200 dark:border-indigo-800">
+                    <div className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-2 border-blue-200 dark:border-blue-800">
                         <div className="flex items-center gap-2 mb-3">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                                 <LinkIcon className="h-4 w-4 text-white" />
                             </div>
                             <h4 className="font-semibold text-lg">{t("jobs.shareSection")}</h4>
@@ -115,7 +115,7 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
                             <Button
                                 onClick={handleCopyLink}
                                 size="lg"
-                                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0"
+                                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all shrink-0"
                             >
                                 <Copy className="h-4 w-4 me-2" />
                                 {t("jobs.copyLink")}

@@ -15,11 +15,12 @@ interface StatusOverviewProps {
     className?: string
 }
 
-// Status configuration with modern colors for both light and dark modes
+// Status configuration with modern colors and gradient variants
 const STATUS_CONFIG = {
     new: {
         label: "applicants.kanban.new",
         icon: Users,
+        gradientVariant: "jobs" as const,
         bgColor: "bg-blue-50 dark:bg-blue-950/30",
         borderColor: "border-blue-200 dark:border-blue-800",
         labelColor: "text-blue-700 dark:text-blue-300",
@@ -29,6 +30,7 @@ const STATUS_CONFIG = {
     evaluated: {
         label: "applicants.kanban.evaluated",
         icon: UserCheck,
+        gradientVariant: "analytics" as const,
         bgColor: "bg-purple-50 dark:bg-purple-950/30",
         borderColor: "border-purple-200 dark:border-purple-800",
         labelColor: "text-purple-700 dark:text-purple-300",
@@ -38,6 +40,7 @@ const STATUS_CONFIG = {
     interview: {
         label: "applicants.kanban.interview",
         icon: Calendar,
+        gradientVariant: "warning" as const,
         bgColor: "bg-amber-50 dark:bg-amber-950/30",
         borderColor: "border-amber-200 dark:border-amber-800",
         labelColor: "text-amber-700 dark:text-amber-300",
@@ -47,6 +50,7 @@ const STATUS_CONFIG = {
     hired: {
         label: "applicants.kanban.hired",
         icon: CheckCircle2,
+        gradientVariant: "success" as const,
         bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
         borderColor: "border-emerald-200 dark:border-emerald-800",
         labelColor: "text-emerald-700 dark:text-emerald-300",
@@ -78,6 +82,7 @@ export function StatusOverview({ statuses, className }: StatusOverviewProps) {
                 return (
                     <Card
                         key={statusData.status}
+                        gradientVariant={config.gradientVariant}
                         className={cn(
                             "border transition-all duration-200 hover:shadow-md",
                             config.bgColor,

@@ -71,7 +71,7 @@ export function RatingDistribution({ reviewerId, initialData, avgRating = 0 }: R
             5: "bg-emerald-500",
             4: "bg-blue-500",
             3: "bg-amber-500",
-            2: "bg-orange-500",
+            2: "bg-white dark:bg-gray-300",
             1: "bg-rose-500",
         }
         return colors[rating as keyof typeof colors] || "bg-gray-500"
@@ -82,7 +82,7 @@ export function RatingDistribution({ reviewerId, initialData, avgRating = 0 }: R
             5: "text-emerald-500",
             4: "text-blue-500",
             3: "text-amber-500",
-            2: "text-orange-500",
+            2: "text-white dark:text-gray-300",
             1: "text-rose-500",
         }
         return colors[rating as keyof typeof colors] || "text-gray-500"

@@ -224,7 +224,7 @@ export function ContextSelectorModal({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto text-start">
+            <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto text-start">
                 {/* Step 1: Context Selection */}
                 {step === "select" && (
                     <>
@@ -251,7 +251,7 @@ export function ContextSelectorModal({
                                     <Zap className="h-4 w-4 text-primary" />
                                     {t("jobWizard.contextSelector.jobDetails")}
                                 </h4>
-                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                                     <div>
                                         <span className="text-muted-foreground">{t("jobWizard.step1.jobTitle")}:</span>
                                         <p className="font-medium">{jobTitle || "-"}</p>
@@ -299,7 +299,7 @@ export function ContextSelectorModal({
                             {/* Section 2: Benefit Chips */}
                             <div>
                                 <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-amber-500" />
+                                    <Sparkles className="h-5 w-5 text-slate-600" />
                                     {t("jobWizard.contextSelector.benefitsTitle")}
                                 </h3>
                                 <p className="text-sm text-muted-foreground mb-4">
@@ -313,8 +313,8 @@ export function ContextSelectorModal({
                                             className={cn(
                                                 "cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105",
                                                 selectedBenefits.includes(chip.id)
-                                                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 border-0 text-white"
-                                                    : "hover:border-amber-500"
+                                                    ? "bg-gradient-to-r from-gray-300 to-gray-200 hover:from-gray-400 hover:to-gray-300 border-0 text-white"
+                                                    : "hover:border-slate-500"
                                             )}
                                             onClick={() => toggleBenefit(chip.id)}
                                         >

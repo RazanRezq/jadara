@@ -705,12 +705,7 @@ evaluationSchema.index({ jobId: 1, recommendation: 1, overallScore: -1 }) // For
 evaluationSchema.index({ isProcessed: 1, createdAt: -1 }) // For finding pending evaluations
 evaluationSchema.index({ processedAt: -1 }) // For date range queries
 
-// In development, delete cached model to allow schema changes
-// This is necessary because Next.js hot-reloading caches Mongoose models
-if (process.env.NODE_ENV === 'development') {
-    delete mongoose.models.Evaluation
-}
-
+// Use existing model if available (for Next.js hot reload)
 const Evaluation: Model<IEvaluation> =
     mongoose.models.Evaluation || mongoose.model<IEvaluation>('Evaluation', evaluationSchema)
 

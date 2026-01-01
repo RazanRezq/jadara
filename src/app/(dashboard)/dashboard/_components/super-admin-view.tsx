@@ -94,6 +94,10 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
     const successGradient = getCardGradient("success")
     const warningGradient = getCardGradient("warning")
     const dangerGradient = getCardGradient("danger")
+    const analyticsGradient = getCardGradient("analytics")
+    const reviewsGradient = getCardGradient("reviews")
+    const interviewsGradient = getCardGradient("interviews")
+    const applicantsGradient = getCardGradient("applicants")
 
     const getHealthGradient = (health: string) => {
         switch (health) {
@@ -146,7 +150,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     iconVariant="primary"
                     iconColor="text-blue-600 dark:text-blue-400"
                     iconBgColor="bg-blue-100 dark:bg-blue-900/30"
-                    gradientColor={usersGradient.from}
+                    gradientFrom={usersGradient.from}
+                    gradientTo={usersGradient.to}
                     description={t("dashboard.superAdmin.registeredUsers")}
                 />
 
@@ -157,14 +162,16 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     iconVariant="info"
                     iconColor="text-purple-600 dark:text-purple-400"
                     iconBgColor="bg-purple-100 dark:bg-purple-900/30"
-                    gradientColor={jobsGradient.from}
+                    gradientFrom={jobsGradient.from}
+                    gradientTo={jobsGradient.to}
                     description={t("dashboard.superAdmin.systemWide")}
                 />
 
                 <DashboardWidgetCompact
                     title={t("dashboard.superAdmin.systemHealth")}
                     value={getHealthText(stats.systemHealth)}
-                    gradientColor={healthGradient.from}
+                    gradientFrom={healthGradient.from}
+                    gradientTo={healthGradient.to}
                     icon={Activity}
                     iconVariant={stats.systemHealth === "healthy" ? "success" : stats.systemHealth === "warning" ? "warning" : "danger"}
                     iconColor="text-white"
@@ -186,7 +193,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.userAnalytics.roleStats.total}
                         icon={Users}
                         iconVariant="primary"
-                        gradientColor="#3b82f6"
+                        gradientFrom={jobsGradient.from}
+                        gradientTo={jobsGradient.to}
                         breakdowns={[
                             {
                                 label: t("roles.superadmin"),
@@ -202,7 +210,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                 percentage: Math.round(
                                     (stats.userAnalytics.roleStats.admin / stats.userAnalytics.roleStats.total) * 100
                                 ),
-                                color: "#f59e0b"
+                                color: "#9ca3af"
                             },
                             {
                                 label: t("roles.reviewer"),
@@ -221,7 +229,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.userAnalytics.activityStats.total}
                         icon={Activity}
                         iconVariant="success"
-                        gradientColor="#10b981"
+                        gradientFrom={successGradient.from}
+                        gradientTo={successGradient.to}
                         breakdowns={[
                             {
                                 label: t("common.active"),
@@ -248,7 +257,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.userAnalytics.activityStats.recentlyActive}
                         icon={Activity}
                         iconVariant="info"
-                        gradientColor="#8b5cf6"
+                        gradientFrom={getCardGradient("analytics").from}
+                        gradientTo={getCardGradient("analytics").to}
                         breakdowns={[
                             {
                                 label: t("dashboard.superAdmin.activeLastMonth"),
@@ -277,7 +287,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         iconVariant="primary"
                         iconColor="text-blue-600 dark:text-blue-400"
                         iconBgColor="bg-blue-100 dark:bg-blue-900/30"
-                        gradientColor={usersGradient.from}
+                        gradientFrom={usersGradient.from}
+                        gradientTo={usersGradient.to}
                         description={t("dashboard.superAdmin.registeredUsers")}
                     />
                 </div>
@@ -296,7 +307,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.platformServices.reviews.total}
                         icon={Activity}
                         iconVariant="success"
-                        gradientColor="#10b981"
+                        gradientFrom={reviewsGradient.from}
+                        gradientTo={reviewsGradient.to}
                         chartType="donut"
                         breakdowns={[
                             {
@@ -321,7 +333,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                 percentage: stats.platformServices.reviews.total > 0 ? Math.round(
                                     (stats.platformServices.reviews.neutral / stats.platformServices.reviews.total) * 100
                                 ) : 0,
-                                color: "#f59e0b"
+                                color: "#9ca3af"
                             },
                             {
                                 label: t("dashboard.superAdmin.notRecommended"),
@@ -340,7 +352,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.platformServices.interviews.total}
                         icon={Users}
                         iconVariant="warning"
-                        gradientColor="#f59e0b"
+                        gradientFrom={interviewsGradient.from}
+                        gradientTo={interviewsGradient.to}
                         chartType="donut"
                         breakdowns={[
                             {
@@ -349,7 +362,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                 percentage: stats.platformServices.interviews.total > 0 ? Math.round(
                                     (stats.platformServices.interviews.scheduled / stats.platformServices.interviews.total) * 100
                                 ) : 0,
-                                color: "#f59e0b"
+                                color: "#9ca3af"
                             },
                             {
                                 label: t("dashboard.superAdmin.confirmed"),
@@ -376,7 +389,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.platformServices.responses.total}
                         icon={Activity}
                         iconVariant="info"
-                        gradientColor="#8b5cf6"
+                        gradientFrom={analyticsGradient.from}
+                        gradientTo={analyticsGradient.to}
                         chartType="donut"
                         breakdowns={[
                             {
@@ -401,7 +415,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                 percentage: stats.platformServices.responses.total > 0 ? Math.round(
                                     (stats.platformServices.responses.file / stats.platformServices.responses.total) * 100
                                 ) : 0,
-                                color: "#f59e0b"
+                                color: "#9ca3af"
                             }
                         ]}
                     />
@@ -412,7 +426,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.platformServices.applicants.total}
                         icon={Briefcase}
                         iconVariant="primary"
-                        gradientColor="#06b6d4"
+                        gradientFrom={applicantsGradient.from}
+                        gradientTo={applicantsGradient.to}
                         chartType="donut"
                         breakdowns={[
                             {
@@ -429,7 +444,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                 percentage: stats.platformServices.applicants.total > 0 ? Math.round(
                                     (stats.platformServices.applicants.evaluated / stats.platformServices.applicants.total) * 100
                                 ) : 0,
-                                color: "#f59e0b"
+                                color: "#9ca3af"
                             },
                             {
                                 label: t("applicants.status.interview"),
@@ -454,6 +469,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
 
             {/* User Management */}
             <Card
+                useMagic
                 className="border bg-card"
                 gradientFrom={usersGradient.from}
                 gradientTo={usersGradient.to}

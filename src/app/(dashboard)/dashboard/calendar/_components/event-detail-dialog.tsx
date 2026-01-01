@@ -48,7 +48,7 @@ export function EventDetailDialog({
     confirmed: "bg-green-500",
     completed: "bg-gray-500",
     cancelled: "bg-red-500",
-    no_show: "bg-orange-500",
+    no_show: "bg-gray-400",
     rescheduled: "bg-purple-500",
   }
 

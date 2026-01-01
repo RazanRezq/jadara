@@ -580,7 +580,7 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                                                         "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm shrink-0",
                                                         index === 0 && "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
                                                         index === 1 && "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400",
-                                                        index === 2 && "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400"
+                                                        index === 2 && "bg-white text-gray-800 dark:bg-gray-300/20 dark:text-gray-200"
                                                     )}>
                                                         #{index + 1}
                                                     </div>

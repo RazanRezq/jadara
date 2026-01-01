@@ -8,7 +8,7 @@ interface SidebarMenuItemProps {
     title: string
     url: string
     icon: LucideIcon
-    iconColor: string
+    iconColor?: string
     isActive: boolean
 }
 
@@ -22,9 +22,9 @@ export function SidebarMenuItemContent({ title, url, icon: Icon, iconColor, isAc
             tooltip={title}
             isActive={isActive}
         >
-            <Link href={url}>
-                <Icon className={`${iconColor} transition-all duration-200 drop-shadow-[0_0_8px_currentColor]`} />
-                {!isCollapsed && <span>{title}</span>}
+            <Link href={url} className="group/link">
+                <Icon className={`h-4 w-4 transition-all duration-300 ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover/link:text-foreground'}`} />
+                {!isCollapsed && <span className="font-medium">{title}</span>}
             </Link>
         </SidebarMenuButton>
     )

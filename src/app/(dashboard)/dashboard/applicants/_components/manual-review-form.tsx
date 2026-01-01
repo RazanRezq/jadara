@@ -83,7 +83,7 @@ export function ManualReviewForm({
         {
             value: "not_recommended",
             label: t("applicants.review.notRecommended"),
-            color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+            color: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
             icon: <ThumbsDown className="h-4 w-4" />,
         },
         {

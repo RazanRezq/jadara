@@ -20,11 +20,24 @@ export const TotalApplicationsWidget: React.FC<TotalApplicationsWidgetProps> = (
 
     if (loading) {
         return (
-            <div className="space-y-3 rounded-lg border p-6">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-3 w-28" />
-                <Skeleton className="h-16 w-full mt-2" />
+            <div className="rounded-lg border border-border bg-background">
+                {/* CardHeader skeleton */}
+                <div className="px-6 pt-6 pb-3">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-9 w-20" />
+                        </div>
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                    </div>
+                </div>
+                {/* CardContent skeleton */}
+                <div className="px-6 pb-6">
+                    <div className="flex flex-col gap-2">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-12 w-full mt-2" />
+                    </div>
+                </div>
             </div>
         )
     }

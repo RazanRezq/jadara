@@ -94,11 +94,9 @@ notificationSchema.index({ userId: 1, type: 1 }) // For filtering by type
 notificationSchema.index({ createdAt: -1 }) // For sorting by date
 notificationSchema.index({ userId: 1, createdAt: -1 }) // For user timeline
 
-// Handle model caching properly - delete cached model if schema changed
-if (mongoose.models.Notification) {
-    delete mongoose.models.Notification
-}
-
-const Notification: Model<INotification> = mongoose.model<INotification>('Notification', notificationSchema)
+// Use existing model if available (for Next.js hot reload)
+const Notification: Model<INotification> =
+    mongoose.models.Notification ||
+    mongoose.model<INotification>('Notification', notificationSchema)
 
 export default Notification

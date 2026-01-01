@@ -22,8 +22,16 @@ app.get('/', async (c) => {
             return c.json({ success: false, error: 'User ID is required' }, 400)
         }
 
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(userId as string)) {
+            return c.json({ success: false, error: 'Invalid user ID format' }, 400)
+        }
+
+        // Convert userId to ObjectId
+        const userIdObjectId = new mongoose.Types.ObjectId(userId as string)
+
         // Build query
-        const query: any = { userId: new mongoose.Types.ObjectId(userId as string) }
+        const query: any = { userId: userIdObjectId }
 
         // Status filter
         if (status === 'read') {
@@ -60,7 +68,7 @@ app.get('/', async (c) => {
                 .limit(limit)
                 .lean(),
             Notification.countDocuments(query),
-            Notification.countDocuments({ userId: query.userId, isRead: false }),
+            Notification.countDocuments({ userId: userIdObjectId, isRead: false }),
         ])
 
         return c.json({
@@ -75,11 +83,12 @@ app.get('/', async (c) => {
         })
     } catch (error: any) {
         console.error('Error fetching notifications:', error)
+        console.error('Error stack:', error.stack)
         return c.json(
             {
                 success: false,
                 error: 'Failed to fetch notifications',
-                details: error.message,
+                details: error instanceof Error ? error.message : 'Unknown error',
             },
             500
         )
@@ -160,8 +169,13 @@ app.patch('/read-all', async (c) => {
             return c.json({ success: false, error: 'User ID is required' }, 400)
         }
 
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(userId as string)) {
+            return c.json({ success: false, error: 'Invalid user ID format' }, 400)
+        }
+
         await Notification.updateMany(
-            { userId, isRead: false },
+            { userId: new mongoose.Types.ObjectId(userId as string), isRead: false },
             {
                 isRead: true,
                 readAt: new Date(),
@@ -224,6 +238,11 @@ app.delete('/delete-read', async (c) => {
 
         if (!userId) {
             return c.json({ success: false, error: 'User ID is required' }, 400)
+        }
+
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(userId as string)) {
+            return c.json({ success: false, error: 'Invalid user ID format' }, 400)
         }
 
         const result = await Notification.deleteMany({

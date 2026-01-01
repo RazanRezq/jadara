@@ -23,6 +23,8 @@ interface DashboardWidgetProps {
     className?: string
     children?: React.ReactNode
     gradientColor?: string
+    gradientFrom?: string
+    gradientTo?: string
 }
 
 export function DashboardWidget({
@@ -36,109 +38,68 @@ export function DashboardWidget({
     href,
     className,
     children,
-    gradientColor = "#4f46e5",
+    gradientColor,
+    gradientFrom,
+    gradientTo,
 }: DashboardWidgetProps) {
     const { theme } = useTheme()
     const isPositive = trend ? trend.isPositive !== false : true
 
+    // Use gradientFrom/To if provided, otherwise fallback to gradientColor (legacy support)
+    const finalGradientFrom = gradientFrom || gradientColor || "#4f46e5"
+    const finalGradientTo = gradientTo || (gradientColor ? `${gradientColor}80` : "#7c3aed")
+
     const content = (
         <>
-            {theme === "dark" ? (
-                <MagicCard
-                    className={cn(
-                        "relative overflow-hidden rounded-lg border border-border bg-background",
-                        href && "cursor-pointer",
-                        className
-                    )}
-                    gradientFrom={gradientColor}
-                    gradientTo={`${gradientColor}80`}
-                    gradientSize={150}
-                >
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between gap-x-4">
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium text-muted-foreground">
-                                    {title}
-                                </h3>
-                                <div className="text-2xl font-bold">
-                                    {typeof value === "number" ? value.toLocaleString() : value}
-                                </div>
-                            </div>
-                            <IconBadge icon={Icon} variant={iconVariant} size="md" />
-                        </div>
-
-                        {children}
-
-                        {trend && (
-                            <div className="mt-4 flex items-center gap-x-2 text-sm">
-                                <span
-                                    className={cn(
-                                        "flex items-center",
-                                        isPositive ? "text-emerald-600" : "text-red-600"
-                                    )}
-                                >
-                                    {isPositive ? (
-                                        <TrendingUp className="h-4 w-4" />
-                                    ) : (
-                                        <TrendingDown className="h-4 w-4" />
-                                    )}
-                                    <span className="ms-1">
-                                        {Math.abs(trend.value).toFixed(1)}%
-                                    </span>
-                                </span>
-                                <span className="text-muted-foreground">
-                                    {trend.label}
-                                </span>
-                            </div>
-                        )}
-                    </CardContent>
-                </MagicCard>
-            ) : (
-                <div className={cn(
-                    "relative overflow-hidden rounded-lg border border-border bg-card",
+            <MagicCard
+                className={cn(
+                    "relative overflow-hidden rounded-lg border border-border bg-background",
                     href && "cursor-pointer",
                     className
-                )}>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between gap-x-4">
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium text-muted-foreground">
-                                    {title}
-                                </h3>
-                                <div className="text-2xl font-bold">
-                                    {typeof value === "number" ? value.toLocaleString() : value}
-                                </div>
-                            </div>
-                            <IconBadge icon={Icon} variant={iconVariant} size="md" />
+                )}
+                gradientFrom={finalGradientFrom}
+                gradientTo={finalGradientTo}
+                gradientSize={150}
+            >
+                    <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-x-4">
+                    <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-muted-foreground">
+                            {title}
+                        </h3>
+                        <div className="text-2xl font-bold">
+                            {typeof value === "number" ? value.toLocaleString() : value}
                         </div>
-
-                        {children}
-
-                        {trend && (
-                            <div className="mt-4 flex items-center gap-x-2 text-sm">
-                                <span
-                                    className={cn(
-                                        "flex items-center",
-                                        isPositive ? "text-emerald-600" : "text-red-600"
-                                    )}
-                                >
-                                    {isPositive ? (
-                                        <TrendingUp className="h-4 w-4" />
-                                    ) : (
-                                        <TrendingDown className="h-4 w-4" />
-                                    )}
-                                    <span className="ms-1">
-                                        {Math.abs(trend.value).toFixed(1)}%
-                                    </span>
-                                </span>
-                                <span className="text-muted-foreground">
-                                    {trend.label}
-                                </span>
-                            </div>
-                        )}
-                    </CardContent>
+                    </div>
+                    <IconBadge icon={Icon} variant={iconVariant} size="md" />
                 </div>
-            )}
+
+                {children}
+
+                {trend && (
+                    <div className="mt-4 flex items-center gap-x-2 text-sm">
+                        <span
+                            className={cn(
+                                "flex items-center",
+                                isPositive ? "text-emerald-600" : "text-red-600"
+                            )}
+                        >
+                            {isPositive ? (
+                                <TrendingUp className="h-4 w-4" />
+                            ) : (
+                                <TrendingDown className="h-4 w-4" />
+                            )}
+                            <span className="ms-1">
+                                {Math.abs(trend.value).toFixed(1)}%
+                            </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                            {trend.label}
+                        </span>
+                    </div>
+                )}
+                    </CardContent>
+                </MagicCard>
         </>
     )
 
@@ -163,7 +124,9 @@ export function DashboardWidgetCompact({
     iconVariant = 'default',
     description,
     className,
-    gradientColor = "#4f46e5",
+    gradientColor,
+    gradientFrom,
+    gradientTo,
 }: {
     title: string
     value: string | number
@@ -174,47 +137,43 @@ export function DashboardWidgetCompact({
     description?: string
     className?: string
     gradientColor?: string
+    gradientFrom?: string
+    gradientTo?: string
 }) {
-    const { theme } = useTheme()
+    // Use gradientFrom/To if provided, otherwise fallback to gradientColor (legacy support)
+    const finalGradientFrom = gradientFrom || gradientColor || "#4f46e5"
+    const finalGradientTo = gradientTo || (gradientColor ? `${gradientColor}80` : "#7c3aed")
 
     const content = (
-        <CardContent className="p-6 h-full flex flex-col">
-            <div className="flex items-start justify-between gap-4 mb-auto">
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                        {title}
-                    </p>
-                    <p className="text-2xl font-bold tracking-tight">
-                        {typeof value === "number" ? value.toLocaleString() : value}
-                    </p>
-                    {description && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                            {description}
+        <CardContent className="p-4 sm:p-6 h-full flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-auto">
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">
+                            {title}
                         </p>
-                    )}
+                        <p className="text-2xl font-bold tracking-tight">
+                            {typeof value === "number" ? value.toLocaleString() : value}
+                        </p>
+                        {description && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {description}
+                            </p>
+                        )}
+                    </div>
+                    <IconBadge icon={Icon} variant={iconVariant} size="md" />
                 </div>
-                <IconBadge icon={Icon} variant={iconVariant} size="md" />
-            </div>
-        </CardContent>
+            </CardContent>
     )
 
-    if (theme === "dark") {
-        return (
-            <MagicCard
-                className={cn("relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[140px]", className)}
-                gradientFrom={gradientColor}
-                gradientTo={`${gradientColor}80`}
-                gradientSize={150}
-            >
-                {content}
-            </MagicCard>
-        )
-    }
-
     return (
-        <div className={cn("relative overflow-hidden rounded-lg border border-border bg-card h-full min-h-[140px]", className)}>
+        <MagicCard
+            className={cn("relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[140px]", className)}
+            gradientFrom={finalGradientFrom}
+            gradientTo={finalGradientTo}
+            gradientSize={150}
+        >
             {content}
-        </div>
+        </MagicCard>
     )
 }
 
@@ -238,46 +197,36 @@ export function DashboardWidgetGradient({
     description?: string
     className?: string
 }) {
-    const { theme } = useTheme()
-
     const content = (
-        <CardContent className="p-6 h-full flex flex-col">
-            <div className="flex items-start justify-between gap-4 mb-auto">
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                        {title}
-                    </p>
-                    <p className="text-2xl font-bold tracking-tight">
-                        {typeof value === "number" ? value.toLocaleString() : value}
-                    </p>
-                    {description && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                            {description}
+        <CardContent className="p-4 sm:p-6 h-full flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-auto">
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">
+                            {title}
                         </p>
-                    )}
+                        <p className="text-2xl font-bold tracking-tight">
+                            {typeof value === "number" ? value.toLocaleString() : value}
+                        </p>
+                        {description && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {description}
+                            </p>
+                        )}
+                    </div>
+                    <IconBadge icon={Icon} variant={iconVariant} size="md" />
                 </div>
-                <IconBadge icon={Icon} variant={iconVariant} size="md" />
-            </div>
-        </CardContent>
+            </CardContent>
     )
 
-    if (theme === "dark") {
-        return (
-            <MagicCard
-                className={cn("relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[140px]", className)}
-                gradientFrom={gradientFrom}
-                gradientTo={gradientTo}
-                gradientSize={150}
-            >
-                {content}
-            </MagicCard>
-        )
-    }
-
     return (
-        <div className={cn("relative overflow-hidden rounded-lg border border-border bg-card h-full min-h-[140px]", className)}>
+        <MagicCard
+            className={cn("relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[140px]", className)}
+            gradientFrom={gradientFrom}
+            gradientTo={gradientTo}
+            gradientSize={150}
+        >
             {content}
-        </div>
+        </MagicCard>
     )
 }
 
@@ -299,6 +248,8 @@ export function DashboardWidgetAnalytics({
     icon: Icon,
     iconVariant = 'default',
     gradientColor,
+    gradientFrom,
+    gradientTo,
     breakdowns,
     trend,
     className,
@@ -307,7 +258,9 @@ export function DashboardWidgetAnalytics({
     value: string | number
     icon: LucideIcon
     iconVariant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
-    gradientColor: string
+    gradientColor?: string
+    gradientFrom?: string
+    gradientTo?: string
     breakdowns?: StatBreakdown[]
     trend?: {
         value: number
@@ -316,120 +269,110 @@ export function DashboardWidgetAnalytics({
     }
     className?: string
 }) {
-    const { theme } = useTheme()
     const isPositive = trend ? trend.isPositive !== false : true
 
+    // Use gradientFrom/To if provided, otherwise fallback to gradientColor (legacy support)
+    const finalGradientFrom = gradientFrom || gradientColor || "#4f46e5"
+    const finalGradientTo = gradientTo || (gradientColor ? `${gradientColor}80` : "#7c3aed")
+
     const content = (
-        <CardContent className="p-6 h-full flex flex-col">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                        {title}
-                    </h3>
-                    <p className="text-3xl font-bold tracking-tight">
-                        {typeof value === "number" ? value.toLocaleString() : value}
-                    </p>
+        <CardContent className="p-4 sm:p-6 h-full flex flex-col">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                            {title}
+                        </h3>
+                        <p className="text-3xl font-bold tracking-tight">
+                            {typeof value === "number" ? value.toLocaleString() : value}
+                        </p>
+                    </div>
+                    <IconBadge icon={Icon} variant={iconVariant} size="md" />
                 </div>
-                <IconBadge icon={Icon} variant={iconVariant} size="md" />
-            </div>
 
-            {/* Breakdowns */}
-            {breakdowns && breakdowns.length > 0 && (
-                <div className="space-y-3 mb-4">
-                    {breakdowns.map((breakdown, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">{breakdown.label}</span>
-                                {breakdown.badge && (
-                                    <span
-                                        className="px-2 py-0.5 rounded-md text-xs font-medium"
-                                        style={{
-                                            backgroundColor: breakdown.badge.color,
-                                            color: "white"
-                                        }}
-                                    >
-                                        {breakdown.badge.label}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="font-medium">{breakdown.value}</span>
-                                <span
-                                    className="w-2 h-2 rounded-full"
-                                    style={{ backgroundColor: breakdown.color }}
-                                />
-                                <span className="text-muted-foreground">
-                                    ({breakdown.percentage}%)
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Progress bar */}
-                    <div className="h-2 rounded-full overflow-hidden bg-muted flex">
+                {/* Breakdowns */}
+                {breakdowns && breakdowns.length > 0 && (
+                    <div className="space-y-3 mb-4">
                         {breakdowns.map((breakdown, index) => (
-                            <div
-                                key={index}
-                                className="h-full"
-                                style={{
-                                    width: `${breakdown.percentage}%`,
-                                    backgroundColor: breakdown.color
-                                }}
-                            />
+                            <div key={index} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">{breakdown.label}</span>
+                                    {breakdown.badge && (
+                                        <span
+                                            className="px-2 py-0.5 rounded-md text-xs font-medium"
+                                            style={{
+                                                backgroundColor: breakdown.badge.color,
+                                                color: "white"
+                                            }}
+                                        >
+                                            {breakdown.badge.label}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="font-medium">{breakdown.value}</span>
+                                    <span
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: breakdown.color }}
+                                    />
+                                    <span className="text-muted-foreground">
+                                        ({breakdown.percentage}%)
+                                    </span>
+                                </div>
+                            </div>
                         ))}
-                    </div>
-                </div>
-            )}
 
-            {/* Trend indicator */}
-            {trend && (
-                <div className="mt-auto pt-3 border-t border-border">
-                    <div className="flex items-center gap-2 text-sm">
-                        <span
-                            className={cn(
-                                "flex items-center font-medium",
-                                isPositive ? "text-emerald-600" : "text-red-600"
-                            )}
-                        >
-                            {isPositive ? (
-                                <TrendingUp className="h-4 w-4 me-1" />
-                            ) : (
-                                <TrendingDown className="h-4 w-4 me-1" />
-                            )}
-                            {Math.abs(trend.value).toFixed(1)}%
-                        </span>
-                        <span className="text-muted-foreground">{trend.label}</span>
+                        {/* Progress bar */}
+                        <div className="h-2 rounded-full overflow-hidden bg-muted flex">
+                            {breakdowns.map((breakdown, index) => (
+                                <div
+                                    key={index}
+                                    className="h-full"
+                                    style={{
+                                        width: `${breakdown.percentage}%`,
+                                        backgroundColor: breakdown.color
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
-        </CardContent>
+                )}
+
+                {/* Trend indicator */}
+                {trend && (
+                    <div className="mt-auto pt-3 border-t border-border">
+                        <div className="flex items-center gap-2 text-sm">
+                            <span
+                                className={cn(
+                                    "flex items-center font-medium",
+                                    isPositive ? "text-emerald-600" : "text-red-600"
+                                )}
+                            >
+                                {isPositive ? (
+                                    <TrendingUp className="h-4 w-4 me-1" />
+                                ) : (
+                                    <TrendingDown className="h-4 w-4 me-1" />
+                                )}
+                                {Math.abs(trend.value).toFixed(1)}%
+                            </span>
+                            <span className="text-muted-foreground">{trend.label}</span>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
     )
 
-    if (theme === "dark") {
-        return (
-            <MagicCard
-                className={cn(
-                    "relative overflow-hidden rounded-lg border border-border bg-background h-full",
-                    className
-                )}
-                gradientFrom={gradientColor}
-                gradientTo={`${gradientColor}80`}
-                gradientSize={150}
-            >
-                {content}
-            </MagicCard>
-        )
-    }
-
     return (
-        <div
+        <MagicCard
             className={cn(
-                "relative overflow-hidden rounded-lg border border-border bg-card h-full",
+                "relative overflow-hidden rounded-lg border border-border bg-background h-full",
                 className
             )}
+            gradientFrom={finalGradientFrom}
+            gradientTo={finalGradientTo}
+            gradientSize={150}
         >
             {content}
-        </div>
+        </MagicCard>
     )
 }

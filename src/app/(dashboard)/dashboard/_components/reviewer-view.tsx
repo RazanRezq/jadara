@@ -70,6 +70,7 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
 
             {/* Evaluation Queue */}
             <Card
+                useMagic
                 gradientFrom={reviewsGradient.from}
                 gradientTo={reviewsGradient.to}
             >
@@ -126,9 +127,10 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
 
             {/* Blind Hiring Notice */}
             <Card
+                useMagic
                 className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20"
-                gradientFrom="#3b82f6"
-                gradientTo="#6366f1"
+                gradientFrom="blue-500"
+                gradientTo="indigo-500"
             >
                 <CardHeader>
                     <CardTitle className="text-blue-900 dark:text-blue-100">

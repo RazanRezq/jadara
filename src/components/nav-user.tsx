@@ -56,25 +56,25 @@ export function NavUser({ user }: NavUserProps) {
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            className="border-t border-border/50"
                         >
-                            <Avatar className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500">
-                                <AvatarFallback className="rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-semibold">
+                            <Avatar className="h-9 w-9 rounded-xl border-2 border-border">
+                                <AvatarFallback className="rounded-xl bg-transparent text-foreground font-bold text-base">
                                     {user.name.charAt(0).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-start text-sm leading-tight">
-                                <span className="truncate font-medium">{user.name}</span>
+                                <span className="truncate font-semibold">{user.name}</span>
                                 <span
                                     className={cn(
-                                        "truncate text-xs px-1.5 py-0.5 rounded w-fit",
+                                        "truncate text-xs px-2 py-0.5 rounded-md w-fit font-medium border",
                                         getRoleColor(user.role)
                                     )}
                                 >
                                     {t(`roles.${user.role}`)}
                                 </span>
                             </div>
-                            <ChevronsUpDown className="size-4 ms-auto" />
+                            <ChevronsUpDown className="size-4 ms-auto text-muted-foreground" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -84,14 +84,14 @@ export function NavUser({ user }: NavUserProps) {
                         sideOffset={4}
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-                                <Avatar className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500">
-                                    <AvatarFallback className="rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-semibold">
+                            <div className="flex items-center gap-3 px-2 py-2 text-start text-sm">
+                                <Avatar className="h-9 w-9 rounded-xl border-2 border-border">
+                                    <AvatarFallback className="rounded-xl bg-transparent text-foreground font-bold">
                                         {user.name.charAt(0).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-start text-sm leading-tight">
-                                    <span className="truncate font-medium">{user.name}</span>
+                                    <span className="truncate font-semibold">{user.name}</span>
                                     <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                                 </div>
                             </div>

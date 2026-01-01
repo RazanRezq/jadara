@@ -1,5 +1,6 @@
 import React from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { MagicCard } from '@/components/magicui/magic-card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { LucideIcon } from 'lucide-react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
@@ -32,8 +33,25 @@ export const JobDashboardWidget: React.FC<JobDashboardWidgetProps> = ({
     className,
     children,
 }) => {
+    // Map iconVariant to gradient colors (hex format for MagicCard)
+    const variantToGradient = {
+        'default': { from: '#64748b', to: '#6b7280' },      // slate to gray
+        'primary': { from: '#3b82f6', to: '#6366f1' },      // blue to indigo
+        'success': { from: '#22c55e', to: '#10b981' },      // green to emerald
+        'warning': { from: '#e5e7eb', to: '#f3f4f6' },      // gray-200 to gray-100
+        'danger': { from: '#ef4444', to: '#f43f5e' },       // red to rose
+        'info': { from: '#06b6d4', to: '#14b8a6' },         // cyan to teal
+    } as const
+
+    const gradient = variantToGradient[iconVariant]
+
     return (
-        <Card className={cn('overflow-hidden hover:shadow-md transition-shadow', className)}>
+        <MagicCard
+            className={cn('relative overflow-hidden rounded-lg border border-border bg-background', className)}
+            gradientFrom={gradient.from}
+            gradientTo={gradient.to}
+            gradientSize={150}
+        >
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -85,7 +103,7 @@ export const JobDashboardWidget: React.FC<JobDashboardWidgetProps> = ({
                     {children}
                 </div>
             </CardContent>
-        </Card>
+        </MagicCard>
     )
 }
 

@@ -13,7 +13,7 @@ const variantStyles = {
     default: 'bg-slate-500/10 text-slate-500 dark:bg-slate-500/20 dark:text-slate-400',
     primary: 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400',
     success: 'bg-green-500/10 text-green-500 dark:bg-green-500/20 dark:text-green-400',
-    warning: 'bg-orange-500/10 text-orange-500 dark:bg-orange-500/20 dark:text-orange-400',
+    warning: 'bg-white/10 text-gray-800 dark:bg-gray-300/20 dark:text-gray-200',
     danger: 'bg-red-500/10 text-red-500 dark:bg-red-500/20 dark:text-red-400',
     info: 'bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/20 dark:text-cyan-400',
 }

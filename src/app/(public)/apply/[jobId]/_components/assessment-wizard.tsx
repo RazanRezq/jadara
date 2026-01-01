@@ -478,7 +478,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                     <h3 className="font-medium mb-3">
                                         {t("apply.assessmentOverview")}
                                     </h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                         <div className="flex items-center gap-2">
                                             <FileText className="size-4 text-muted-foreground" />
                                             <span>

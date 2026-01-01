@@ -16,6 +16,12 @@ import {
     ScrollText,
     Bell,
 } from "lucide-react"
+import { IBM_Plex_Sans_Arabic } from "next/font/google"
+
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+    subsets: ["arabic"],
+    weight: ["300", "400", "500", "600", "700"],
+})
 
 interface PermissionEditorProps {
     role: string
@@ -114,10 +120,10 @@ export function PermissionEditor({
                 const someSelected = categoryPermissions.some((p) => permissions.includes(p))
 
                 return (
-                    <Card key={category} className="overflow-hidden">
-                        <CardHeader className="pb-3 bg-muted/50">
+                    <Card key={category} dir={locale === "ar" ? "rtl" : "ltr"}>
+                        <CardHeader className="border-b border-border/50">
                             <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                <CardTitle className={cn("text-sm font-medium flex items-center gap-2", locale === "ar" && ibmPlexArabic.className)}>
                                     <Icon className="h-4 w-4 text-primary" />
                                     {categoryName}
                                 </CardTitle>
@@ -154,7 +160,8 @@ export function PermissionEditor({
                                             className={cn(
                                                 "text-sm leading-tight cursor-pointer",
                                                 disabled && "cursor-not-allowed opacity-50",
-                                                !disabled && "group-hover:text-primary"
+                                                !disabled && "group-hover:text-primary",
+                                                locale === "ar" && ibmPlexArabic.className
                                             )}
                                         >
                                             {label}

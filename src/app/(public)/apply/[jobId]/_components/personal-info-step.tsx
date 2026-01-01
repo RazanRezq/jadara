@@ -205,7 +205,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.contactInformation")}
                             </h3>
-                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -275,7 +275,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.professionalBackground")}
                             </h3>
-                            <div className="grid md:grid-cols-3 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="gender"
@@ -356,7 +356,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.additionalInformation")}
                             </h3>
-                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="yearsOfExperience"
@@ -490,7 +490,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                     {t("apply.languageProficiency")}
                                 </h3>
-                                <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                                     {job.languages.map((lang, index) => (
                                         <FormField
                                             key={index}
@@ -532,7 +532,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.professionalLinks")}
                             </h3>
-                            <div className="grid md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                             <FormField
                                 control={form.control}
                                 name="linkedinUrl"
@@ -620,6 +620,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
         </Card>
     )
 }
+
 
 
 

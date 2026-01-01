@@ -100,7 +100,7 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
         },
         not_recommended: {
             label: t("applicants.review.notRecommended"),
-            color: "text-orange-600 bg-orange-100 dark:bg-orange-900",
+            color: "text-gray-700 bg-gray-100 dark:bg-gray-700",
             icon: <ThumbsDown className="h-3 w-3" />,
         },
         strong_no: {

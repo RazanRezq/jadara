@@ -32,8 +32,8 @@ export const cardGradients = {
   },
 
   warning: {
-    from: "#f59e0b", // Amber
-    to: "#f97316",   // Orange
+    from: "#e5e7eb", // Gray-200
+    to: "#f3f4f6",   // Gray-100
   },
 
   danger: {
@@ -58,8 +58,8 @@ export const cardGradients = {
   },
 
   reviews: {
-    from: "#f97316", // Orange
-    to: "#fb923c",   // Orange-light
+    from: "#d1d5db", // Gray-300
+    to: "#e5e7eb",   // Gray-200
   },
 
   // Neutral

@@ -11,6 +11,12 @@ import { Shield, RefreshCw, RotateCcw, Save, AlertTriangle } from "lucide-react"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 import { PermissionEditor } from "./permission-editor"
+import { IBM_Plex_Sans_Arabic } from "next/font/google"
+
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+    subsets: ["arabic"],
+    weight: ["300", "400", "500", "600", "700"],
+})
 
 interface PermissionSet {
     _id: string
@@ -179,11 +185,11 @@ export function PermissionsClient() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-2">
+                    <h1 className={cn("text-3xl font-bold flex items-center gap-2", locale === "ar" && ibmPlexArabic.className)}>
                         <Shield className="h-8 w-8 text-primary" />
                         {locale === "ar" ? "إدارة الصلاحيات" : "Permissions Management"}
                     </h1>
-                    <p className="text-muted-foreground mt-1">
+                    <p className={cn("text-muted-foreground mt-1", locale === "ar" && ibmPlexArabic.className)}>
                         {locale === "ar"
                             ? "قم بتخصيص صلاحيات كل دور في النظام"
                             : "Customize permissions for each role in the system"}
@@ -193,6 +199,7 @@ export function PermissionsClient() {
                     variant="outline"
                     onClick={fetchData}
                     disabled={loading}
+                    className={cn(locale === "ar" && ibmPlexArabic.className)}
                 >
                     <RefreshCw className={cn("h-4 w-4 me-2", loading && "animate-spin")} />
                     {t("common.refresh")}
@@ -205,7 +212,7 @@ export function PermissionsClient() {
                     <CardContent className="py-4">
                         <div className="flex items-center gap-3">
                             <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                            <p className="text-yellow-800 dark:text-yellow-200">
+                            <p className={cn("text-yellow-800 dark:text-yellow-200", locale === "ar" && ibmPlexArabic.className)}>
                                 {locale === "ar"
                                     ? "لديك تغييرات غير محفوظة. تأكد من حفظ التغييرات قبل المغادرة."
                                     : "You have unsaved changes. Make sure to save before leaving."}
@@ -222,10 +229,10 @@ export function PermissionsClient() {
             ) : (
                 <Card>
                     <CardHeader>
-                        <CardTitle>
+                        <CardTitle className={cn(locale === "ar" && ibmPlexArabic.className)}>
                             {locale === "ar" ? "الأدوار والصلاحيات" : "Roles & Permissions"}
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className={cn(locale === "ar" && ibmPlexArabic.className)}>
                             {locale === "ar"
                                 ? "حدد الصلاحيات المتاحة لكل دور. لا يمكن تعديل صلاحيات المدير العام."
                                 : "Define what each role can access. Superadmin permissions cannot be modified."}
@@ -233,13 +240,17 @@ export function PermissionsClient() {
                     </CardHeader>
                     <CardContent>
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                            <TabsList className="grid grid-cols-3 w-full">
+                            <TabsList className="grid grid-cols-3 w-full h-14 p-1 bg-gradient-to-r from-primary/5 via-primary/3 to-primary/5 rounded-lg border border-border/50">
                                 {permissionSets.map((set) => (
-                                    <TabsTrigger key={set.role} value={set.role}>
-                                        <div className="flex items-center gap-2">
+                                    <TabsTrigger
+                                        key={set.role}
+                                        value={set.role}
+                                        className="data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+                                    >
+                                        <div className={cn("flex items-center gap-2", locale === "ar" && ibmPlexArabic.className)}>
                                             {locale === "ar" ? set.displayName.ar : set.displayName.en}
                                             {set.isCustom && (
-                                                <Badge variant="secondary" className="text-xs">
+                                                <Badge variant="secondary" className={cn("text-xs", locale === "ar" && ibmPlexArabic.className)}>
                                                     {locale === "ar" ? "مخصص" : "Custom"}
                                                 </Badge>
                                             )}
@@ -249,13 +260,13 @@ export function PermissionsClient() {
                             </TabsList>
 
                             {permissionSets.map((set) => (
-                                <TabsContent key={set.role} value={set.role} className="space-y-4 mt-6">
+                                <TabsContent key={set.role} value={set.role} className="space-y-4 mt-6" dir={locale === "ar" ? "rtl" : "ltr"}>
                                     <div className="flex items-center justify-between">
-                                        <div>
-                                            <h3 className="text-lg font-semibold">
+                                        <div dir={locale === "ar" ? "rtl" : "ltr"}>
+                                            <h3 className={cn("text-lg font-semibold", locale === "ar" && ibmPlexArabic.className)}>
                                                 {locale === "ar" ? set.displayName.ar : set.displayName.en}
                                             </h3>
-                                            <p className="text-sm text-muted-foreground">
+                                            <p className={cn("text-sm text-muted-foreground", locale === "ar" && ibmPlexArabic.className)}>
                                                 {locale === "ar" ? set.description.ar : set.description.en}
                                             </p>
                                         </div>
@@ -266,15 +277,19 @@ export function PermissionsClient() {
                                                     onClick={() => handleReset(set.role)}
                                                     disabled={saving || !set.isCustom}
                                                 >
-                                                    <RotateCcw className="h-4 w-4 me-2" />
-                                                    {locale === "ar" ? "إعادة تعيين" : "Reset"}
+                                                    <span className={cn("flex items-center", locale === "ar" && ibmPlexArabic.className)} dir={locale === "ar" ? "rtl" : "ltr"}>
+                                                        <RotateCcw className="h-4 w-4 me-2" />
+                                                        {locale === "ar" ? "إعادة تعيين" : "Reset"}
+                                                    </span>
                                                 </Button>
                                                 <Button
                                                     onClick={() => handleSave(set.role)}
                                                     disabled={saving || !hasChanges}
                                                 >
-                                                    <Save className="h-4 w-4 me-2" />
-                                                    {locale === "ar" ? "حفظ" : "Save"}
+                                                    <span className={cn("flex items-center", locale === "ar" && ibmPlexArabic.className)} dir={locale === "ar" ? "rtl" : "ltr"}>
+                                                        <Save className="h-4 w-4 me-2" />
+                                                        {locale === "ar" ? "حفظ" : "Save"}
+                                                    </span>
                                                 </Button>
                                             </div>
                                         )}

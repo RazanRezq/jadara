@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useTheme } from "next-themes"
 import { MagicCard } from "@/components/magicui/magic-card"
+import { getCardGradient } from "@/lib/card-gradients"
 import { cn } from "@/lib/utils"
 
 interface CardProps extends React.ComponentProps<"div"> {
@@ -10,28 +10,25 @@ interface CardProps extends React.ComponentProps<"div"> {
   gradientFrom?: string
   gradientTo?: string
   gradientSize?: number
+  gradientVariant?: 'primary' | 'applicants' | 'jobs' | 'interviews' | 'success' | 'warning' | 'danger' | 'settings' | 'analytics' | 'users' | 'reviews' | 'neutral' | 'dark'
 }
 
 function Card({
   className,
-  useMagic = true,
-  gradientFrom = "#4f46e5",
-  gradientTo = "#9333ea",
+  useMagic = false,
+  gradientFrom,
+  gradientTo,
   gradientSize = 200,
+  gradientVariant = 'primary',
   ...props
 }: CardProps) {
-  const { theme, systemTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  // Get gradient colors from variant or use custom colors
+  const gradient = getCardGradient(gradientVariant)
+  const finalGradientFrom = gradientFrom || gradient.from
+  const finalGradientTo = gradientTo || gradient.to
 
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Determine if we're in dark mode
-  const isDark = mounted && (theme === "dark" || (theme === "system" && systemTheme === "dark"))
-
-  // If useMagic is false or not in dark mode, return regular card
-  if (!useMagic || !isDark || !mounted) {
+  // If useMagic is false, return regular card without any gradient
+  if (!useMagic) {
     return (
       <div
         data-slot="card"
@@ -44,17 +41,17 @@ function Card({
     )
   }
 
-  // Wrap with MagicCard in dark mode
+  // Use MagicCard with hover effect (no static background gradient)
   return (
     <MagicCard
       className={cn("rounded-xl", className)}
-      gradientFrom={gradientFrom}
-      gradientTo={gradientTo}
+      gradientFrom={finalGradientFrom}
+      gradientTo={finalGradientTo}
       gradientSize={gradientSize}
     >
       <div
         data-slot="card"
-        className="bg-transparent text-card-foreground flex flex-col gap-6 py-6"
+        className="bg-transparent text-card-foreground"
         {...props}
       />
     </MagicCard>
@@ -66,7 +63,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 pt-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className
       )}
       {...props}
@@ -111,7 +108,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-content"
-      className={cn("px-6", className)}
+      className={cn("px-6 pb-6", className)}
       {...props}
     />
   )
@@ -121,7 +118,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      className={cn("flex items-center px-6 pb-6 [.border-t]:pt-6", className)}
       {...props}
     />
   )

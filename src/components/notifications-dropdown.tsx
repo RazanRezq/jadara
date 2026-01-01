@@ -60,13 +60,28 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
 
     const fetchNotifications = useCallback(async () => {
+        // Skip if userId is not provided
+        if (!userId) {
+            setIsLoading(false)
+            return
+        }
+
         try {
             const response = await fetch(`/api/notifications?userId=${userId}&limit=10`)
+
+            if (!response.ok) {
+                console.error(`Error fetching notifications: ${response.status} ${response.statusText}`)
+                setIsLoading(false)
+                return
+            }
+
             const result = await response.json()
 
             if (result.success) {
                 setNotifications(result.data.notifications)
                 setUnreadCount(result.data.unreadCount)
+            } else {
+                console.error("Error fetching notifications:", result.error)
             }
         } catch (error) {
             console.error("Error fetching notifications:", error)
@@ -141,7 +156,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
             case "urgent":
                 return "bg-red-500"
             case "high":
-                return "bg-orange-500"
+                return "bg-white dark:bg-gray-300"
             case "medium":
                 return "bg-blue-500"
             case "low":

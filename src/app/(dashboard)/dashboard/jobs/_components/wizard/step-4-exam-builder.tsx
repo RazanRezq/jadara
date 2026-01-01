@@ -172,7 +172,7 @@ export function Step4ExamBuilder({ form }: Step4ExamBuilderProps) {
                                 value={question.text}
                                 onChange={(e) => updateQuestion(index, 'text', e.target.value)}
                                 placeholder={t("jobWizard.step4.questionText")}
-                                className="transition-all focus:ring-2 focus:ring-primary/20"
+                                className="h-11 transition-all focus:ring-2 focus:ring-primary/20"
                             />
 
                             {/* Type & Weight */}
@@ -185,7 +185,7 @@ export function Step4ExamBuilder({ form }: Step4ExamBuilderProps) {
                                         value={question.type}
                                         onValueChange={(value) => updateQuestion(index, 'type', value)}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger className="h-11">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -209,6 +209,7 @@ export function Step4ExamBuilder({ form }: Step4ExamBuilderProps) {
                                         max={10}
                                         value={question.weight}
                                         onChange={(e) => updateQuestion(index, 'weight', Number(e.target.value))}
+                                        className="h-11"
                                     />
                                 </div>
                             </div>
@@ -224,7 +225,7 @@ export function Step4ExamBuilder({ form }: Step4ExamBuilderProps) {
                                             value={question.timeLimit}
                                             onValueChange={(value) => updateQuestion(index, 'timeLimit', value)}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className="h-11">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -317,6 +318,7 @@ export function Step4ExamBuilder({ form }: Step4ExamBuilderProps) {
                                             max={5}
                                             {...field}
                                             onChange={(e) => field.onChange(Number(e.target.value))}
+                                            className="h-11"
                                         />
                                     </FormControl>
                                 </FormItem>

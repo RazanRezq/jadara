@@ -666,7 +666,11 @@
             "missingSkills": "المهارات المفقودة",
             "aiRecommendations": "توصيات الذكاء الاصطناعي",
             "vsLastMonth": "مقارنة بالشهر الماضي",
-            "newApplicants": "جديد"
+            "newApplicants": "جديد",
+            "lastWeek": "الأسبوع الماضي",
+            "noQualifiedCandidates": "لا يوجد مرشحون مؤهلون حالياً",
+            "notEnoughMatchData": "لا توجد بيانات مطابقة كافية",
+            "noRecommendationsAvailable": "لا توجد توصيات متاحة"
         },
         "voiceAnalysis": "تحليل الصوت",
         "sentiment": "المشاعر",

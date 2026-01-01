@@ -103,7 +103,7 @@ export function AddJobDialog({ open, onOpenChange, onSuccess, userId }: AddJobDi
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{t("jobs.addNewJob")}</DialogTitle>
                     <DialogDescription>
@@ -145,7 +145,7 @@ export function AddJobDialog({ open, onOpenChange, onSuccess, userId }: AddJobDi
                             )}
                         />
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="department"
@@ -175,7 +175,7 @@ export function AddJobDialog({ open, onOpenChange, onSuccess, userId }: AddJobDi
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="employmentType"
@@ -225,7 +225,7 @@ export function AddJobDialog({ open, onOpenChange, onSuccess, userId }: AddJobDi
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="salaryMin"

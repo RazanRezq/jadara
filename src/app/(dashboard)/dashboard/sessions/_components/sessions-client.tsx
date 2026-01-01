@@ -81,11 +81,11 @@ export function SessionsClient() {
                 setSessions(filteredSessions)
                 setTotal(result.data.pagination.total)
             } else {
-                toast.error("Failed to fetch sessions")
+                toast.error(t("sessions.fetchError"))
             }
         } catch (error) {
             console.error("Error fetching sessions:", error)
-            toast.error("Error loading sessions")
+            toast.error(t("sessions.loadError"))
         } finally {
             setLoading(false)
         }
@@ -144,16 +144,16 @@ export function SessionsClient() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success("Session revoked successfully")
+                toast.success(t("sessions.revokeSuccess"))
                 setRevokeDialogOpen(false)
                 fetchSessions()
                 fetchStats()
             } else {
-                toast.error(result.error || "Failed to revoke session")
+                toast.error(result.error || t("sessions.revokeError"))
             }
         } catch (error) {
             console.error("Error revoking session:", error)
-            toast.error("Error revoking session")
+            toast.error(t("sessions.revokeErrorGeneric"))
         } finally {
             setRevoking(false)
         }
@@ -175,23 +175,23 @@ export function SessionsClient() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success(result.message)
+                toast.success(result.message || t("sessions.revokeAllSuccess"))
                 setRevokeAllDialogOpen(false)
                 fetchSessions()
                 fetchStats()
             } else {
-                toast.error(result.error || "Failed to revoke sessions")
+                toast.error(result.error || t("sessions.revokeAllError"))
             }
         } catch (error) {
             console.error("Error revoking all sessions:", error)
-            toast.error("Error revoking sessions")
+            toast.error(t("sessions.revokeAllErrorGeneric"))
         } finally {
             setRevoking(false)
         }
     }
 
     const handleCleanup = async () => {
-        if (!confirm("Are you sure you want to cleanup expired and revoked sessions?")) return
+        if (!confirm(t("sessions.cleanupConfirm"))) return
 
         try {
             const response = await fetch("/api/sessions/cleanup", { method: "DELETE" })
@@ -203,15 +203,15 @@ export function SessionsClient() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success(result.message)
+                toast.success(result.message || t("sessions.cleanupSuccess"))
                 fetchSessions()
                 fetchStats()
             } else {
-                toast.error(result.error || "Failed to cleanup sessions")
+                toast.error(result.error || t("sessions.cleanupError"))
             }
         } catch (error) {
             console.error("Error cleaning up sessions:", error)
-            toast.error("Error cleaning up sessions")
+            toast.error(t("sessions.cleanupErrorGeneric"))
         }
     }
 
@@ -307,7 +307,7 @@ export function SessionsClient() {
                             <SelectContent>
                                 <SelectItem value="all">{t("common.all")} {t("sessions.activeSessions")}</SelectItem>
                                 <SelectItem value="true">{t("sessions.activeOnly")}</SelectItem>
-                                <SelectItem value="false">Revoked Only</SelectItem>
+                                <SelectItem value="false">{t("sessions.revokedOnly")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -363,8 +363,8 @@ export function SessionsClient() {
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     {getDeviceIcon(session.deviceType)}
-                                                    <div className="space-y-1">
-                                                        <div className="text-sm font-medium capitalize">{session.deviceType}</div>
+                                                    <div>
+                                                        <div className="text-sm font-medium capitalize leading-tight">{session.deviceType}</div>
                                                         <div className="text-xs text-muted-foreground">
                                                             {session.browser} on {session.os}
                                                         </div>
@@ -391,13 +391,13 @@ export function SessionsClient() {
                                             </TableCell>
                                             <TableCell>
                                                 {session.isActive ? (
-                                                    <Badge className="bg-green-500">Active</Badge>
+                                                    <Badge className="bg-green-500">{t("sessions.active")}</Badge>
                                                 ) : (
-                                                    <Badge variant="secondary">Revoked</Badge>
+                                                    <Badge variant="secondary">{t("sessions.revoked")}</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2 justify-end">
                                                     {session.isActive && (
                                                         <>
                                                             <Button
@@ -408,7 +408,7 @@ export function SessionsClient() {
                                                                     setRevokeDialogOpen(true)
                                                                 }}
                                                             >
-                                                                Revoke
+                                                                {t("sessions.revoke")}
                                                             </Button>
                                                             <Button
                                                                 variant="destructive"
@@ -418,7 +418,7 @@ export function SessionsClient() {
                                                                     setRevokeAllDialogOpen(true)
                                                                 }}
                                                             >
-                                                                Revoke All
+                                                                {t("sessions.revokeAll")}
                                                             </Button>
                                                         </>
                                                     )}
@@ -445,9 +445,9 @@ export function SessionsClient() {
                                                     </Badge>
                                                 </div>
                                                 {session.isActive ? (
-                                                    <Badge className="bg-green-500 shrink-0">Active</Badge>
+                                                    <Badge className="bg-green-500 shrink-0">{t("sessions.active")}</Badge>
                                                 ) : (
-                                                    <Badge variant="secondary" className="shrink-0">Revoked</Badge>
+                                                    <Badge variant="secondary" className="shrink-0">{t("sessions.revoked")}</Badge>
                                                 )}
                                             </div>
 
@@ -456,7 +456,7 @@ export function SessionsClient() {
                                                 <div className="flex items-center gap-2">
                                                     {getDeviceIcon(session.deviceType)}
                                                     <div>
-                                                        <p className="text-sm font-medium capitalize">{session.deviceType}</p>
+                                                        <p className="text-sm font-medium capitalize leading-tight">{session.deviceType}</p>
                                                         <p className="text-xs text-muted-foreground">
                                                             {session.browser} on {session.os}
                                                         </p>
@@ -473,7 +473,7 @@ export function SessionsClient() {
                                                 </div>
 
                                                 <div>
-                                                    <p className="text-xs text-muted-foreground">Last Activity</p>
+                                                    <p className="text-xs text-muted-foreground">{t("sessions.lastActivity")}</p>
                                                     <p className="text-sm">
                                                         {formatDistanceToNow(new Date(session.lastActivity), { addSuffix: true })}
                                                     </p>
@@ -495,7 +495,7 @@ export function SessionsClient() {
                                                             setRevokeDialogOpen(true)
                                                         }}
                                                     >
-                                                        Revoke
+                                                        {t("sessions.revoke")}
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
@@ -506,7 +506,7 @@ export function SessionsClient() {
                                                             setRevokeAllDialogOpen(true)
                                                         }}
                                                     >
-                                                        Revoke All
+                                                        {t("sessions.revokeAll")}
                                                     </Button>
                                                 </div>
                                             )}
@@ -518,7 +518,7 @@ export function SessionsClient() {
                             {/* Pagination */}
                             <div className="flex items-center justify-between">
                                 <div className="text-sm text-muted-foreground">
-                                    Showing {sessions.length} of {total} sessions
+                                    {t("sessions.showing")} {sessions.length} {t("sessions.of")} {total} {t("sessions.totalSessions")}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
@@ -527,7 +527,7 @@ export function SessionsClient() {
                                         onClick={() => setPage(p => Math.max(1, p - 1))}
                                         disabled={page === 1}
                                     >
-                                        Previous
+                                        {t("sessions.previous")}
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -535,7 +535,7 @@ export function SessionsClient() {
                                         onClick={() => setPage(p => p + 1)}
                                         disabled={sessions.length < 50}
                                     >
-                                        Next
+                                        {t("sessions.next")}
                                     </Button>
                                 </div>
                             </div>
@@ -548,25 +548,25 @@ export function SessionsClient() {
             <Dialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Revoke Session</DialogTitle>
+                        <DialogTitle>{t("sessions.revokeSession")}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to revoke this session? The user will be logged out from this device.
+                            {t("sessions.revokeSessionConfirm")}
                         </DialogDescription>
                     </DialogHeader>
                     {selectedSession && (
                         <div className="space-y-2 py-4">
-                            <div><strong>User:</strong> {selectedSession.userName}</div>
-                            <div><strong>Device:</strong> {selectedSession.deviceType}</div>
-                            <div><strong>Browser:</strong> {selectedSession.browser}</div>
-                            <div><strong>IP:</strong> {selectedSession.ipAddress}</div>
+                            <div><strong>{t("sessions.user")}:</strong> {selectedSession.userName}</div>
+                            <div><strong>{t("sessions.device")}:</strong> {selectedSession.deviceType}</div>
+                            <div><strong>{t("sessions.browser")}:</strong> {selectedSession.browser}</div>
+                            <div><strong>{t("sessions.ip")}:</strong> {selectedSession.ipAddress}</div>
                         </div>
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setRevokeDialogOpen(false)} disabled={revoking}>
-                            Cancel
+                            {t("common.cancel")}
                         </Button>
                         <Button variant="destructive" onClick={handleRevokeSession} disabled={revoking}>
-                            {revoking ? "Revoking..." : "Revoke Session"}
+                            {revoking ? t("sessions.revoking") : t("sessions.revokeSession")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -576,31 +576,31 @@ export function SessionsClient() {
             <Dialog open={revokeAllDialogOpen} onOpenChange={setRevokeAllDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Revoke All Sessions</DialogTitle>
+                        <DialogTitle>{t("sessions.revokeAllSessions")}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to revoke ALL sessions for this user? They will be logged out from all devices.
+                            {t("sessions.revokeAllConfirm")}
                         </DialogDescription>
                     </DialogHeader>
                     {selectedSession && (
                         <div className="space-y-2 py-4">
-                            <div className="flex items-center gap-2 text-orange-600">
+                            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                                 <AlertCircle className="h-4 w-4" />
-                                <span className="font-medium">Warning: This action affects all active sessions</span>
+                                <span className="font-medium">{t("sessions.warningAffectsAll")}</span>
                             </div>
-                            <div><strong>User:</strong> {selectedSession.userName}</div>
-                            <div><strong>Email:</strong> {selectedSession.userEmail}</div>
+                            <div><strong>{t("sessions.user")}:</strong> {selectedSession.userName}</div>
+                            <div><strong>{t("common.email")}:</strong> {selectedSession.userEmail}</div>
                         </div>
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setRevokeAllDialogOpen(false)} disabled={revoking}>
-                            Cancel
+                            {t("common.cancel")}
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => selectedSession && handleRevokeAllSessions(selectedSession.userId)}
                             disabled={revoking}
                         >
-                            {revoking ? "Revoking..." : "Revoke All Sessions"}
+                            {revoking ? t("sessions.revoking") : t("sessions.revokeAllSessions")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -666,7 +666,11 @@
             "missingSkills": "Missing Skills",
             "aiRecommendations": "AI Recommendations",
             "vsLastMonth": "vs last month",
-            "newApplicants": "new applicants"
+            "newApplicants": "new applicants",
+            "lastWeek": "last week",
+            "noQualifiedCandidates": "No qualified candidates currently",
+            "notEnoughMatchData": "Not enough matching data",
+            "noRecommendationsAvailable": "No recommendations available"
         },
         "voiceAnalysis": "Voice Analysis",
         "sentiment": "Sentiment",

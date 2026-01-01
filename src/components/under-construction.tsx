@@ -43,8 +43,8 @@ export function UnderConstruction({
                                 <div className="absolute -top-2 -right-2 bg-background rounded-full p-2 border-2 border-primary/30 shadow-lg animate-pulse">
                                     <Wrench className="h-6 w-6 text-primary" />
                                 </div>
-                                <div className="absolute -bottom-2 -left-2 bg-background rounded-full p-2 border-2 border-orange-500/30 shadow-lg animate-pulse delay-75">
-                                    <AlertCircle className="h-6 w-6 text-orange-500" />
+                                <div className="absolute -bottom-2 -left-2 bg-background rounded-full p-2 border-2 border-white/30 shadow-lg animate-pulse delay-75">
+                                    <AlertCircle className="h-6 w-6 text-white" />
                                 </div>
                             </div>
                         </div>
@@ -147,6 +147,7 @@ export function UnderConstruction({
         </div>
     )
 }
+
 
 
 

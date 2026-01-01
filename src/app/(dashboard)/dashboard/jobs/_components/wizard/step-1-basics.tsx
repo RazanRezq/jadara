@@ -152,6 +152,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                             emptyText={locale === 'ar' ? 'لا توجد نتائج' : 'No results found'}
                                             allowCustom={true}
                                             locale={locale}
+                                            className="h-11"
                                         />
                                     </FormControl>
                                     <FormMessage className="text-xs" />
@@ -188,7 +189,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                     </FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-11">
+                                            <SelectTrigger className="h-11 w-full">
                                                 <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
@@ -324,7 +325,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                     <FormLabel className="text-sm font-medium min-h-[20px] flex items-center">{t("jobWizard.step1.currency")}</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-11">
+                                            <SelectTrigger className="h-11 w-full">
                                                 <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
@@ -345,12 +346,12 @@ export function Step1Basics({ form }: Step1BasicsProps) {
             </Card>
 
             {/* Job Description Card */}
-            <Card className="border-2 border-amber-500/10 shadow-sm hover:shadow-md transition-all">
+            <Card className="border-2 border-slate-500/10 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="pb-4">
                     <div className="flex items-center justify-between flex-wrap gap-3">
                         <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/20 flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-500/20 to-slate-600/20 flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-slate-700 dark:text-slate-400" />
                             </div>
                             <div>
                                 <CardTitle className="text-lg flex items-center gap-2">

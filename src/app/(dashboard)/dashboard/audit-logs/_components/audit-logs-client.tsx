@@ -121,7 +121,7 @@ export function AuditLogsClient() {
             case 'warning':
                 return <AlertTriangle className="h-4 w-4 text-yellow-500" />
             case 'error':
-                return <AlertCircle className="h-4 w-4 text-orange-500" />
+                return <AlertCircle className="h-4 w-4 text-gray-500" />
             case 'critical':
                 return <XCircle className="h-4 w-4 text-red-500" />
             default:
@@ -136,7 +136,7 @@ export function AuditLogsClient() {
             case 'warning':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
             case 'error':
-                return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
             case 'critical':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
             default:
@@ -332,7 +332,7 @@ export function AuditLogsClient() {
                             {/* Mobile Card View - shown on mobile only */}
                             <div className="md:hidden space-y-3">
                                 {logs.map((log) => (
-                                    <Card key={log._id} className="border-l-4" style={{ borderLeftColor: log.severity === 'critical' ? '#ef4444' : log.severity === 'error' ? '#f97316' : log.severity === 'warning' ? '#eab308' : '#3b82f6' }}>
+                                    <Card key={log._id} className="border-l-4" style={{ borderLeftColor: log.severity === 'critical' ? '#ef4444' : log.severity === 'error' ? '#9ca3af' : log.severity === 'warning' ? '#eab308' : '#3b82f6' }}>
                                         <CardContent className="p-4 space-y-3">
                                             {/* Header */}
                                             <div className="flex items-start justify-between gap-2">
@@ -423,7 +423,7 @@ export function AuditLogsClient() {
 
             {/* Details Dialog */}
             <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Audit Log Details</DialogTitle>
                         <DialogDescription>

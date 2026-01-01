@@ -190,7 +190,7 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                             <Building2 className="h-6 w-6 text-white" />
                         </div>
                         <div>
@@ -300,7 +300,7 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                     <Button
                                         type="submit"
                                         disabled={saving}
-                                        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all"
                                     >
                                         {saving ? (
                                             <>

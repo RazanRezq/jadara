@@ -476,7 +476,7 @@ export function ViewApplicantDialog({
             "from-violet-400 to-purple-500",
             "from-blue-400 to-cyan-500",
             "from-emerald-400 to-teal-500",
-            "from-amber-400 to-orange-500",
+            "from-gray-200 to-gray-100",
             "from-pink-400 to-rose-500",
         ]
         const index = name.charCodeAt(0) % gradients.length
@@ -485,7 +485,7 @@ export function ViewApplicantDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent dir={dir} className="min-w-4xl max-h-[90vh] overflow-y-auto p-0 text-start">
+            <DialogContent dir={dir} className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto p-0 text-start">
                 {/* Header */}
                 <DialogHeader className="p-6 pb-4 border-b bg-muted/30">
                     <div className="flex items-center justify-between">
@@ -617,7 +617,7 @@ export function ViewApplicantDialog({
                     </TabsList>
 
                     {/* Overview Tab */}
-                    <TabsContent value="overview" className="p-6 space-y-6 mt-0">
+                    <TabsContent value="overview" className="p-4 sm:p-6 space-y-6 mt-0">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base flex items-center gap-2">
@@ -625,7 +625,7 @@ export function ViewApplicantDialog({
                                     {t("applicants.personalInfo")}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="grid grid-cols-2 gap-6">
+                            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                                         <Mail className="h-4 w-4" />
@@ -731,7 +731,7 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* CV Tab */}
-                    <TabsContent value="cv" className="p-6 mt-0">
+                    <TabsContent value="cv" className="p-4 sm:p-6 mt-0">
                         {applicant.cvUrl ? (
                             <div className="space-y-4">
                                 <div className="aspect-[3/4] w-full bg-muted rounded-lg border overflow-hidden">
@@ -759,7 +759,7 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* Voice Response Tab */}
-                    <TabsContent value="voice" className="p-6 space-y-6 mt-0">
+                    <TabsContent value="voice" className="p-4 sm:p-6 space-y-6 mt-0">
                         {voiceResponses.length > 0 ? (
                             voiceResponses.map((response, index) => {
                                 const responseId = `${response.questionId}-${index}`
@@ -870,7 +870,7 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* AI Evaluation Tab */}
-                    <TabsContent value="evaluation" className="p-6 space-y-8 mt-0">
+                    <TabsContent value="evaluation" className="p-4 sm:p-6 space-y-8 mt-0">
                         {/* Strengths & Weaknesses */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Strengths */}
@@ -1054,7 +1054,7 @@ export function ViewApplicantDialog({
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
                                     {/* Overall Metrics */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {evaluation.sentimentScore !== undefined && (
                                             <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
                                                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
@@ -1173,7 +1173,7 @@ export function ViewApplicantDialog({
                                                     GitHub
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
                                                     <p className="text-xs text-cyan-600 dark:text-cyan-400">Repos</p>
                                                     <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.repositories}</p>
@@ -1236,7 +1236,7 @@ export function ViewApplicantDialog({
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
                                     {/* Summary */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
                                             <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
                                                 {t("applicants.totalResponses")}
@@ -1310,7 +1310,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.screeningAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Total Questions</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions}</p>
@@ -1355,7 +1355,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.voiceResponsesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses}</p>
@@ -1404,7 +1404,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.textResponsesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses}</p>
@@ -1452,7 +1452,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.additionalNotesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Notes Provided</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? 'Yes' : 'No'}</p>
@@ -1493,7 +1493,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.externalProfilesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-4 gap-3 mb-3">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">LinkedIn</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.linkedinAnalyzed ? '✓' : '✗'}</p>
@@ -1529,7 +1529,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.languageRequirementsAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Total Languages</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages}</p>
@@ -1571,7 +1571,7 @@ export function ViewApplicantDialog({
                                                     {t("applicants.experienceAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
                                                     <p className="text-xs text-violet-600 dark:text-violet-400">Self-Reported</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} yrs</p>
@@ -1653,10 +1653,10 @@ export function ViewApplicantDialog({
 
                         {/* HR Requirements: Screening Questions & Language Proficiency */}
                         {(applicant.personalData.screeningAnswers || applicant.personalData.languageProficiency) && (
-                            <Card className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-950/10 border-2 border-orange-300 dark:border-orange-800 shadow-sm">
-                                <CardHeader className="pb-4 border-b border-orange-200 dark:border-orange-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-orange-700 dark:text-orange-400">
-                                        <div className="p-1.5 bg-orange-500 dark:bg-orange-600 rounded-md">
+                            <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950/30 dark:to-gray-950/10 border-2 border-gray-300 dark:border-gray-700 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-gray-700 dark:text-gray-400">
+                                        <div className="p-1.5 bg-gray-400 dark:bg-gray-500 rounded-md">
                                             <ShieldAlert className="h-5 w-5 text-white" />
                                         </div>
                                         {t("applicants.hrRequirements")}
@@ -1667,8 +1667,8 @@ export function ViewApplicantDialog({
                                     {applicant.personalData.screeningAnswers && Object.keys(applicant.personalData.screeningAnswers).length > 0 && (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-4 w-4 text-orange-600" />
-                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                <ShieldAlert className="h-4 w-4 text-gray-600" />
+                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
                                                     {t("applicants.screeningQuestions")}
                                                 </p>
                                             </div>
@@ -1708,7 +1708,7 @@ export function ViewApplicantDialog({
                                                                             "text-xs shrink-0",
                                                                             isFailed
                                                                                 ? "bg-red-600 text-white"
-                                                                                : "bg-orange-500 text-white"
+                                                                                : "bg-gray-400 text-white"
                                                                         )}>
                                                                             {t("applicants.knockoutQuestion")}
                                                                         </Badge>
@@ -1740,12 +1740,12 @@ export function ViewApplicantDialog({
                                     {applicant.personalData.languageProficiency && Object.keys(applicant.personalData.languageProficiency).length > 0 && (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-4 w-4 text-orange-600" />
-                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                <Languages className="h-4 w-4 text-gray-600" />
+                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
                                                     {t("applicants.languageProficiency")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {Object.entries(applicant.personalData.languageProficiency).map(([language, level], idx) => {
                                                     // Check if this language is required by the job
                                                     const jobLanguage = jobData?.languages?.find(l => l.language === language)
@@ -1769,7 +1769,7 @@ export function ViewApplicantDialog({
                                                                     ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
                                                                     : jobLanguage
                                                                         ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                                                                        : "bg-white dark:bg-orange-950/20 border-orange-200"
+                                                                        : "bg-white dark:bg-gray-800/20 border-gray-200"
                                                             )}
                                                         >
                                                             <div className="flex items-start justify-between gap-2 mb-2">
@@ -1779,7 +1779,7 @@ export function ViewApplicantDialog({
                                                                         ? "text-red-700 dark:text-red-300"
                                                                         : jobLanguage
                                                                             ? "text-emerald-700 dark:text-emerald-300"
-                                                                            : "text-orange-600 dark:text-orange-400"
+                                                                            : "text-gray-600 dark:text-gray-400"
                                                                 )}>
                                                                     {language}
                                                                 </p>
@@ -1796,7 +1796,7 @@ export function ViewApplicantDialog({
                                                                         ? "bg-red-500 text-white"
                                                                         : jobLanguage
                                                                             ? "bg-emerald-500 text-white"
-                                                                            : "bg-orange-500 text-white"
+                                                                            : "bg-gray-400 text-white"
                                                                 )}>
                                                                     {candidateLevel.toUpperCase()}
                                                                 </Badge>
@@ -1822,14 +1822,14 @@ export function ViewApplicantDialog({
 
                                     {/* Additional Notes */}
                                     {applicant.notes && applicant.notes.trim() !== '' && (
-                                        <div className="space-y-2 pt-2 border-t border-orange-200">
+                                        <div className="space-y-2 pt-2 border-t border-gray-200">
                                             <div className="flex items-center gap-2">
-                                                <MessageSquare className="h-4 w-4 text-orange-600" />
-                                                <p className="font-semibold text-orange-900 dark:text-orange-100">
+                                                <MessageSquare className="h-4 w-4 text-gray-600" />
+                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
                                                     {t("apply.additionalNotes")}
                                                 </p>
                                             </div>
-                                            <p className="text-sm text-orange-800 dark:text-orange-200 whitespace-pre-line p-3 bg-white dark:bg-orange-950/20 rounded-lg border border-orange-200 text-start">
+                                            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line p-3 bg-white dark:bg-gray-800/20 rounded-lg border border-gray-200 text-start">
                                                 {applicant.notes}
                                             </p>
                                         </div>
@@ -1874,7 +1874,7 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* Team Review Tab */}
-                    <TabsContent value="review" className="p-6 space-y-6 mt-0">
+                    <TabsContent value="review" className="p-4 sm:p-6 space-y-6 mt-0">
                         {/* Review Stats - Shows average rating from all reviewers */}
                         <ReviewStats
                             applicantId={applicant.id}
@@ -1896,7 +1896,7 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* Team Notes Tab */}
-                    <TabsContent value="notes" className="p-6 space-y-6 mt-0">
+                    <TabsContent value="notes" className="p-4 sm:p-6 space-y-6 mt-0">
                         <TeamNotes
                             applicantId={applicant.id}
                             comments={comments}

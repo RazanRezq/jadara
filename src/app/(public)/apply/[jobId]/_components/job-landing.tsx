@@ -178,7 +178,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                 <p className="text-muted-foreground">
                                     {t("apply.assessmentDescription")}
                                 </p>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {textQuestions > 0 && (
                                         <div className="flex items-center gap-2 text-sm">
                                             <div className="size-8 rounded-lg bg-muted flex items-center justify-center">

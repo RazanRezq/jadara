@@ -285,7 +285,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                     <TableRow key={user.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center text-white font-semibold text-sm">
+                                                <div className="w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center text-primary font-semibold text-sm">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
@@ -295,7 +295,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={cn("border-0", getRoleColor(user.role))}>
+                                            <Badge className={cn("border", getRoleColor(user.role))}>
                                                 {t(`roles.${user.role}`)}
                                             </Badge>
                                         </TableCell>
@@ -358,7 +358,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                         {/* Header with avatar and name */}
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center text-white font-semibold shrink-0">
+                                                <div className="w-12 h-12 rounded-full border-2 border-primary/30 flex items-center justify-center text-primary font-semibold shrink-0">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
@@ -366,7 +366,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                                                     <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                                                 </div>
                                             </div>
-                                            <Badge className={cn("border-0 shrink-0", getRoleColor(user.role))}>
+                                            <Badge className={cn("border shrink-0", getRoleColor(user.role))}>
                                                 {t(`roles.${user.role}`)}
                                             </Badge>
                                         </div>

@@ -164,7 +164,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     onValueChange={(value) => updateSkill(index, 'importance', value)}
                                 >
                                     <SelectTrigger className={cn(
-                                        "w-32 transition-all",
+                                        "w-32 h-11 transition-all",
                                         skill.importance === 'required' && "border-primary/50 bg-primary/5"
                                     )}>
                                         <SelectValue />
@@ -183,7 +183,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     value={skill.name}
                                     onChange={(e) => updateSkill(index, 'name', e.target.value)}
                                     placeholder={t("jobWizard.step2.skillName")}
-                                    className="flex-1 transition-all focus:ring-2 focus:ring-primary/20"
+                                    className="flex-1 h-11 transition-all focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                         ))}
@@ -214,9 +214,9 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
             <Separator className="my-8" />
 
             {/* === SECTION B: Screening Questions === */}
-            <div className="space-y-4 p-6 sm:p-8 border-2 border-orange-200/50 dark:border-orange-900/50 rounded-xl bg-gradient-to-br from-orange-50/30 to-transparent dark:from-orange-950/10">
+            <div className="space-y-4 p-6 sm:p-8 border-2 border-gray-200/50 dark:border-gray-700/50 rounded-xl bg-gradient-to-br from-gray-50/30 to-transparent dark:from-gray-900/10">
                 <div className="flex items-start gap-3">
-                    <ShieldAlert className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-1" />
+                    <ShieldAlert className="h-5 w-5 text-gray-600 dark:text-gray-400 mt-1" />
                     <div className="space-y-1 flex-1">
                         <h3 className="text-lg font-semibold">{t("jobWizard.step2.screeningQuestions")}</h3>
                         <p className="text-muted-foreground text-sm">
@@ -247,7 +247,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     value={sq.question}
                                     onChange={(e) => updateScreeningQuestion(index, 'question', e.target.value)}
                                     placeholder={t("jobWizard.step2.questionPlaceholder")}
-                                    className="transition-all focus:ring-2 focus:ring-primary/20"
+                                    className="h-11 transition-all focus:ring-2 focus:ring-primary/20"
                                 />
 
                                 {/* NEW: Ideal Answer Selection */}
@@ -302,7 +302,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full border-dashed hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all"
+                    className="w-full border-dashed hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-all"
                     onClick={addScreeningQuestion}
                 >
                     <Plus className="h-4 w-4 me-2" />
@@ -352,7 +352,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 })()}
                                 onChange={(e) => updateLanguage(index, 'language', e.target.value)}
                                 placeholder={t("jobWizard.step2.languagePlaceholder")}
-                                className="flex-1 transition-all focus:ring-2 focus:ring-primary/20"
+                                className="flex-1 h-11 transition-all focus:ring-2 focus:ring-primary/20"
                                 list={`languages-${index}`}
                             />
                             <datalist id={`languages-${index}`}>
@@ -369,7 +369,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 value={lang.level}
                                 onValueChange={(value) => updateLanguage(index, 'level', value)}
                             >
-                                <SelectTrigger className="w-36">
+                                <SelectTrigger className="w-36 h-11">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>

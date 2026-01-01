@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
-import { CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { MagicCard } from "@/components/magicui/magic-card"
 import { IconBadge } from "@/components/ui/icon-badge"
 import { cn } from "@/lib/utils"
 import { type LucideIcon, TrendingUp, TrendingDown } from "lucide-react"
@@ -18,7 +19,9 @@ interface AnalyticsCardWithChartProps {
     value: string | number
     icon: LucideIcon
     iconVariant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
-    gradientColor: string
+    gradientColor?: string
+    gradientFrom?: string
+    gradientTo?: string
     breakdowns: StatBreakdown[]
     trend?: {
         value: number
@@ -35,12 +38,18 @@ export function AnalyticsCardWithChart({
     icon: Icon,
     iconVariant = 'default',
     gradientColor,
+    gradientFrom,
+    gradientTo,
     breakdowns,
     trend,
     className,
     chartType = 'donut'
 }: AnalyticsCardWithChartProps) {
     const isPositive = trend ? trend.isPositive !== false : true
+
+    // Use gradientFrom/To if provided, otherwise fallback to gradientColor (legacy support)
+    const finalGradientFrom = gradientFrom || gradientColor || "#4f46e5"
+    const finalGradientTo = gradientTo || (gradientColor ? `${gradientColor}80` : "#7c3aed")
 
     // Calculate donut chart segments with memoization
     const donutSegments = useMemo(() => {
@@ -206,23 +215,18 @@ export function AnalyticsCardWithChart({
         </CardContent>
     )
 
-    // Render card with gradient accent
+    // Render card with MagicCard hover effect
     return (
-        <div
+        <MagicCard
             className={cn(
-                "relative overflow-hidden rounded-lg border border-border bg-card h-full min-h-[280px] shadow-sm hover:shadow-lg transition-all duration-300 group",
+                "relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[280px]",
                 className
             )}
-            suppressHydrationWarning
+            gradientFrom={finalGradientFrom}
+            gradientTo={finalGradientTo}
+            gradientSize={150}
         >
-            {/* Gradient accent bar */}
-            <div
-                className="absolute top-0 left-0 right-0 h-1 opacity-70 group-hover:opacity-100 transition-opacity"
-                style={{
-                    background: `linear-gradient(to right, ${gradientColor}, ${gradientColor}cc)`
-                }}
-            />
             {content}
-        </div>
+        </MagicCard>
     )
 }

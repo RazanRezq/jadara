@@ -43,6 +43,7 @@ import { ViewApplicantDialog } from "@/app/(dashboard)/dashboard/applicants/_com
 import type { Applicant, EvaluationData } from "@/app/(dashboard)/dashboard/applicants/_components/types"
 import type { UserRole } from "@/lib/auth"
 import { DashboardWidget } from "@/components/dashboard/dashboard-widget"
+import { getCardGradient } from "@/lib/card-gradients"
 
 // Types
 interface AdminStats {
@@ -200,7 +201,7 @@ function ActionCenter({
 
     return (
         <>
-        <Card className="border h-full bg-card">
+        <Card useMagic gradientVariant="applicants" className="border h-full bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -316,7 +317,7 @@ function UpcomingSchedule({
     const tomorrowInterviews = interviews.filter((i) => i.isTomorrow)
 
     return (
-        <Card className="border h-full bg-card">
+        <Card useMagic gradientVariant="interviews" className="border h-full bg-card">
             <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
@@ -545,7 +546,7 @@ function RecentCandidatesTable({
 
     return (
         <>
-            <Card className="border bg-card">
+            <Card useMagic gradientVariant="users" className="border bg-card">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <div>
@@ -802,6 +803,11 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
         return null
     }
 
+    const applicantsGradient = getCardGradient("applicants")
+    const jobsGradient = getCardGradient("jobs")
+    const interviewsGradient = getCardGradient("interviews")
+    const successGradient = getCardGradient("success")
+
     const statCards = [
         {
             title: t("dashboard.admin.totalApplicants"),
@@ -811,7 +817,8 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             iconVariant: 'info' as const,
             iconColor: "text-teal-600 dark:text-teal-400",
             iconBgColor: "bg-teal-100 dark:bg-teal-900/30",
-            gradientColor: "#14b8a6",
+            gradientFrom: applicantsGradient.from,
+            gradientTo: applicantsGradient.to,
             href: "/dashboard/applicants",
         },
         {
@@ -822,7 +829,8 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             iconVariant: 'primary' as const,
             iconColor: "text-blue-600 dark:text-blue-400",
             iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
-            gradientColor: "#3b82f6",
+            gradientFrom: jobsGradient.from,
+            gradientTo: jobsGradient.to,
             href: "/dashboard/jobs?status=active",
         },
         {
@@ -833,7 +841,8 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             iconVariant: 'warning' as const,
             iconColor: "text-purple-600 dark:text-purple-400",
             iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
-            gradientColor: "#9333ea",
+            gradientFrom: interviewsGradient.from,
+            gradientTo: interviewsGradient.to,
             href: "/dashboard/calendar",
         },
         {
@@ -844,7 +853,8 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             iconVariant: 'success' as const,
             iconColor: "text-emerald-600 dark:text-emerald-400",
             iconBgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-            gradientColor: "#10b981",
+            gradientFrom: successGradient.from,
+            gradientTo: successGradient.to,
             href: "/dashboard/applicants?status=hired",
         },
     ]
@@ -877,7 +887,8 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
                         iconVariant={stat.iconVariant}
                         iconColor={stat.iconColor}
                         iconBgColor={stat.iconBgColor}
-                        gradientColor={stat.gradientColor}
+                        gradientFrom={stat.gradientFrom}
+                        gradientTo={stat.gradientTo}
                         href={stat.href}
                     />
                 ))}

@@ -106,7 +106,7 @@ interface JobsClientProps {
 const statusColors: Record<JobStatus, string> = {
     draft: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-    closed: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+    closed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     archived: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 }
 
@@ -146,7 +146,7 @@ const JobCard = ({
                     )}
 
                     {/* Job Icon */}
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
                         <Briefcase className="h-6 w-6" />
                     </div>
 
@@ -726,7 +726,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     {hasPermission(currentUserRole, "jobs.create") && (
                         <Button
                             onClick={() => router.push("/dashboard/jobs/create")}
-                            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all"
                         >
                             <Plus className="h-4 w-4 me-2" />
                             {t("jobs.addJob")}
@@ -909,7 +909,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                             dir={isRTL ? "rtl" : "ltr"}
                                         >
                                             <div className="flex items-center gap-3 justify-start">
-                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white shadow-sm">
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm">
                                                     <Briefcase className="h-5 w-5" />
                                                 </div>
                                                 <div className="min-w-0">
@@ -1091,7 +1091,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                 {t("jobs.status.active")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleBulkStatusChange('closed')}>
-                                                <Ban className="h-4 w-4 me-2 text-amber-600" />
+                                                <Ban className="h-4 w-4 me-2 text-slate-700" />
                                                 {t("jobs.status.closed")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleBulkStatusChange('draft')}>
@@ -1140,7 +1140,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                 {t("jobs.status.active")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleBulkStatusChange('closed')}>
-                                                <Ban className="h-4 w-4 me-2 text-amber-600" />
+                                                <Ban className="h-4 w-4 me-2 text-slate-700" />
                                                 {t("jobs.status.closed")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleBulkStatusChange('draft')}>

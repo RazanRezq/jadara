@@ -34,7 +34,7 @@ const statusColors: Record<InterviewStatus, { borderColor: string; bgColor: stri
     bgHoverColor: "rgba(239, 68, 68, 0.2)",
   },
   no_show: {
-    borderColor: "#F97316", // orange-500
+    borderColor: "#9ca3af", // gray-400
     bgColor: "rgba(249, 115, 22, 0.1)",
     bgHoverColor: "rgba(249, 115, 22, 0.2)",
   },
