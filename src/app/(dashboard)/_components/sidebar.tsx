@@ -9,7 +9,6 @@ import { useTranslate } from "@/hooks/useTranslate"
 import {
     LayoutDashboard,
     Users,
-    Settings,
     BookOpen,
     Briefcase,
     Calendar,
@@ -67,12 +66,6 @@ const navItems: NavItem[] = [
         href: "/dashboard/team",
         icon: UsersRound,
         requiredPermission: "users.view",
-    },
-    {
-        titleKey: "sidebar.settings",
-        href: "/dashboard/settings",
-        icon: Settings,
-        requiredPermission: "company.view",
     },
 ]
 

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import {
     LayoutDashboard,
     Users,
-    Settings,
     Shield,
     Briefcase,
     Calendar,
@@ -160,13 +159,6 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         isActive: pathname.startsWith("/dashboard/system-health"),
                         requiredRole: "superadmin" as UserRole,
                     },
-                    {
-                        title: t("sidebar.settings"),
-                        url: "/dashboard/settings",
-                        icon: Settings,
-                        isActive: pathname.startsWith("/dashboard/settings"),
-                        requiredRole: "admin" as UserRole,
-                    },
                 ],
             },
         ]
@@ -194,34 +186,34 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
             </SidebarHeader>
             <SidebarContent>
                 {mounted && navSections.map((section) => {
-                        // Filter items based on user role permissions
-                        const filteredItems = section.items.filter((item) =>
-                            hasRolePermission(user.role, item.requiredRole)
-                        )
+                    // Filter items based on user role permissions
+                    const filteredItems = section.items.filter((item) =>
+                        hasRolePermission(user.role, item.requiredRole)
+                    )
 
-                        // Only render section if there are visible items
-                        if (filteredItems.length === 0) return null
+                    // Only render section if there are visible items
+                    if (filteredItems.length === 0) return null
 
-                        return (
-                            <SidebarGroup key={section.title}>
-                                <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
-                                <SidebarGroupContent>
-                                    <SidebarMenu>
-                                        {filteredItems.map((item) => (
-                                            <SidebarMenuItem key={item.url}>
-                                                <SidebarMenuItemContent
-                                                    title={item.title}
-                                                    url={item.url}
-                                                    icon={item.icon}
-                                                    isActive={item.isActive}
-                                                />
-                                            </SidebarMenuItem>
-                                        ))}
-                                    </SidebarMenu>
-                                </SidebarGroupContent>
-                            </SidebarGroup>
-                        )
-                    })}
+                    return (
+                        <SidebarGroup key={section.title}>
+                            <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    {filteredItems.map((item) => (
+                                        <SidebarMenuItem key={item.url}>
+                                            <SidebarMenuItemContent
+                                                title={item.title}
+                                                url={item.url}
+                                                icon={item.icon}
+                                                isActive={item.isActive}
+                                            />
+                                        </SidebarMenuItem>
+                                    ))}
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    )
+                })}
             </SidebarContent>
             <SidebarFooter>
                 {mounted && <NavUser user={user} />}
