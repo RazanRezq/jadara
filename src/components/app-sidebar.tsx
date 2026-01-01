@@ -69,6 +69,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.dashboard"),
                         url: "/dashboard",
                         icon: LayoutDashboard,
+                        iconColor: "text-cyan-400",
                         isActive: pathname === "/dashboard",
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -76,6 +77,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.jobs"),
                         url: "/dashboard/jobs",
                         icon: Briefcase,
+                        iconColor: "text-purple-400",
                         isActive: pathname.startsWith("/dashboard/jobs"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -83,6 +85,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.candidates"),
                         url: "/dashboard/applicants",
                         icon: Users,
+                        iconColor: "text-pink-400",
                         isActive: pathname.startsWith("/dashboard/applicants"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -90,6 +93,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.calendar"),
                         url: "/dashboard/calendar",
                         icon: Calendar,
+                        iconColor: "text-blue-400",
                         isActive: pathname.startsWith("/dashboard/calendar"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -102,6 +106,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.questionBank"),
                         url: "/dashboard/questions",
                         icon: Library,
+                        iconColor: "text-emerald-400",
                         isActive: pathname.startsWith("/dashboard/questions"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -109,6 +114,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.scorecards"),
                         url: "/dashboard/scorecards",
                         icon: ClipboardCheck,
+                        iconColor: "text-amber-400",
                         isActive: pathname.startsWith("/dashboard/scorecards"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -116,6 +122,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.interviews"),
                         url: "/dashboard/interviews",
                         icon: Video,
+                        iconColor: "text-red-400",
                         isActive: pathname.startsWith("/dashboard/interviews"),
                         requiredRole: "reviewer" as UserRole,
                     },
@@ -128,6 +135,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.users"),
                         url: "/dashboard/users",
                         icon: UserCog,
+                        iconColor: "text-violet-400",
                         isActive: pathname.startsWith("/dashboard/users"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -135,6 +143,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.sessions"),
                         url: "/dashboard/sessions",
                         icon: Activity,
+                        iconColor: "text-lime-400",
                         isActive: pathname.startsWith("/dashboard/sessions"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -142,6 +151,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.auditLogs"),
                         url: "/dashboard/audit-logs",
                         icon: ScrollText,
+                        iconColor: "text-orange-400",
                         isActive: pathname.startsWith("/dashboard/audit-logs"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -149,6 +159,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.permissions"),
                         url: "/dashboard/permissions",
                         icon: Shield,
+                        iconColor: "text-rose-400",
                         isActive: pathname.startsWith("/dashboard/permissions"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -156,6 +167,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         title: t("sidebar.systemHealth"),
                         url: "/dashboard/system-health",
                         icon: Activity,
+                        iconColor: "text-teal-400",
                         isActive: pathname.startsWith("/dashboard/system-health"),
                         requiredRole: "superadmin" as UserRole,
                     },
@@ -205,6 +217,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                                                 title={item.title}
                                                 url={item.url}
                                                 icon={item.icon}
+                                                iconColor={item.iconColor}
                                                 isActive={item.isActive}
                                             />
                                         </SidebarMenuItem>

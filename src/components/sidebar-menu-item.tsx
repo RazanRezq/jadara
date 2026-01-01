@@ -16,6 +16,15 @@ export function SidebarMenuItemContent({ title, url, icon: Icon, iconColor, isAc
     const { state } = useSidebar()
     const isCollapsed = state === "collapsed"
 
+    // Apply neon glow effect to active or hovered icons
+    const iconClasses = iconColor
+        ? `h-4 w-4 transition-all duration-300 ${iconColor} ${
+            isActive
+                ? 'drop-shadow-[0_0_8px_currentColor] brightness-125'
+                : 'opacity-80 group-hover/link:opacity-100 group-hover/link:drop-shadow-[0_0_6px_currentColor] group-hover/link:brightness-110'
+          }`
+        : `h-4 w-4 transition-all duration-300 ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover/link:text-foreground'}`
+
     return (
         <SidebarMenuButton
             asChild
@@ -23,7 +32,7 @@ export function SidebarMenuItemContent({ title, url, icon: Icon, iconColor, isAc
             isActive={isActive}
         >
             <Link href={url} className="group/link">
-                <Icon className={`h-4 w-4 transition-all duration-300 ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover/link:text-foreground'}`} />
+                <Icon className={iconClasses} />
                 {!isCollapsed && <span className="font-medium">{title}</span>}
             </Link>
         </SidebarMenuButton>

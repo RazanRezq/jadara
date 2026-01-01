@@ -765,7 +765,7 @@ export function VoiceQuestion({
                         <p className="text-muted-foreground">{t("apply.questionHidden")}</p>
                     </div>
                 ) : (
-                    <CardTitle className="text-xl leading-relaxed animate-in fade-in duration-500">
+                    <CardTitle className="text-xl leading-relaxed animate-in fade-in duration-500" dir="auto">
                         {question.text}
                     </CardTitle>
                 )}
@@ -882,25 +882,19 @@ export function VoiceQuestion({
                         <div className="flex gap-3">
                             {onBack && (
                                 <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
-                                    {isRTL && t("common.back")}
-                                    <ArrowPrev className="size-4" />
                                     {!isRTL && t("common.back")}
+                                    <ArrowPrev className="size-4" />
+                                    {isRTL && t("common.back")}
                                 </Button>
                             )}
-                            <Button size="lg" className="flex-1 h-12 text-base gap-2" onClick={handleNext}>
-                                {questionNumber < totalQuestions ? (
-                                    <>
-                                        {isRTL && t("apply.nextQuestion")}
-                                        <ArrowIcon className="size-4" />
-                                        {!isRTL && t("apply.nextQuestion")}
-                                    </>
-                                ) : (
-                                    <>
-                                        {isRTL && (t("apply.continueToUpload") || "Continue")}
-                                        <ArrowIcon className="size-4" />
-                                        {!isRTL && (t("apply.continueToUpload") || "Continue")}
-                                    </>
-                                )}
+                            <Button size="lg" className="flex-1 h-12 text-base gap-2" dir={isRTL ? "rtl" : "ltr"} onClick={handleNext}>
+                                <span>
+                                    {questionNumber < totalQuestions
+                                        ? t("apply.nextQuestion")
+                                        : (t("apply.continueToUpload") || "Continue")
+                                    }
+                                </span>
+                                <ArrowIcon className="size-4" />
                             </Button>
                         </div>
                     </div>
@@ -964,9 +958,9 @@ export function VoiceQuestion({
                         <div className="flex gap-3">
                             {onBack && (
                                 <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
-                                    {isRTL && t("common.back")}
-                                    <ArrowPrev className="size-4" />
                                     {!isRTL && t("common.back")}
+                                    <ArrowPrev className="size-4" />
+                                    {isRTL && t("common.back")}
                                 </Button>
                             )}
                             <Button
@@ -1006,9 +1000,9 @@ export function VoiceQuestion({
                         <div className="flex gap-3">
                             {onBack && (
                                 <Button size="lg" variant="outline" className="h-12 text-base gap-2" onClick={onBack}>
-                                    {isRTL && t("common.back")}
-                                    <ArrowPrev className="size-4" />
                                     {!isRTL && t("common.back")}
+                                    <ArrowPrev className="size-4" />
+                                    {isRTL && t("common.back")}
                                 </Button>
                             )}
                             <Button
@@ -1185,9 +1179,9 @@ export function VoiceQuestion({
                                     onClick={onBack}
                                     disabled={isUploading}
                                 >
-                                    {isRTL && t("common.back")}
-                                    <ArrowPrev className="size-4" />
                                     {!isRTL && t("common.back")}
+                                    <ArrowPrev className="size-4" />
+                                    {isRTL && t("common.back")}
                                 </Button>
                             )}
                             <Button

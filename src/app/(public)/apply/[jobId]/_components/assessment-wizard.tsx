@@ -350,7 +350,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                             </div>
                             <div>
                                 <span className="font-bold text-sm">SmartRecruit</span>
-                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                <p className="text-xs text-muted-foreground truncate max-w-[200px]" dir="auto">
                                     {job.title}
                                 </p>
                             </div>
@@ -440,7 +440,7 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                             <CardContent className="space-y-6">
                                 {job.candidateInstructions ? (
                                     <div className="p-4 rounded-lg bg-muted/50 border border-border/50">
-                                        <p className="text-muted-foreground whitespace-pre-line">
+                                        <p className="text-muted-foreground whitespace-pre-line" dir="auto">
                                             {job.candidateInstructions}
                                         </p>
                                     </div>
@@ -504,14 +504,15 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                             className="h-12 text-base gap-2"
                                             onClick={handleGoBack}
                                         >
-                                            {isRTL && t("common.back")}
-                                            <ArrowPrev className="size-4" />
                                             {!isRTL && t("common.back")}
+                                            <ArrowPrev className="size-4" />
+                                            {isRTL && t("common.back")}
                                         </Button>
                                     )}
                                     <Button
                                         size="lg"
                                         className="flex-1 h-12 text-base gap-2"
+                                        dir={isRTL ? "rtl" : "ltr"}
                                         onClick={() => {
                                             if (totalQuestions === 0) {
                                                 // Skip questions step if no questions
@@ -525,9 +526,8 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                             }
                                         }}
                                     >
-                                        {isRTL && (totalQuestions === 0 ? t("common.next") : t("apply.startAssessment"))}
+                                        <span>{totalQuestions === 0 ? t("common.next") : t("apply.startAssessment")}</span>
                                         <ArrowNext className="size-4" />
-                                        {!isRTL && (totalQuestions === 0 ? t("common.next") : t("apply.startAssessment"))}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -561,14 +561,15 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                                     className="h-12 text-base gap-2"
                                                     onClick={handleGoBack}
                                                 >
-                                                    {isRTL && t("common.back")}
-                                                    <ArrowPrev className="size-4" />
                                                     {!isRTL && t("common.back")}
+                                                    <ArrowPrev className="size-4" />
+                                                    {isRTL && t("common.back")}
                                                 </Button>
                                             )}
                                             <Button
                                                 size="lg"
                                                 className="flex-1 h-12 text-base gap-2"
+                                                dir={isRTL ? "rtl" : "ltr"}
                                                 onClick={() => {
                                                     if (job.candidateDataConfig.requireCV || job.candidateDataConfig.requirePortfolio) {
                                                         setWizardStep("upload")
@@ -577,9 +578,8 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                                                     }
                                                 }}
                                             >
-                                                {isRTL && t("common.next")}
+                                                <span>{t("common.next")}</span>
                                                 <ArrowNext className="size-4" />
-                                                {!isRTL && t("common.next")}
                                             </Button>
                                         </div>
                                     </CardContent>

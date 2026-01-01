@@ -274,45 +274,114 @@ export function JobCreateClient({ userId }: JobCreateClientProps) {
             {/* Stepper Card */}
             <Card>
                 <CardHeader>
-                    {/* Stepper */}
-                    <div className="flex items-center justify-center gap-2 mb-4" dir={isRTL ? "rtl" : "ltr"}>
-                        {steps.map((step, index) => (
-                            <div key={step.number} className="flex items-center">
-                                {/* Step Circle */}
-                                <div
-                                    className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-sm",
-                                        currentStep > step.number
-                                            ? "bg-primary text-primary-foreground scale-110 shadow-md"
-                                            : currentStep === step.number
-                                                ? "bg-primary text-primary-foreground scale-110 ring-2 ring-primary ring-offset-2 shadow-md"
-                                                : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                    )}
-                                >
-                                    {currentStep > step.number ? (
-                                        <Check className="h-5 w-5" />
-                                    ) : (
-                                        step.number
-                                    )}
-                                </div>
+                    {/* Stepper - Pure inline styles with HTML dir */}
+                    <div dir="ltr" style={{
+                        width: '100%',
+                        maxWidth: '800px',
+                        margin: '0 auto 16px auto',
+                        direction: 'ltr'
+                    }}>
+                        <div dir="ltr" style={{ position: 'relative', height: '40px' }}>
+                            {/* Background line */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '20px',
+                                left: '20px',
+                                right: '20px',
+                                height: '2px',
+                                backgroundColor: 'hsl(var(--muted))'
+                            }} />
 
-                                {/* Connector Line */}
-                                {index < steps.length - 1 && (
-                                    <div
-                                        className={cn(
-                                            "w-12 h-1 mx-2 transition-all duration-300 rounded-full",
-                                            currentStep > step.number
-                                                ? "bg-primary"
-                                                : "bg-muted"
-                                        )}
-                                    />
-                                )}
-                            </div>
-                        ))}
+                            {/* Progress line */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '20px',
+                                left: '20px',
+                                height: '2px',
+                                width: `${Math.min(((currentStep - 1) / 4) * 100, 100)}%`,
+                                maxWidth: 'calc(100% - 40px)',
+                                backgroundColor: 'hsl(var(--primary))',
+                                transition: 'width 0.5s ease'
+                            }} />
+
+                            {/* Step circles */}
+                            {[0, 1, 2, 3, 4].map((index) => {
+                                const step = steps[index];
+                                const stepNum = index + 1;
+                                const positions = ['0%', '25%', '50%', '75%', '100%'];
+
+                                return (
+                                    <div key={stepNum} dir="ltr" style={{
+                                        position: 'absolute',
+                                        left: positions[index],
+                                        top: 0,
+                                        transform: 'translateX(-50%)'
+                                    }}>
+                                        {/* Circle */}
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            backgroundColor: currentStep > stepNum ? 'hsl(var(--primary))'
+                                                : currentStep === stepNum ? 'hsl(var(--primary))'
+                                                : 'hsl(var(--muted))',
+                                            color: currentStep >= stepNum ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
+                                            boxShadow: currentStep === stepNum ? '0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary))' : '0 1px 2px rgba(0,0,0,0.1)',
+                                            transform: currentStep >= stepNum ? 'scale(1.1)' : 'scale(1)',
+                                            transition: 'all 0.3s ease',
+                                            zIndex: 10,
+                                            position: 'relative'
+                                        }}>
+                                            {currentStep > stepNum ? (
+                                                <Check style={{ width: '20px', height: '20px' }} />
+                                            ) : (
+                                                stepNum
+                                            )}
+                                        </div>
+
+                                        {/* Label below */}
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '48px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: '90px',
+                                            textAlign: 'center',
+                                            direction: isRTL ? 'rtl' : 'ltr'
+                                        }}>
+                                            <p style={{
+                                                fontSize: '10px',
+                                                fontWeight: currentStep === stepNum ? 600 : 500,
+                                                color: currentStep === stepNum ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                                                lineHeight: '1.3',
+                                                padding: '0 4px',
+                                                margin: 0,
+                                                overflow: 'hidden',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                transition: 'color 0.3s ease'
+                                            }}>
+                                                {step.title}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Step Info */}
-                    <div className="text-center">
+                    <div style={{
+                        textAlign: 'center',
+                        marginTop: '80px',
+                        direction: isRTL ? 'rtl' : 'ltr'
+                    }}>
                         <CardTitle className="text-xl">
                             {steps[currentStep - 1]?.title}
                         </CardTitle>

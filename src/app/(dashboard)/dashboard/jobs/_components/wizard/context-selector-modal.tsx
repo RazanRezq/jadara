@@ -313,7 +313,7 @@ export function ContextSelectorModal({
                                             className={cn(
                                                 "cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105",
                                                 selectedBenefits.includes(chip.id)
-                                                    ? "bg-gradient-to-r from-gray-300 to-gray-200 hover:from-gray-400 hover:to-gray-300 border-0 text-white"
+                                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 border-0 text-white"
                                                     : "hover:border-slate-500"
                                             )}
                                             onClick={() => toggleBenefit(chip.id)}

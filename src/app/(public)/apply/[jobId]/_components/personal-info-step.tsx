@@ -205,7 +205,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.contactInformation")}
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -275,12 +275,12 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.professionalBackground")}
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full [&>*]:min-w-0">
                             <FormField
                                 control={form.control}
                                 name="gender"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="w-full">
                                         <FormLabel className="text-sm font-medium">
                                             {t("applicants.gender")}
                                         </FormLabel>
@@ -290,7 +290,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             dir={isRTL ? "rtl" : "ltr"}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="h-10">
+                                                <SelectTrigger className="h-10 w-full">
                                                     <SelectValue placeholder={t("apply.selectGender")} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -308,7 +308,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 control={form.control}
                                 name="age"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="w-full">
                                         <FormLabel className="text-sm font-medium">
                                             {t("applicants.age")}
                                         </FormLabel>
@@ -319,7 +319,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                 max={100}
                                                 placeholder="25"
                                                 dir="ltr"
-                                                className="h-10"
+                                                className="h-10 w-full"
                                                 {...field}
                                                 value={field.value || ""}
                                             />
@@ -332,7 +332,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 control={form.control}
                                 name="major"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="w-full">
                                         <FormLabel className="text-sm font-medium">
                                             {t("applicants.major")}
                                         </FormLabel>
@@ -340,7 +340,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             <Input
                                                 placeholder={t("apply.majorPlaceholder")}
                                                 dir={locale === "ar" ? "rtl" : "ltr"}
-                                                className="h-10"
+                                                className="h-10 w-full"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -356,7 +356,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.additionalInformation")}
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="yearsOfExperience"
@@ -436,7 +436,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             render={({ field }) => (
                                                 <FormItem className="p-4 rounded-lg border bg-muted/20">
                                                     <FormLabel className="flex items-center justify-between gap-2 text-sm font-medium">
-                                                        <span className="leading-relaxed">
+                                                        <span className="leading-relaxed" dir="auto">
                                                             {index + 1}. {sq.question}
                                                         </span>
                                                         {sq.disqualify && (
@@ -490,7 +490,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                     {t("apply.languageProficiency")}
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {job.languages.map((lang, index) => (
                                         <FormField
                                             key={index}
@@ -532,7 +532,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">
                                 {t("apply.professionalLinks")}
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
                                 name="linkedinUrl"
@@ -599,6 +599,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 size="lg"
                                 className="flex-1 h-12 text-base gap-2"
                                 disabled={isSubmitting}
+                                dir={isRTL ? "rtl" : "ltr"}
                             >
                                 {isSubmitting ? (
                                     <>
@@ -607,9 +608,8 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                     </>
                                 ) : (
                                     <>
-                                        {isRTL && t("common.next")}
+                                        <span>{t("common.next")}</span>
                                         <ArrowNext className="size-4" />
-                                        {!isRTL && t("common.next")}
                                     </>
                                 )}
                             </Button>
@@ -620,6 +620,8 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
         </Card>
     )
 }
+
+
 
 
 

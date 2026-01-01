@@ -184,6 +184,11 @@
     font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   }
 
+  /* Auto direction: Use IBM Plex Sans Arabic (supports both Arabic and Latin) */
+  [dir="auto"] {
+    font-family: var(--font-ibm-arabic), system-ui, sans-serif;
+  }
+
   /* ========================================
      GLOBAL FIX: Font Inheritance for ALL Form Elements
      ======================================== */
@@ -240,6 +245,24 @@
   [dir="ltr"] [data-slot="select-item"],
   [dir="ltr"] [data-slot="input"] {
     font-family: var(--font-outfit), system-ui, sans-serif !important;
+  }
+
+  /* Auto direction elements use IBM Plex Sans Arabic (supports both Arabic and Latin) */
+  [dir="auto"] button,
+  [dir="auto"] input,
+  [dir="auto"] select,
+  [dir="auto"] textarea,
+  [dir="auto"] optgroup,
+  [dir="auto"] [role="button"],
+  [dir="auto"] [role="combobox"],
+  [dir="auto"] [role="listbox"],
+  [dir="auto"] [role="option"],
+  [dir="auto"] [data-slot="select-trigger"],
+  [dir="auto"] [data-slot="select-value"],
+  [dir="auto"] [data-slot="select-content"],
+  [dir="auto"] [data-slot="select-item"],
+  [dir="auto"] [data-slot="input"] {
+    font-family: var(--font-ibm-arabic), system-ui, sans-serif !important;
   }
 
   /* Fix text alignment for Select triggers in RTL */
@@ -493,5 +516,12 @@
 
   .animate-shimmer {
     animation: shimmer 2s ease-in-out infinite;
+  }
+
+  /* ========================================
+     IBM PLEX SANS ARABIC FONT UTILITY
+     ======================================== */
+  .font-ibm-plex {
+    font-family: var(--font-ibm-arabic), system-ui, sans-serif !important;
   }
 }

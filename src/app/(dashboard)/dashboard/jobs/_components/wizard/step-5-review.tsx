@@ -36,50 +36,50 @@ export function Step5Review({ form }: Step5ReviewProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 max-w-4xl mx-auto">
             {/* Header */}
             <div className="text-center">
-                <h2 className="text-xl font-semibold">{t("jobWizard.step5.title")}</h2>
-                <p className="text-muted-foreground text-sm mt-1">
+                <h2 className="text-lg font-semibold">{t("jobWizard.step5.title")}</h2>
+                <p className="text-muted-foreground text-xs mt-0.5">
                     {t("jobWizard.step5.subtitle")}
                 </p>
             </div>
 
             {/* Summary */}
-            <div className="border rounded-lg p-6 space-y-6">
-                <div className="text-end">
-                    <h3 className="font-semibold">{t("jobWizard.step5.summary")}</h3>
-                    <p className="text-muted-foreground text-sm">
+            <div className="border rounded-lg p-5 space-y-5">
+                <div>
+                    <h3 className="font-semibold text-sm">{t("jobWizard.step5.summary")}</h3>
+                    <p className="text-muted-foreground text-xs mt-0.5">
                         {t("jobWizard.step5.summaryDesc")}
                     </p>
                 </div>
 
                 {/* Step 1: Job Basics */}
-                <div className="space-y-3">
-                    <h4 className="text-primary font-semibold">
+                <div className="space-y-2.5">
+                    <h4 className="text-primary font-medium text-sm">
                         1. {t("jobWizard.step1.title")}
                     </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step1.jobTitle")}:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step1.jobTitle")}</span>
                             <span className="font-medium">{values.title || '-'}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step1.department")}:</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step1.department")}</span>
                             <span className="font-medium">{getDepartmentLabel(values.department || '')}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step1.workType")}:</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step1.workType")}</span>
                             <span className="font-medium">{getEmploymentTypeLabel(values.employmentType)}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step1.location")}:</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step1.location")}</span>
                             <span className="font-medium">{values.location || '-'}</span>
                         </div>
-                        <div className="flex justify-between col-span-2">
-                            <span className="text-muted-foreground">{t("jobs.salary")}:</span>
+                        <div className="flex flex-col gap-0.5 sm:col-span-2">
+                            <span className="text-muted-foreground">{t("jobs.salary")}</span>
                             <span className="font-medium">
-                                {values.salaryMin && values.salaryMax 
+                                {values.salaryMin && values.salaryMax
                                     ? `${values.salaryMin} - ${values.salaryMax} ${getCurrencyLabel(values.currency)}`
                                     : '-'
                                 }
@@ -91,42 +91,43 @@ export function Step5Review({ form }: Step5ReviewProps) {
                 <Separator />
 
                 {/* Step 2: Evaluation Criteria */}
-                <div className="space-y-3">
-                    <h4 className="text-primary font-semibold">
+                <div className="space-y-2.5">
+                    <h4 className="text-primary font-medium text-sm">
                         2. {t("jobWizard.step2.title")}
                     </h4>
-                    
+
                     {/* Skills */}
                     {values.skills.length > 0 && (
-                        <div className="space-y-2">
-                            <span className="text-sm text-muted-foreground">
-                                {t("jobWizard.step2.skillsMatrix")}:
+                        <div className="space-y-1.5">
+                            <span className="text-xs text-muted-foreground block">
+                                {t("jobWizard.step2.skillsMatrix")}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                                 {values.skills.map((skill, index) => (
-                                    <Badge 
-                                        key={index} 
+                                    <Badge
+                                        key={index}
                                         variant={skill.importance === 'required' ? 'default' : 'outline'}
+                                        className="text-xs px-2 py-0.5"
                                     >
-                                        {skill.name} ({skill.importance === 'required' 
-                                            ? t("jobWizard.step2.required") 
+                                        {skill.name} · {skill.importance === 'required'
+                                            ? t("jobWizard.step2.required")
                                             : t("jobWizard.step2.preferred")
-                                        })
+                                        }
                                     </Badge>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step2.experienceReqs")}:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs pt-1">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step2.experienceReqs")}</span>
                             <span className="font-medium">
                                 {values.minExperience} {t("applicants.years")}
                             </span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step2.autoRejectThreshold")}:</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step2.autoRejectThreshold")}</span>
                             <span className="font-medium">
                                 {t("jobWizard.step5.lessThan")} {values.autoRejectThreshold}%
                             </span>
@@ -137,15 +138,15 @@ export function Step5Review({ form }: Step5ReviewProps) {
                 <Separator />
 
                 {/* Step 3: Candidate Data */}
-                <div className="space-y-3">
-                    <h4 className="text-primary font-semibold">
+                <div className="space-y-2.5">
+                    <h4 className="text-primary font-medium text-sm">
                         3. {t("jobWizard.step3.title")}
                     </h4>
-                    
-                    <div className="text-sm space-y-2">
+
+                    <div className="text-xs space-y-2">
                         <div>
-                            <span className="text-muted-foreground">{t("jobWizard.step5.requiredData")}:</span>
-                            <ul className="list-disc list-inside mt-1 ms-2">
+                            <span className="text-muted-foreground block mb-1">{t("jobWizard.step5.requiredData")}</span>
+                            <ul className="list-disc ps-4 space-y-0.5">
                                 {values.candidateDataConfig.requireCV && (
                                     <li>{t("jobWizard.step3.cv")}</li>
                                 )}
@@ -157,12 +158,12 @@ export function Step5Review({ form }: Step5ReviewProps) {
                                 )}
                             </ul>
                         </div>
-                        
-                        {(values.candidateDataConfig.hideSalaryExpectation || 
+
+                        {(values.candidateDataConfig.hideSalaryExpectation ||
                           values.candidateDataConfig.hidePersonalInfo) && (
                             <div>
-                                <span className="text-muted-foreground">{t("jobWizard.step5.hiddenFromReviewers")}:</span>
-                                <ul className="list-disc list-inside mt-1 ms-2">
+                                <span className="text-muted-foreground block mb-1">{t("jobWizard.step5.hiddenFromReviewers")}</span>
+                                <ul className="list-disc ps-4 space-y-0.5">
                                     {values.candidateDataConfig.hideSalaryExpectation && (
                                         <li>{t("jobWizard.step3.hideSalary")}</li>
                                     )}
@@ -178,20 +179,20 @@ export function Step5Review({ form }: Step5ReviewProps) {
                 <Separator />
 
                 {/* Step 4: Exam Builder */}
-                <div className="space-y-3">
-                    <h4 className="text-primary font-semibold">
+                <div className="space-y-2.5">
+                    <h4 className="text-primary font-medium text-sm">
                         4. {t("jobWizard.step4.title")}
                     </h4>
-                    
-                    <div className="text-sm space-y-2">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step5.questionsCount")}:</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step5.questionsCount")}</span>
                             <span className="font-medium">{values.questions.length}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t("jobWizard.step5.retakeAllowed")}:</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground">{t("jobWizard.step5.retakeAllowed")}</span>
                             <span className="font-medium">
-                                {values.retakePolicy.allowRetake 
+                                {values.retakePolicy.allowRetake
                                     ? `${t("common.yes")} (${values.retakePolicy.maxAttempts} ${t("jobWizard.step5.attempts")})`
                                     : t("common.no")
                                 }
@@ -203,6 +204,8 @@ export function Step5Review({ form }: Step5ReviewProps) {
         </div>
     )
 }
+
+
 
 
 

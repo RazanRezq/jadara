@@ -308,9 +308,9 @@ export function FileUploadStep({
                             onClick={onBack}
                             disabled={isSubmitting}
                         >
-                            {isRTL && t("common.back")}
-                            <ArrowPrev className="size-4" />
                             {!isRTL && t("common.back")}
+                            <ArrowPrev className="size-4" />
+                            {isRTL && t("common.back")}
                         </Button>
                     )}
                     <Button

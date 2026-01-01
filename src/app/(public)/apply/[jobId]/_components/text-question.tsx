@@ -107,7 +107,7 @@ export function TextQuestion({
                         </Badge>
                     </div>
                 </div>
-                <CardTitle className="text-xl leading-relaxed">
+                <CardTitle className="text-xl leading-relaxed" dir="auto">
                     {question.text}
                 </CardTitle>
             </CardHeader>
@@ -165,29 +165,24 @@ export function TextQuestion({
                                 className="h-12 text-base gap-2"
                                 onClick={onBack}
                             >
-                                {isRTL && t("common.back")}
-                                <ArrowPrev className="size-4" />
                                 {!isRTL && t("common.back")}
+                                <ArrowPrev className="size-4" />
+                                {isRTL && t("common.back")}
                             </Button>
                         )}
                         <Button
                             size="lg"
                             className="flex-1 h-12 text-base gap-2"
+                            dir={isRTL ? "rtl" : "ltr"}
                             onClick={handleNext}
                         >
-                            {questionNumber < totalQuestions ? (
-                                <>
-                                    {isRTL && t("apply.nextQuestion")}
-                                    <ArrowIcon className="size-4" />
-                                    {!isRTL && t("apply.nextQuestion")}
-                                </>
-                            ) : (
-                                <>
-                                    {isRTL && (t("apply.continueToUpload") || "Continue")}
-                                    <ArrowIcon className="size-4" />
-                                    {!isRTL && (t("apply.continueToUpload") || "Continue")}
-                                </>
-                            )}
+                            <span>
+                                {questionNumber < totalQuestions
+                                    ? t("apply.nextQuestion")
+                                    : (t("apply.continueToUpload") || "Continue")
+                                }
+                            </span>
+                            <ArrowIcon className="size-4" />
                         </Button>
                     </div>
                 ) : (
@@ -200,9 +195,9 @@ export function TextQuestion({
                                 className="h-12 text-base gap-2"
                                 onClick={onBack}
                             >
-                                {isRTL && t("common.back")}
-                                <ArrowPrev className="size-4" />
                                 {!isRTL && t("common.back")}
+                                <ArrowPrev className="size-4" />
+                                {isRTL && t("common.back")}
                             </Button>
                         )}
                         <Button

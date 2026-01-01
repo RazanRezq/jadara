@@ -30,7 +30,7 @@ interface Step2CriteriaProps {
 }
 
 export function Step2Criteria({ form }: Step2CriteriaProps) {
-    const { t, locale } = useTranslate()
+    const { t, locale, isRTL } = useTranslate()
 
     const skills = form.watch('skills') || []
     const screeningQuestions = form.watch('screeningQuestions') || []
@@ -118,22 +118,22 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
     }
 
     return (
-        <div className="space-y-8 lg:space-y-10">
+        <div className="space-y-6 max-w-4xl mx-auto">
             {/* Header */}
-            <div className="text-center mb-6 lg:mb-8">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <div className="text-center mb-5">
+                <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                     {t("jobWizard.step2.title")}
                 </h2>
-                <p className="text-muted-foreground text-sm mt-2">
+                <p className="text-muted-foreground text-xs mt-1">
                     {t("jobWizard.step2.subtitle")}
                 </p>
             </div>
 
             {/* === SECTION A: Skills Matrix === */}
-            <div className="space-y-4 p-6 sm:p-8 border-2 border-primary/20 rounded-xl bg-gradient-to-br from-primary/5 to-transparent">
+            <div className="space-y-4 p-5 sm:p-6 border-2 border-primary/20 rounded-xl bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="space-y-1">
-                    <h3 className="text-lg font-semibold">{t("jobWizard.step2.skillsMatrix")}</h3>
-                    <p className="text-muted-foreground text-sm">
+                    <h3 className="text-base font-semibold">{t("jobWizard.step2.skillsMatrix")}</h3>
+                    <p className="text-muted-foreground text-xs">
                         {t("jobWizard.step2.skillsMatrixDesc")}
                     </p>
                 </div>
@@ -145,7 +145,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                             <div
                                 key={index}
                                 className={cn(
-                                    "flex items-center gap-3 p-3 border rounded-lg bg-background transition-all",
+                                    "flex items-center gap-2.5 p-3 border rounded-lg bg-background transition-all",
                                     "hover:shadow-md hover:border-primary/20"
                                 )}
                             >
@@ -164,7 +164,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     onValueChange={(value) => updateSkill(index, 'importance', value)}
                                 >
                                     <SelectTrigger className={cn(
-                                        "w-32 h-11 transition-all",
+                                        "w-28 h-9 text-sm transition-all",
                                         skill.importance === 'required' && "border-primary/50 bg-primary/5"
                                     )}>
                                         <SelectValue />
@@ -183,7 +183,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                     value={skill.name}
                                     onChange={(e) => updateSkill(index, 'name', e.target.value)}
                                     placeholder={t("jobWizard.step2.skillName")}
-                                    className="flex-1 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                                    className="flex-1 h-9 text-sm transition-all focus:ring-2 focus:ring-primary/20 min-w-0"
                                 />
                             </div>
                         ))}
@@ -194,7 +194,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full border-dashed hover:border-primary hover:bg-primary/5 transition-all"
+                    className="w-full border-dashed hover:border-primary hover:bg-primary/5 transition-all h-9 text-sm"
                     onClick={() => addSkill()}
                 >
                     <Plus className="h-4 w-4 me-2" />
@@ -204,22 +204,22 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 {/* Skills Count Badge */}
                 {skills.length > 0 && (
                     <div className="flex items-center justify-center">
-                        <Badge variant="secondary" className="gap-1">
+                        <Badge variant="secondary" className="gap-1 text-xs px-2 py-0.5">
                             {skills.length} {t("jobWizard.step2.skillsAdded")}
                         </Badge>
                     </div>
                 )}
             </div>
 
-            <Separator className="my-8" />
+            <Separator className="my-6" />
 
             {/* === SECTION B: Screening Questions === */}
-            <div className="space-y-4 p-6 sm:p-8 border-2 border-gray-200/50 dark:border-gray-700/50 rounded-xl bg-gradient-to-br from-gray-50/30 to-transparent dark:from-gray-900/10">
+            <div className="space-y-4 p-5 sm:p-6 border-2 border-gray-200/50 dark:border-gray-700/50 rounded-xl bg-gradient-to-br from-gray-50/30 to-transparent dark:from-gray-900/10">
                 <div className="flex items-start gap-3">
-                    <ShieldAlert className="h-5 w-5 text-gray-600 dark:text-gray-400 mt-1" />
-                    <div className="space-y-1 flex-1">
-                        <h3 className="text-lg font-semibold">{t("jobWizard.step2.screeningQuestions")}</h3>
-                        <p className="text-muted-foreground text-sm">
+                    <ShieldAlert className="h-5 w-5 text-gray-600 dark:text-gray-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                        <h3 className="text-base font-semibold">{t("jobWizard.step2.screeningQuestions")}</h3>
+                        <p className="text-muted-foreground text-xs">
                             {t("jobWizard.step2.screeningQuestionsDesc")}
                         </p>
                     </div>
@@ -242,57 +242,58 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 <Trash2 className="h-4 w-4" />
                             </Button>
 
-                            <div className="flex-1 space-y-3">
+                            <div className="flex-1 space-y-3 min-w-0">
                                 <Input
                                     value={sq.question}
                                     onChange={(e) => updateScreeningQuestion(index, 'question', e.target.value)}
                                     placeholder={t("jobWizard.step2.questionPlaceholder")}
-                                    className="h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                                    className="h-10 text-sm transition-all focus:ring-2 focus:ring-primary/20"
                                 />
 
-                                {/* NEW: Ideal Answer Selection */}
+                                {/* Ideal Answer Selection */}
                                 <div className="space-y-2 p-3 bg-muted/30 rounded-md border border-border">
-                                    <Label className="text-sm font-medium">
+                                    <Label className="text-xs font-medium">
                                         {t("jobWizard.step2.idealAnswer")}
                                     </Label>
                                     <RadioGroup
                                         value={String(sq.idealAnswer)}
                                         onValueChange={(value) => updateScreeningQuestion(index, 'idealAnswer', value === 'true')}
-                                        className="flex gap-4"
+                                        className={cn("flex gap-6", isRTL && "flex-row-reverse")}
                                     >
-                                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                        <div className="flex items-center gap-2.5">
                                             <RadioGroupItem value="true" id={`ideal-yes-${index}`} />
-                                            <Label htmlFor={`ideal-yes-${index}`} className="cursor-pointer font-normal">
-                                                {t("common.yes")} {locale === 'ar' && '(نعم)'}
+                                            <Label htmlFor={`ideal-yes-${index}`} className="cursor-pointer font-normal text-sm">
+                                                {t("common.yes")}
                                             </Label>
                                         </div>
-                                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                        <div className="flex items-center gap-2.5">
                                             <RadioGroupItem value="false" id={`ideal-no-${index}`} />
-                                            <Label htmlFor={`ideal-no-${index}`} className="cursor-pointer font-normal">
-                                                {t("common.no")} {locale === 'ar' && '(لا)'}
+                                            <Label htmlFor={`ideal-no-${index}`} className="cursor-pointer font-normal text-sm">
+                                                {t("common.no")}
                                             </Label>
                                         </div>
                                     </RadioGroup>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
                                         {t("jobWizard.step2.idealAnswerHint")}
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <Switch
-                                        checked={sq.disqualify}
-                                        onCheckedChange={(checked) => updateScreeningQuestion(index, 'disqualify', checked)}
-                                    />
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2.5">
+                                        <Switch
+                                            checked={sq.disqualify}
+                                            onCheckedChange={(checked) => updateScreeningQuestion(index, 'disqualify', checked)}
+                                            id={`disqualify-${index}`}
+                                        />
+                                        <Label htmlFor={`disqualify-${index}`} className="text-sm font-medium cursor-pointer">
                                             {t("jobWizard.step2.disqualifyIfMismatch")}
-                                        </span>
-                                        {sq.disqualify && (
-                                            <Badge variant="destructive" className="text-xs">
-                                                {t("jobWizard.step2.disqualifying")}
-                                            </Badge>
-                                        )}
+                                        </Label>
                                     </div>
+                                    {sq.disqualify && (
+                                        <Badge variant="destructive" className="text-xs px-2 py-0.5">
+                                            {t("jobWizard.step2.disqualifying")}
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -302,7 +303,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full border-dashed hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-all"
+                    className="w-full border-dashed hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-all h-10 text-sm"
                     onClick={addScreeningQuestion}
                 >
                     <Plus className="h-4 w-4 me-2" />
@@ -310,26 +311,26 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 </Button>
             </div>
 
-            <Separator className="my-8" />
+            <Separator className="my-6" />
 
             {/* === SECTION C: Languages === */}
-            <div className="space-y-4 p-6 sm:p-8 border-2 border-green-200/50 dark:border-green-900/50 rounded-xl bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
+            <div className="space-y-4 p-5 sm:p-6 border-2 border-green-200/50 dark:border-green-900/50 rounded-xl bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
                 <div className="flex items-start gap-3">
-                    <Globe2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-1" />
-                    <div className="space-y-1 flex-1">
-                        <h3 className="text-lg font-semibold">{t("jobWizard.step2.languages")}</h3>
-                        <p className="text-muted-foreground text-sm">
+                    <Globe2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                        <h3 className="text-base font-semibold">{t("jobWizard.step2.languages")}</h3>
+                        <p className="text-muted-foreground text-xs">
                             {t("jobWizard.step2.languagesDesc")}
                         </p>
                     </div>
                 </div>
 
                 {/* Languages List */}
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                     {languages.map((lang, index) => (
                         <div
                             key={index}
-                            className="flex items-center gap-3 p-4 border rounded-lg bg-background hover:shadow-md transition-all"
+                            className="flex items-center gap-2.5 p-3 border rounded-lg bg-background hover:shadow-md transition-all"
                         >
                             <Button
                                 type="button"
@@ -352,7 +353,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 })()}
                                 onChange={(e) => updateLanguage(index, 'language', e.target.value)}
                                 placeholder={t("jobWizard.step2.languagePlaceholder")}
-                                className="flex-1 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                                className="flex-1 h-9 text-sm transition-all focus:ring-2 focus:ring-primary/20 min-w-0"
                                 list={`languages-${index}`}
                             />
                             <datalist id={`languages-${index}`}>
@@ -369,7 +370,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 value={lang.level}
                                 onValueChange={(value) => updateLanguage(index, 'level', value)}
                             >
-                                <SelectTrigger className="w-36 h-11">
+                                <SelectTrigger className="w-32 h-9 text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -387,7 +388,7 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full border-dashed hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-950/20 transition-all"
+                    className="w-full border-dashed hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-950/20 transition-all h-9 text-sm"
                     onClick={addLanguage}
                 >
                     <Plus className="h-4 w-4 me-2" />
@@ -395,15 +396,15 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                 </Button>
             </div>
 
-            <Separator className="my-8" />
+            <Separator className="my-6" />
 
             {/* === SECTION D: Minimum Experience === */}
-            <div className="space-y-4 p-6 sm:p-8 border-2 border-purple-200/50 dark:border-purple-900/50 rounded-xl bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
+            <div className="space-y-4 p-5 sm:p-6 border-2 border-purple-200/50 dark:border-purple-900/50 rounded-xl bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
                 <div className="flex items-start gap-3">
-                    <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-1" />
-                    <div className="space-y-1 flex-1">
-                        <h3 className="text-lg font-semibold">{t("jobWizard.step2.minExperience")}</h3>
-                        <p className="text-muted-foreground text-sm">
+                    <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                        <h3 className="text-base font-semibold">{t("jobWizard.step2.minExperience")}</h3>
+                        <p className="text-muted-foreground text-xs">
                             {t("jobWizard.step2.minExperienceDesc")}
                         </p>
                     </div>
@@ -413,8 +414,8 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                     control={form.control}
                     name="minExperience"
                     render={({ field }) => (
-                        <FormItem className="space-y-4">
-                            <div className="px-4 py-6 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
+                        <FormItem className="space-y-3">
+                            <div className="px-4 py-5 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
                                 <Slider
                                     value={[field.value]}
                                     onValueChange={(value) => field.onChange(value[0])}
@@ -425,10 +426,10 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 />
                             </div>
                             <div className="text-center">
-                                <p className="text-primary font-bold text-4xl mb-1">
+                                <p className="text-primary font-bold text-3xl mb-0.5">
                                     {minExperience}
                                 </p>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                     {minExperience === 0
                                         ? (locale === 'ar' ? 'بدون خبرة مطلوبة' : 'No experience required')
                                         : `${minExperience} ${t("jobWizard.step2.years")}`
@@ -441,10 +442,10 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
             </div>
 
             {/* Auto-Reject Threshold */}
-            <div className="space-y-4 border-t pt-6">
-                <div className="text-end">
-                    <h3 className="font-semibold">{t("jobWizard.step2.autoRejectThreshold")}</h3>
-                    <p className="text-muted-foreground text-sm">
+            <div className="space-y-3 p-5 sm:p-6 border-2 border-border rounded-xl bg-muted/20">
+                <div>
+                    <h3 className="font-semibold text-base">{t("jobWizard.step2.autoRejectThreshold")}</h3>
+                    <p className="text-muted-foreground text-xs mt-0.5">
                         {t("jobWizard.step2.autoRejectThresholdDesc")}
                     </p>
                 </div>
@@ -453,8 +454,8 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                     control={form.control}
                     name="autoRejectThreshold"
                     render={({ field }) => (
-                        <FormItem className="space-y-4">
-                            <div className="px-2 py-4 bg-muted/30 rounded-lg">
+                        <FormItem className="space-y-3">
+                            <div className="px-4 py-4 bg-muted/30 rounded-lg border border-border">
                                 <Slider
                                     value={[field.value]}
                                     onValueChange={(value) => field.onChange(value[0])}
@@ -465,10 +466,10 @@ export function Step2Criteria({ form }: Step2CriteriaProps) {
                                 />
                             </div>
                             <div className="text-center">
-                                <p className="text-primary font-bold text-2xl mb-1">
+                                <p className="text-primary font-bold text-2xl mb-0.5">
                                     {autoRejectThreshold}%
                                 </p>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                     {t("jobWizard.step2.minimumScore")}
                                 </p>
                             </div>

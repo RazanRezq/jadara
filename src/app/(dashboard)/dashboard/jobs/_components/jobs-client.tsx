@@ -71,6 +71,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { DeleteJobDialog } from "./delete-job-dialog"
 import { ViewJobDialog } from "./view-job-dialog"
+import { JobWizardDialog } from "./wizard/job-wizard-dialog"
 import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -292,6 +293,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
 
     // Dialog states
+    const [wizardDialogOpen, setWizardDialogOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -725,7 +727,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     {/* Add Job Button */}
                     {hasPermission(currentUserRole, "jobs.create") && (
                         <Button
-                            onClick={() => router.push("/dashboard/jobs/create")}
+                            onClick={() => setWizardDialogOpen(true)}
                             className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all"
                         >
                             <Plus className="h-4 w-4 me-2" />
@@ -1187,6 +1189,13 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
             )}
 
             {/* Dialogs */}
+            <JobWizardDialog
+                open={wizardDialogOpen}
+                onOpenChange={setWizardDialogOpen}
+                onSuccess={fetchJobs}
+                userId={userId}
+            />
+
             {selectedJob && (
                 <>
                     <ViewJobDialog

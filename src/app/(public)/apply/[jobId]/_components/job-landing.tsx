@@ -88,22 +88,23 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                         <Badge
                             variant="secondary"
                             className="mb-4 px-4 py-1.5 text-sm font-medium"
+                            dir="auto"
                         >
                             {job.department || t("apply.openPosition")}
                         </Badge>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                        <h1 className="text-4xl md:text-5xl font-bold mb-4" dir="auto">
                             {job.title}
                         </h1>
                         <div className="flex flex-wrap items-center justify-center gap-4 text-muted-foreground">
                             {job.location && (
                                 <div className="flex items-center gap-1.5">
                                     <MapPin className="size-4" />
-                                    <span>{job.location}</span>
+                                    <span dir="auto">{job.location}</span>
                                 </div>
                             )}
                             <div className="flex items-center gap-1.5">
                                 <Briefcase className="size-4" />
-                                <span>
+                                <span dir="auto">
                                     {employmentTypeLabel[job.employmentType] ||
                                         job.employmentType}
                                 </span>
@@ -132,7 +133,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                             <CardContent>
                                 <article
                                     className="prose dark:prose-invert max-w-none text-start"
-                                    dir={isRTL ? "rtl" : "ltr"}
+                                    dir="auto"
                                 >
                                     <ReactMarkdown>{job.description}</ReactMarkdown>
                                 </article>
@@ -154,6 +155,7 @@ export function JobLanding({ job, onStartApplication }: JobLandingProps) {
                                             <Badge
                                                 key={idx}
                                                 variant={skill.importance === "required" ? "default" : "secondary"}
+                                                dir="auto"
                                             >
                                                 {skill.importance === "required" && (
                                                     <CheckCircle2 className="size-3 me-1" />
