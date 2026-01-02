@@ -19,7 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { useTranslate } from "@/hooks/useTranslate"
-import { Save, RefreshCw } from "lucide-react"
+import { Save, RefreshCw, Building2 } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { toast } from "sonner"
 

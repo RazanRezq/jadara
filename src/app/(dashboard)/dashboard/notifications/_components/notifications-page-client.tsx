@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
-import { Search, Trash2, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Trash2, Check, ChevronLeft, ChevronRight, Bell } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
