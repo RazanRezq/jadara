@@ -30,6 +30,10 @@ import {
     ChevronRight,
     Users,
     Banknote,
+    Loader2,
+    Clock,
+    CheckCircle2,
+    XCircle,
 } from "lucide-react"
 import type { Applicant, EvaluationData } from "./types"
 
@@ -67,6 +71,64 @@ function formatCurrency(amount: number | undefined, currencyCode: string = 'SAR'
         }).format(amount)
     } catch {
         return `${amount.toLocaleString()} ${currencyCode}`
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVALUATION STATUS INDICATOR COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+function EvaluationStatusIndicator({
+    status,
+    score,
+    t
+}: {
+    status?: 'pending' | 'processing' | 'completed' | 'failed'
+    score?: number
+    t: (key: string) => string
+}) {
+    // If we have a score, show the score
+    if (score !== undefined && score > 0) {
+        return (
+            <div className="flex items-center gap-1 font-semibold">
+                <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                <span>{score}%</span>
+            </div>
+        )
+    }
+
+    // Show evaluation status indicator
+    switch (status) {
+        case 'processing':
+            return (
+                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-xs font-medium">{t("applicants.evaluation.processing")}</span>
+                </div>
+            )
+        case 'pending':
+            return (
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-xs font-medium">{t("applicants.evaluation.pending")}</span>
+                </div>
+            )
+        case 'failed':
+            return (
+                <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                    <XCircle className="h-4 w-4" />
+                    <span className="text-xs font-medium">{t("applicants.evaluation.failed")}</span>
+                </div>
+            )
+        case 'completed':
+            // Completed but score is 0 or undefined
+            return (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs">-</span>
+                </div>
+            )
+        default:
+            return <span className="text-muted-foreground">-</span>
     }
 }
 
@@ -126,10 +188,10 @@ export function ApplicantList({
 
     const getStatusBadge = (status: string) => {
         const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
-            new: { variant: "secondary", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
-            pending: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300" },
-            evaluated: { variant: "secondary", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
-            interview: { variant: "secondary", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
+            new: { variant: "secondary", className: "bg-primary/10 text-primary dark:bg-primary/20" },
+            pending: { variant: "secondary", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
+            evaluated: { variant: "secondary", className: "bg-primary/10 text-primary dark:bg-primary/20" },
+            interview: { variant: "secondary", className: "bg-primary/10 text-primary dark:bg-primary/20" },
             hired: { variant: "secondary", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
             rejected: { variant: "destructive", className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" },
         }
@@ -223,8 +285,8 @@ export function ApplicantList({
                                             dir={isRTL ? "rtl" : "ltr"}
                                         >
                                             <div className="flex items-center gap-3 justify-start w-full">
-                                                {/* Avatar with gradient background like jobs page */}
-                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                                {/* Avatar with gradient background */}
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white shadow-sm shrink-0">
                                                     <Users className="h-5 w-5" />
                                                 </div>
 
@@ -234,7 +296,7 @@ export function ApplicantList({
                                                         <span className="font-semibold truncate">
                                                             {applicant.displayName || applicant.personalData?.name}
                                                         </span>
-                                                        {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
+                                                        {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                                                     </div>
                                                     <span className="text-sm text-muted-foreground truncate block">
                                                         {applicant.personalData?.email}
@@ -252,10 +314,11 @@ export function ApplicantList({
                                         </TableCell>
 
                                         <TableCell className="px-6 py-4 text-start">
-                                            <div className="flex items-center gap-1 font-semibold">
-                                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                                <span>{score ? `${score}%` : "-"}</span>
-                                            </div>
+                                            <EvaluationStatusIndicator
+                                                status={applicant.evaluationStatus}
+                                                score={score}
+                                                t={t}
+                                            />
                                         </TableCell>
 
                                         {!hideSensitiveData && (
@@ -319,7 +382,7 @@ export function ApplicantList({
                                                 </div>
                                             )}
 
-                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white shadow-sm shrink-0">
                                                 <Users className="h-6 w-6" />
                                             </div>
                                             <div className="min-w-0 flex-1">
@@ -327,7 +390,7 @@ export function ApplicantList({
                                                     <h4 className="font-semibold text-base truncate">
                                                         {applicant.displayName || applicant.personalData?.name}
                                                     </h4>
-                                                    {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
+                                                    {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground truncate">
                                                     {applicant.personalData?.email}
@@ -353,10 +416,11 @@ export function ApplicantList({
                                         {/* AI Score */}
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-1">{t("applicants.aiScore")}</p>
-                                            <div className="flex items-center gap-1 font-semibold text-sm">
-                                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                                <span>{score ? `${score}%` : "-"}</span>
-                                            </div>
+                                            <EvaluationStatusIndicator
+                                                status={applicant.evaluationStatus}
+                                                score={score}
+                                                t={t}
+                                            />
                                         </div>
 
                                         {/* Applied date */}
@@ -434,8 +498,8 @@ export function ApplicantListMobile({
                         )}
 
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            {/* Gradient avatar like jobs page */}
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                            {/* Gradient avatar */}
+                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white shadow-sm shrink-0">
                                 <Users className="h-6 w-6" />
                             </div>
                             <div className="text-right flex-1 min-w-0">

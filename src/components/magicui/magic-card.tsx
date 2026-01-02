@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ interface MagicCardProps {
   className?: string;
   gradientSize?: number;
   gradientColor?: string;
+  gradientColorLight?: string;
   gradientOpacity?: number;
   gradientFrom?: string;
   gradientTo?: string;
@@ -20,10 +21,34 @@ export function MagicCard({
   className,
   gradientSize = 200,
   gradientColor = "#262626",
+  gradientColorLight = "rgba(99, 102, 241, 0.15)",
   gradientOpacity = 0.8,
   gradientFrom = "var(--primary)",
   gradientTo = "var(--primary)",
 }: MagicCardProps) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check initial theme
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+
+    checkTheme();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const currentGradientColor = isDark ? gradientColor : gradientColorLight;
   const cardRef = useRef<HTMLDivElement>(null);
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
@@ -119,7 +144,7 @@ export function MagicCard({
         className="pointer-events-none absolute inset-px rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background: useMotionTemplate`
-            radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)
+            radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${currentGradientColor}, transparent 100%)
           `,
           opacity: gradientOpacity,
         }}

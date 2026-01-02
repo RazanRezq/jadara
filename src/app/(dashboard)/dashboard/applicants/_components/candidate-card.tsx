@@ -71,18 +71,9 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
         return "text-red-600 dark:text-red-400"
     }
 
-    // Generate avatar colors based on name
-    const getAvatarGradient = (name: string) => {
-        const gradients = [
-            "from-violet-400 to-purple-500",
-            "from-blue-400 to-cyan-500",
-            "from-emerald-400 to-teal-500",
-            "from-gray-200 to-gray-100",
-            "from-pink-400 to-rose-500",
-            "from-indigo-400 to-blue-500",
-        ]
-        const index = name.charCodeAt(0) % gradients.length
-        return gradients[index]
+    // Consistent avatar gradient using primary color
+    const getAvatarGradient = () => {
+        return "from-primary/80 to-primary"
     }
 
     return (
@@ -153,11 +144,11 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                     {/* Avatar */}
                     <div className={cn(
                         "relative w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-semibold text-lg shrink-0",
-                        getAvatarGradient(applicant.personalData?.name || "A")
+                        getAvatarGradient()
                     )}>
                         {applicant.personalData?.name?.charAt(0)?.toUpperCase() || 'A'}
-                        {/* Online indicator */}
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-background" />
+                        {/* Status indicator */}
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-background" />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -166,7 +157,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                                 {applicant.personalData?.name || applicant.personalData?.email?.split('@')[0] || 'Unknown'}
                             </h3>
                             {applicant.isSuspicious && (
-                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                                <AlertTriangle className="h-4 w-4 text-amber-500 fill-amber-500/10 shrink-0" />
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
@@ -207,7 +198,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
                 <div className="flex items-center justify-between text-sm border-t pt-3">
                     {/* Strengths */}
                     {strengths.length > 0 && (
-                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <div className="flex items-center gap-1.5 text-primary">
                             <CheckCircle className="h-4 w-4" />
                             <span>{strengths.length} {t("applicants.strengths")}</span>
                         </div>
@@ -215,7 +206,7 @@ export function CandidateCard({ applicant, evaluation, onView, isRecommended }: 
 
                     {/* Missing Skills */}
                     {missingSkills.length > 0 && (
-                        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
                             <XCircle className="h-4 w-4" />
                             <span>{missingSkills.length} {t("applicants.missing")}</span>
                         </div>

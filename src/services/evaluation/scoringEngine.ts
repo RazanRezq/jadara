@@ -293,9 +293,9 @@ Return ONLY valid JSON. No explanations, no markdown, just pure JSON.`
         console.log('  - Strengths (AR):', strengths.ar?.length || 0)
         console.log('  - Red Flags (EN):', redFlags.en?.length || 0)
 
-        // Build AI Analysis Breakdown for transparency
-        console.log('[Scoring Engine] Building AI Analysis Breakdown...')
-        const aiAnalysisBreakdown = buildAIAnalysisBreakdown(candidateData, jobCriteria, {
+        // Build AI Analysis Breakdown for transparency (ENHANCED with AI response analysis)
+        console.log('[Scoring Engine] Building AI Analysis Breakdown (enhanced)...')
+        const aiAnalysisBreakdown = await buildAIAnalysisBreakdown(candidateData, jobCriteria, {
             success: true,
             overallScore,
             criteriaMatches,
@@ -434,9 +434,12 @@ Provide a recommendation with BILINGUAL output (English and Arabic):
 }
 
 **Decision Guidelines:**
-- HIRE (Score > 80%, no major red flags): Strong candidate, proceed to next stage
-- HOLD (Score 60-80% OR has concerns): Needs more evaluation, has potential
+- STRONG HIRE (Score >= 90%, no red flags): Exceptional candidate, fast-track to final interview
+- HIRE (Score 80-89%, no major red flags): Strong candidate, proceed to next stage
+- HOLD (Score 60-79% OR has minor concerns): Needs more evaluation, has potential
 - REJECT (Score < 60% OR critical red flags): Not suitable for the role
+
+**For scores >= 90% with no red flags, your confidence should be >= 95 and recommendation should be "hire" with explicit mention of "exceptional" or "top candidate" in reasoning.**
 
 **CRITICAL FORMATTING RULES:**
 - BULLET POINTS ONLY. NO PARAGRAPHS ALLOWED.
@@ -867,15 +870,134 @@ function parseDate(dateStr: string): Date | null {
 }
 
 /**
+ * Analyze a single response (voice or text) using AI for detailed evaluation
+ */
+async function analyzeResponseWithAI(
+    questionText: string,
+    answer: string,
+    questionWeight: number,
+    responseType: 'voice' | 'text',
+    jobTitle: string,
+    genAI: GoogleGenerativeAI
+): Promise<{
+    relevanceScore: number
+    communicationScore: number
+    keyPointsMentioned: BilingualTextArray
+    strengthsInResponse: BilingualTextArray
+    areasForImprovement: BilingualTextArray
+    redFlagsInResponse: BilingualTextArray
+    specificFeedback: BilingualText
+}> {
+    try {
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
+
+        const prompt = `You are an expert HR evaluator analyzing a candidate's ${responseType} response for a ${jobTitle} position.
+
+**QUESTION:** ${questionText}
+**QUESTION WEIGHT:** ${questionWeight}/10 (importance level)
+**RESPONSE TYPE:** ${responseType === 'voice' ? 'Voice (transcribed)' : 'Written text'}
+
+**CANDIDATE'S ANSWER:**
+${answer || '[No answer provided]'}
+
+**TASK:** Analyze this response comprehensively and provide detailed evaluation.
+
+**Return JSON with this EXACT structure (BILINGUAL OUTPUT - English and Arabic):**
+{
+    "relevanceScore": <0-100, how well does the answer address the specific question asked?>,
+    "communicationScore": <0-100, quality of ${responseType === 'voice' ? 'verbal communication - clarity, fluency, confidence' : 'writing - grammar, structure, clarity'}>,
+    "keyPointsMentioned": {
+        "en": ["<specific topic/skill/experience mentioned>", "<max 5 items>"],
+        "ar": ["<same in Arabic>"]
+    },
+    "strengthsInResponse": {
+        "en": ["<what the candidate did well - max 3 items>"],
+        "ar": ["<same in Arabic>"]
+    },
+    "areasForImprovement": {
+        "en": ["<what could be better - max 3 items>"],
+        "ar": ["<same in Arabic>"]
+    },
+    "redFlagsInResponse": {
+        "en": ["<concerning patterns - ONLY if present, otherwise empty array>"],
+        "ar": ["<same in Arabic>"]
+    },
+    "specificFeedback": {
+        "en": "<2-3 sentences of specific, actionable feedback for this answer>",
+        "ar": "<same in Arabic>"
+    }
+}
+
+**SCORING GUIDELINES:**
+- Relevance 90-100: Directly and fully addresses the question with specific examples
+- Relevance 70-89: Addresses the question well but missing some aspects
+- Relevance 50-69: Partially addresses the question, somewhat off-topic
+- Relevance <50: Does not address the question or is irrelevant
+
+**RED FLAGS TO LOOK FOR:**
+- Generic/copy-paste answers that don't relate to the specific question
+- Contradictions or inconsistencies
+- Evasive or deflecting responses
+- Inappropriate content or tone
+- Signs of AI-generated text without personal touch
+- Unrealistic claims without evidence
+
+**IMPORTANT:**
+- If the answer is empty or too short (< 10 words), give low scores but constructive feedback
+- Be specific in feedback - reference actual content from the answer
+- Ensure Arabic translations are professional and accurate
+- Each array must have same number of items in both languages
+
+Return ONLY valid JSON.`
+
+        const result = await model.generateContent(prompt)
+        let responseText = result.response.text().trim()
+        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+        const analysis = JSON.parse(responseText)
+
+        return {
+            relevanceScore: Math.max(0, Math.min(100, analysis.relevanceScore || 0)),
+            communicationScore: Math.max(0, Math.min(100, analysis.communicationScore || 0)),
+            keyPointsMentioned: normalizeBilingualTextArray(analysis.keyPointsMentioned),
+            strengthsInResponse: normalizeBilingualTextArray(analysis.strengthsInResponse),
+            areasForImprovement: normalizeBilingualTextArray(analysis.areasForImprovement),
+            redFlagsInResponse: normalizeBilingualTextArray(analysis.redFlagsInResponse),
+            specificFeedback: normalizeBilingualText(analysis.specificFeedback, 'No specific feedback available.'),
+        }
+    } catch (error) {
+        console.error('[Response Analysis] Error analyzing response:', error)
+        // Return default values on error
+        return {
+            relevanceScore: 50,
+            communicationScore: 50,
+            keyPointsMentioned: { en: [], ar: [] },
+            strengthsInResponse: { en: [], ar: [] },
+            areasForImprovement: { en: ['Unable to analyze response in detail'], ar: ['غير قادر على تحليل الرد بالتفصيل'] },
+            redFlagsInResponse: { en: [], ar: [] },
+            specificFeedback: {
+                en: 'Automated analysis was unable to process this response. Manual review recommended.',
+                ar: 'تعذر على التحليل الآلي معالجة هذا الرد. يوصى بالمراجعة اليدوية.'
+            },
+        }
+    }
+}
+
+/**
  * Build AI Analysis Breakdown for transparency
  * Shows WHAT the AI analyzed and WHY it made decisions
+ * ENHANCED: Now uses AI to analyze each voice/text response in detail
  */
-export function buildAIAnalysisBreakdown(
+export async function buildAIAnalysisBreakdown(
     candidateData: CandidateData,
     jobCriteria: CandidateEvaluationInput['jobCriteria'],
     scoringResult: ScoringResult
-): import('./types').AIAnalysisBreakdown {
+): Promise<import('./types').AIAnalysisBreakdown> {
     const breakdown: import('./types').AIAnalysisBreakdown = {}
+
+    // Initialize Gemini for detailed response analysis
+    const googleKey = process.env.GOOGLE_API_KEY
+    const genAI = googleKey ? new GoogleGenerativeAI(googleKey) : null
 
     // 1. Screening Questions Analysis
     if (candidateData.personalData.screeningAnswers && jobCriteria.screeningQuestions && jobCriteria.screeningQuestions.length > 0) {
@@ -887,21 +1009,21 @@ export function buildAIAnalysisBreakdown(
             const candidateAnswer = candidateData.personalData.screeningAnswers[sq.question]
             const idealAnswer = sq.idealAnswer
             const isMatch = candidateAnswer === idealAnswer
-            
+
             if (isMatch) {
                 passedQuestions.push(sq.question)
             } else {
                 // Mismatch detected
                 if (sq.disqualify) {
                     // Check additional notes for justification
-                    const hasJustification = candidateData.additionalNotes && 
+                    const hasJustification = candidateData.additionalNotes &&
                         candidateData.additionalNotes.length > 20 // At least some meaningful text
-                    
+
                     failedKnockouts.push({
                         question: sq.question,
                         answer: candidateAnswer ?? false,
-                        impact: hasJustification 
-                            ? 'Critical - But candidate provided justification (review required)' 
+                        impact: hasJustification
+                            ? 'Critical - But candidate provided justification (review required)'
                             : 'Critical - Auto-reject trigger (no justification)'
                     })
                 } else {
@@ -930,103 +1052,231 @@ export function buildAIAnalysisBreakdown(
         }
     }
 
-    // 2. Voice Responses Analysis
+    // 2. Voice Responses Analysis - ENHANCED with AI
     if (candidateData.voiceAnalysis && candidateData.voiceAnalysis.length > 0) {
         const totalWeight = candidateData.voiceAnalysis.reduce((sum, v) => sum + v.questionWeight, 0)
-        const responses = candidateData.voiceAnalysis.map(v => ({
-            questionText: v.questionText,
-            weight: v.questionWeight,
-            transcriptLength: v.transcript.length,
-            sentiment: v.analysis?.sentiment?.label || 'neutral',
-            confidence: v.analysis?.confidence?.score || 0,
-            aiReasoning: {
-                en: v.analysis?.sentiment?.label === 'positive'
-                    ? `Strong response with ${v.analysis?.confidence?.score || 0}% confidence. Shows clarity and conviction.`
-                    : v.analysis?.sentiment?.label === 'negative'
-                    ? `Hesitant response with concerns. Confidence ${v.analysis?.confidence?.score || 0}%.`
-                    : `Neutral response. Adequate but unremarkable. Confidence ${v.analysis?.confidence?.score || 0}%.`,
-                ar: v.analysis?.sentiment?.label === 'positive'
-                    ? `إجابة قوية بثقة ${v.analysis?.confidence?.score || 0}٪. تظهر وضوحاً وقناعة.`
-                    : v.analysis?.sentiment?.label === 'negative'
-                    ? `إجابة مترددة مع مخاوف. الثقة ${v.analysis?.confidence?.score || 0}٪.`
-                    : `إجابة محايدة. كافية لكن غير ملحوظة. الثقة ${v.analysis?.confidence?.score || 0}٪.`
-            }
-        }))
 
-        const avgConfidence = responses.reduce((sum, r) => sum + r.confidence, 0) / responses.length
+        // Analyze each voice response with AI
+        const enhancedResponses = await Promise.all(
+            candidateData.voiceAnalysis.map(async (v) => {
+                const baseAnalysis = {
+                    questionText: v.questionText,
+                    weight: v.questionWeight,
+                    transcriptLength: v.transcript.length,
+                    transcript: v.transcript.substring(0, 500), // Include first 500 chars for context
+                    sentiment: v.analysis?.sentiment?.label || 'neutral',
+                    confidence: v.analysis?.confidence?.score || 0,
+                }
+
+                // Get AI-enhanced analysis if available
+                if (genAI && v.transcript.length > 10) {
+                    const aiAnalysis = await analyzeResponseWithAI(
+                        v.questionText,
+                        v.transcript,
+                        v.questionWeight,
+                        'voice',
+                        jobCriteria.title,
+                        genAI
+                    )
+                    return {
+                        ...baseAnalysis,
+                        ...aiAnalysis,
+                        aiReasoning: {
+                            en: `Relevance: ${aiAnalysis.relevanceScore}% | Communication: ${aiAnalysis.communicationScore}% | ${aiAnalysis.specificFeedback.en.substring(0, 100)}...`,
+                            ar: `الصلة: ${aiAnalysis.relevanceScore}٪ | التواصل: ${aiAnalysis.communicationScore}٪ | ${aiAnalysis.specificFeedback.ar.substring(0, 100)}...`
+                        }
+                    }
+                }
+
+                // Fallback to basic analysis
+                return {
+                    ...baseAnalysis,
+                    relevanceScore: v.transcript.length > 50 ? 60 : 30,
+                    communicationScore: v.analysis?.confidence?.score || 50,
+                    keyPointsMentioned: { en: [], ar: [] },
+                    strengthsInResponse: { en: [], ar: [] },
+                    areasForImprovement: { en: ['Response needs manual review'], ar: ['الرد يحتاج إلى مراجعة يدوية'] },
+                    redFlagsInResponse: { en: [], ar: [] },
+                    specificFeedback: {
+                        en: v.analysis?.sentiment?.label === 'positive'
+                            ? `Strong response with ${v.analysis?.confidence?.score || 0}% confidence. Shows clarity and conviction.`
+                            : `Response requires detailed manual review. Basic analysis shows ${v.analysis?.confidence?.score || 50}% confidence.`,
+                        ar: v.analysis?.sentiment?.label === 'positive'
+                            ? `إجابة قوية بثقة ${v.analysis?.confidence?.score || 0}٪. تظهر وضوحاً وقناعة.`
+                            : `الرد يتطلب مراجعة يدوية مفصلة. التحليل الأساسي يظهر ثقة ${v.analysis?.confidence?.score || 50}٪.`
+                    },
+                    aiReasoning: {
+                        en: v.analysis?.sentiment?.label === 'positive'
+                            ? `Strong response with ${v.analysis?.confidence?.score || 0}% confidence. Shows clarity and conviction.`
+                            : v.analysis?.sentiment?.label === 'negative'
+                            ? `Hesitant response with concerns. Confidence ${v.analysis?.confidence?.score || 0}%.`
+                            : `Neutral response. Adequate but unremarkable. Confidence ${v.analysis?.confidence?.score || 0}%.`,
+                        ar: v.analysis?.sentiment?.label === 'positive'
+                            ? `إجابة قوية بثقة ${v.analysis?.confidence?.score || 0}٪. تظهر وضوحاً وقناعة.`
+                            : v.analysis?.sentiment?.label === 'negative'
+                            ? `إجابة مترددة مع مخاوف. الثقة ${v.analysis?.confidence?.score || 0}٪.`
+                            : `إجابة محايدة. كافية لكن غير ملحوظة. الثقة ${v.analysis?.confidence?.score || 0}٪.`
+                    }
+                }
+            })
+        )
+
+        const avgConfidence = enhancedResponses.reduce((sum, r) => sum + r.confidence, 0) / enhancedResponses.length
+        const avgRelevance = enhancedResponses.reduce((sum, r) => sum + (r.relevanceScore || 0), 0) / enhancedResponses.length
+        const avgCommunication = enhancedResponses.reduce((sum, r) => sum + (r.communicationScore || 0), 0) / enhancedResponses.length
+
+        // Collect overall strengths and weaknesses
+        const allStrengthsEn = enhancedResponses.flatMap(r => r.strengthsInResponse?.en || []).filter(Boolean).slice(0, 5)
+        const allStrengthsAr = enhancedResponses.flatMap(r => r.strengthsInResponse?.ar || []).filter(Boolean).slice(0, 5)
+        const allWeaknessesEn = enhancedResponses.flatMap(r => r.areasForImprovement?.en || []).filter(Boolean).slice(0, 5)
+        const allWeaknessesAr = enhancedResponses.flatMap(r => r.areasForImprovement?.ar || []).filter(Boolean).slice(0, 5)
 
         breakdown.voiceResponsesAnalysis = {
             totalResponses: candidateData.voiceAnalysis.length,
             totalWeight,
-            responses,
+            averageRelevanceScore: Math.round(avgRelevance),
+            averageCommunicationScore: Math.round(avgCommunication),
+            responses: enhancedResponses,
             overallImpact: {
-                en: avgConfidence >= 80
-                    ? `Voice responses demonstrate strong confidence (${Math.round(avgConfidence)}% avg). Candidate communicates effectively.`
-                    : avgConfidence >= 60
-                    ? `Voice responses show moderate confidence (${Math.round(avgConfidence)}% avg). Acceptable communication skills.`
-                    : `Voice responses lack confidence (${Math.round(avgConfidence)}% avg). May need improvement in communication.`,
-                ar: avgConfidence >= 80
-                    ? `تُظهر الردود الصوتية ثقة قوية (${Math.round(avgConfidence)}٪ متوسط). المرشح يتواصل بفعالية.`
-                    : avgConfidence >= 60
-                    ? `تُظهر الردود الصوتية ثقة متوسطة (${Math.round(avgConfidence)}٪ متوسط). مهارات تواصل مقبولة.`
-                    : `تفتقر الردود الصوتية إلى الثقة (${Math.round(avgConfidence)}٪ متوسط). قد تحتاج إلى تحسين في التواصل.`
-            }
+                en: avgRelevance >= 80
+                    ? `Voice responses are highly relevant (${Math.round(avgRelevance)}% avg) with strong communication (${Math.round(avgCommunication)}% avg). Candidate demonstrates excellent verbal skills.`
+                    : avgRelevance >= 60
+                    ? `Voice responses show moderate relevance (${Math.round(avgRelevance)}% avg) with acceptable communication (${Math.round(avgCommunication)}% avg). Some areas need improvement.`
+                    : `Voice responses lack relevance (${Math.round(avgRelevance)}% avg). Communication quality at ${Math.round(avgCommunication)}%. Significant improvement needed.`,
+                ar: avgRelevance >= 80
+                    ? `الردود الصوتية ذات صلة عالية (${Math.round(avgRelevance)}٪ متوسط) مع تواصل قوي (${Math.round(avgCommunication)}٪ متوسط). المرشح يظهر مهارات شفهية ممتازة.`
+                    : avgRelevance >= 60
+                    ? `الردود الصوتية تظهر صلة متوسطة (${Math.round(avgRelevance)}٪ متوسط) مع تواصل مقبول (${Math.round(avgCommunication)}٪ متوسط). بعض المجالات تحتاج تحسين.`
+                    : `الردود الصوتية تفتقر إلى الصلة (${Math.round(avgRelevance)}٪ متوسط). جودة التواصل ${Math.round(avgCommunication)}٪. تحسين كبير مطلوب.`
+            },
+            overallStrengths: { en: allStrengthsEn, ar: allStrengthsAr },
+            overallWeaknesses: { en: allWeaknessesEn, ar: allWeaknessesAr }
         }
     }
 
-    // 3. Text Responses Analysis
+    // 3. Text Responses Analysis - ENHANCED with AI
     if (candidateData.textResponses && candidateData.textResponses.length > 0) {
         const totalWeight = candidateData.textResponses.reduce((sum, t) => sum + t.questionWeight, 0)
-        const responses = candidateData.textResponses.map(t => {
-            const wordCount = t.answer.split(/\s+/).length
-            let quality: string = 'average'
-            if (wordCount < 20) quality = 'poor'
-            else if (wordCount < 50) quality = 'average'
-            else if (wordCount < 100) quality = 'good'
-            else quality = 'excellent'
 
-            return {
-                questionText: t.questionText,
-                weight: t.questionWeight,
-                wordCount,
-                quality,
-                aiReasoning: {
-                    en: wordCount >= 100
-                        ? `Comprehensive answer (${wordCount} words). Shows depth of thought and thoroughness.`
-                        : wordCount >= 50
-                        ? `Good answer (${wordCount} words). Adequate detail and clarity.`
-                        : wordCount >= 20
-                        ? `Brief answer (${wordCount} words). Addresses question but lacks detail.`
-                        : `Very short answer (${wordCount} words). Insufficient detail provided.`,
-                    ar: wordCount >= 100
-                        ? `إجابة شاملة (${wordCount} كلمة). تُظهر عمق التفكير والشمولية.`
-                        : wordCount >= 50
-                        ? `إجابة جيدة (${wordCount} كلمة). تفاصيل ووضوح كافيان.`
-                        : wordCount >= 20
-                        ? `إجابة موجزة (${wordCount} كلمة). تتناول السؤال لكن تفتقر إلى التفاصيل.`
-                        : `إجابة قصيرة جداً (${wordCount} كلمة). تفاصيل غير كافية.`
+        // Analyze each text response with AI
+        const enhancedResponses = await Promise.all(
+            candidateData.textResponses.map(async (t) => {
+                const wordCount = t.answer.split(/\s+/).length
+                let quality: string = 'average'
+                if (wordCount < 20) quality = 'poor'
+                else if (wordCount < 50) quality = 'average'
+                else if (wordCount < 100) quality = 'good'
+                else quality = 'excellent'
+
+                const baseAnalysis = {
+                    questionText: t.questionText,
+                    weight: t.questionWeight,
+                    wordCount,
+                    quality,
+                    answer: t.answer.substring(0, 500), // Include first 500 chars for context
                 }
-            }
-        })
 
-        const avgWordCount = Math.round(responses.reduce((sum, r) => sum + r.wordCount, 0) / responses.length)
+                // Get AI-enhanced analysis if available
+                if (genAI && t.answer.length > 10) {
+                    const aiAnalysis = await analyzeResponseWithAI(
+                        t.questionText,
+                        t.answer,
+                        t.questionWeight,
+                        'text',
+                        jobCriteria.title,
+                        genAI
+                    )
+                    return {
+                        ...baseAnalysis,
+                        ...aiAnalysis,
+                        aiReasoning: {
+                            en: `Relevance: ${aiAnalysis.relevanceScore}% | Writing Quality: ${aiAnalysis.communicationScore}% | ${wordCount} words`,
+                            ar: `الصلة: ${aiAnalysis.relevanceScore}٪ | جودة الكتابة: ${aiAnalysis.communicationScore}٪ | ${wordCount} كلمة`
+                        }
+                    }
+                }
+
+                // Fallback to basic analysis
+                return {
+                    ...baseAnalysis,
+                    relevanceScore: wordCount >= 50 ? 60 : 30,
+                    communicationScore: wordCount >= 100 ? 70 : wordCount >= 50 ? 60 : 40,
+                    keyPointsMentioned: { en: [], ar: [] },
+                    strengthsInResponse: { en: [], ar: [] },
+                    areasForImprovement: { en: ['Response needs manual review'], ar: ['الرد يحتاج إلى مراجعة يدوية'] },
+                    redFlagsInResponse: { en: [], ar: [] },
+                    specificFeedback: {
+                        en: wordCount >= 100
+                            ? `Comprehensive answer (${wordCount} words). Shows depth of thought and thoroughness.`
+                            : wordCount >= 50
+                            ? `Good answer (${wordCount} words). Adequate detail and clarity.`
+                            : wordCount >= 20
+                            ? `Brief answer (${wordCount} words). Addresses question but lacks detail.`
+                            : `Very short answer (${wordCount} words). Insufficient detail provided.`,
+                        ar: wordCount >= 100
+                            ? `إجابة شاملة (${wordCount} كلمة). تُظهر عمق التفكير والشمولية.`
+                            : wordCount >= 50
+                            ? `إجابة جيدة (${wordCount} كلمة). تفاصيل ووضوح كافيان.`
+                            : wordCount >= 20
+                            ? `إجابة موجزة (${wordCount} كلمة). تتناول السؤال لكن تفتقر إلى التفاصيل.`
+                            : `إجابة قصيرة جداً (${wordCount} كلمة). تفاصيل غير كافية.`
+                    },
+                    aiReasoning: {
+                        en: wordCount >= 100
+                            ? `Comprehensive answer (${wordCount} words). Shows depth of thought and thoroughness.`
+                            : wordCount >= 50
+                            ? `Good answer (${wordCount} words). Adequate detail and clarity.`
+                            : wordCount >= 20
+                            ? `Brief answer (${wordCount} words). Addresses question but lacks detail.`
+                            : `Very short answer (${wordCount} words). Insufficient detail provided.`,
+                        ar: wordCount >= 100
+                            ? `إجابة شاملة (${wordCount} كلمة). تُظهر عمق التفكير والشمولية.`
+                            : wordCount >= 50
+                            ? `إجابة جيدة (${wordCount} كلمة). تفاصيل ووضوح كافيان.`
+                            : wordCount >= 20
+                            ? `إجابة موجزة (${wordCount} كلمة). تتناول السؤال لكن تفتقر إلى التفاصيل.`
+                            : `إجابة قصيرة جداً (${wordCount} كلمة). تفاصيل غير كافية.`
+                    }
+                }
+            })
+        )
+
+        const avgWordCount = Math.round(enhancedResponses.reduce((sum, r) => sum + r.wordCount, 0) / enhancedResponses.length)
+        const avgRelevance = enhancedResponses.reduce((sum, r) => sum + (r.relevanceScore || 0), 0) / enhancedResponses.length
+        const avgCommunication = enhancedResponses.reduce((sum, r) => sum + (r.communicationScore || 0), 0) / enhancedResponses.length
+
+        // Determine overall quality
+        let overallQuality = 'average'
+        if (avgRelevance >= 80 && avgCommunication >= 80) overallQuality = 'excellent'
+        else if (avgRelevance >= 60 && avgCommunication >= 60) overallQuality = 'good'
+        else if (avgRelevance < 40 || avgCommunication < 40) overallQuality = 'poor'
+
+        // Collect overall strengths and weaknesses
+        const allStrengthsEn = enhancedResponses.flatMap(r => r.strengthsInResponse?.en || []).filter(Boolean).slice(0, 5)
+        const allStrengthsAr = enhancedResponses.flatMap(r => r.strengthsInResponse?.ar || []).filter(Boolean).slice(0, 5)
+        const allWeaknessesEn = enhancedResponses.flatMap(r => r.areasForImprovement?.en || []).filter(Boolean).slice(0, 5)
+        const allWeaknessesAr = enhancedResponses.flatMap(r => r.areasForImprovement?.ar || []).filter(Boolean).slice(0, 5)
 
         breakdown.textResponsesAnalysis = {
             totalResponses: candidateData.textResponses.length,
             totalWeight,
-            responses,
+            averageRelevanceScore: Math.round(avgRelevance),
+            averageContentQuality: overallQuality,
+            responses: enhancedResponses,
             overallImpact: {
-                en: avgWordCount >= 75
-                    ? `Written responses are detailed (${avgWordCount} words avg). Candidate provides thorough explanations.`
-                    : avgWordCount >= 35
-                    ? `Written responses are adequate (${avgWordCount} words avg). Sufficient but could be more detailed.`
-                    : `Written responses are brief (${avgWordCount} words avg). Lacks sufficient detail in answers.`,
-                ar: avgWordCount >= 75
-                    ? `الردود المكتوبة مفصلة (${avgWordCount} كلمة متوسط). المرشح يقدم تفسيرات شاملة.`
-                    : avgWordCount >= 35
-                    ? `الردود المكتوبة كافية (${avgWordCount} كلمة متوسط). كافية لكن يمكن أن تكون أكثر تفصيلاً.`
-                    : `الردود المكتوبة موجزة (${avgWordCount} كلمة متوسط). تفتقر إلى تفاصيل كافية في الإجابات.`
-            }
+                en: avgRelevance >= 80
+                    ? `Written responses are highly relevant (${Math.round(avgRelevance)}% avg) with ${overallQuality} writing quality. Candidate provides thorough, well-structured answers.`
+                    : avgRelevance >= 60
+                    ? `Written responses show moderate relevance (${Math.round(avgRelevance)}% avg) with ${overallQuality} quality. Some answers could be more detailed.`
+                    : `Written responses lack relevance (${Math.round(avgRelevance)}% avg). Quality rated as ${overallQuality}. Significant improvement needed in addressing questions.`,
+                ar: avgRelevance >= 80
+                    ? `الردود المكتوبة ذات صلة عالية (${Math.round(avgRelevance)}٪ متوسط) مع جودة كتابة ${overallQuality === 'excellent' ? 'ممتازة' : overallQuality === 'good' ? 'جيدة' : 'متوسطة'}. المرشح يقدم إجابات شاملة ومنظمة.`
+                    : avgRelevance >= 60
+                    ? `الردود المكتوبة تظهر صلة متوسطة (${Math.round(avgRelevance)}٪ متوسط) مع جودة ${overallQuality === 'excellent' ? 'ممتازة' : overallQuality === 'good' ? 'جيدة' : 'متوسطة'}. بعض الإجابات يمكن أن تكون أكثر تفصيلاً.`
+                    : `الردود المكتوبة تفتقر إلى الصلة (${Math.round(avgRelevance)}٪ متوسط). الجودة مصنفة كـ ${overallQuality === 'poor' ? 'ضعيفة' : 'متوسطة'}. تحسين كبير مطلوب في الإجابة على الأسئلة.`
+            },
+            overallStrengths: { en: allStrengthsEn, ar: allStrengthsAr },
+            overallWeaknesses: { en: allWeaknessesEn, ar: allWeaknessesAr }
         }
     }
 

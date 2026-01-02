@@ -84,8 +84,8 @@ interface ViewApplicantDialogProps {
 // STATUS COLORS - Based on the "Golden List" (5 statuses)
 // ═══════════════════════════════════════════════════════════════════════════════
 const statusColors: Record<ApplicantStatus, string> = {
-    new: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    evaluated: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+    new: "bg-primary/10 text-primary dark:bg-primary/20",
+    evaluated: "bg-primary/10 text-primary dark:bg-primary/20",
     interview: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
     hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
     rejected: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
@@ -118,6 +118,11 @@ export function ViewApplicantDialog({
     const [activeTab, setActiveTab] = useState(initialTab)
     const [updating, setUpdating] = useState(false)
     const [currentStatus, setCurrentStatus] = useState<ApplicantStatus>(applicant.status)
+
+    // Sync currentStatus when applicant prop changes
+    useEffect(() => {
+        setCurrentStatus(applicant.status)
+    }, [applicant.status])
 
     // Reset active tab when initialTab changes (deep linking)
     useEffect(() => {
@@ -155,6 +160,9 @@ export function ViewApplicantDialog({
         if (Array.isArray(arr)) return arr // Legacy format
         return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
     }
+
+    // Alias for getLocalizedArray (used in enhanced AI evaluation display)
+    const getLocalizedTextArray = getLocalizedArray
 
     // Helper to translate red flags
     const translateRedFlag = (flag: string): string => {
@@ -397,7 +405,7 @@ export function ViewApplicantDialog({
 
     const getScoreColor = (score?: number) => {
         if (!score) return "text-muted-foreground"
-        if (score >= 75) return "text-emerald-600 dark:text-emerald-400"
+        if (score >= 75) return "text-primary"
         if (score >= 50) return "text-amber-600 dark:text-amber-400"
         return "text-red-600 dark:text-red-400"
     }
@@ -930,8 +938,8 @@ export function ViewApplicantDialog({
                             {/* Strengths */}
                             <Card className="bg-gradient-to-br from-teal-50/80 via-emerald-50/60 to-teal-50/80 dark:from-teal-950/20 dark:via-emerald-950/15 dark:to-teal-950/20 border border-teal-200/60 dark:border-teal-800/50 shadow-sm hover:shadow-md transition-all">
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-teal-700 dark:text-teal-300">
-                                        <CheckCircle className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
+                                        <CheckCircle className="h-5 w-5 text-primary" />
                                         {t("applicants.strengths")}
                                     </CardTitle>
                                 </CardHeader>
@@ -946,7 +954,7 @@ export function ViewApplicantDialog({
                                                     <div className="mt-0.5 shrink-0">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                                     </div>
-                                                    <p className="text-sm leading-relaxed text-emerald-900 dark:text-emerald-100 whitespace-pre-line flex-1 text-start">
+                                                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-line flex-1 text-start">
                                                         {strength}
                                                     </p>
                                                 </div>
@@ -961,8 +969,8 @@ export function ViewApplicantDialog({
                             {/* Weaknesses */}
                             <Card className="bg-gradient-to-br from-rose-50/80 via-pink-50/60 to-rose-50/80 dark:from-rose-950/20 dark:via-pink-950/15 dark:to-rose-950/20 border border-rose-200/60 dark:border-rose-800/50 shadow-sm hover:shadow-md transition-all">
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-rose-700 dark:text-rose-300">
-                                        <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-muted-foreground">
+                                        <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                                         {t("applicants.weaknesses")}
                                     </CardTitle>
                                 </CardHeader>
@@ -994,7 +1002,7 @@ export function ViewApplicantDialog({
                         <Card className="bg-card border-border shadow-sm">
                             <CardHeader className="pb-4">
                                 <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                    <XCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                    <XCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                     {t("applicants.missingRequirements")}
                                 </CardTitle>
                             </CardHeader>
@@ -1036,7 +1044,7 @@ export function ViewApplicantDialog({
                         <Card className="bg-card border-border shadow-sm">
                             <CardHeader className="pb-4 border-b">
                                 <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                    <Sparkles className="h-5 w-5 text-primary" />
                                     {t("applicants.aiRecommendation")}
                                 </CardTitle>
                             </CardHeader>
@@ -1092,7 +1100,7 @@ export function ViewApplicantDialog({
                             <Card className="bg-card border-border shadow-sm">
                                 <CardHeader className="pb-4 border-b">
                                     <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                        <Mic className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                        <Mic className="h-5 w-5 text-primary" />
                                         {t("applicants.voiceAnalysis")}
                                     </CardTitle>
                                 </CardHeader>
@@ -1101,7 +1109,7 @@ export function ViewApplicantDialog({
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {evaluation.sentimentScore !== undefined && (
                                             <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
-                                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
+                                                <p className="text-xs text-primary font-medium mb-1">
                                                     {t("applicants.sentiment")}
                                                 </p>
                                                 <div className="flex items-center gap-2">
@@ -1123,7 +1131,7 @@ export function ViewApplicantDialog({
 
                                         {evaluation.confidenceScore !== undefined && (
                                             <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
-                                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
+                                                <p className="text-xs text-primary font-medium mb-1">
                                                     {t("applicants.confidence")}
                                                 </p>
                                                 <div className="flex items-center gap-2">
@@ -1144,7 +1152,7 @@ export function ViewApplicantDialog({
                                                 className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200"
                                             >
                                                 <div className="flex items-start justify-between mb-3">
-                                                    <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                                                    <p className="text-sm font-medium text-foreground">
                                                         {t("applicants.question")} {idx + 1}
                                                     </p>
                                                     {detail.fluency && (
@@ -1160,7 +1168,7 @@ export function ViewApplicantDialog({
                                                             <Badge
                                                                 key={i}
                                                                 variant="secondary"
-                                                                className="bg-purple-100 text-purple-700 dark:bg-purple-900/50"
+                                                                className="bg-primary/10 text-primary dark:bg-primary/20"
                                                             >
                                                                 {phrase}
                                                             </Badge>
@@ -1178,7 +1186,7 @@ export function ViewApplicantDialog({
                         {evaluation?.socialProfileInsights && (
                             <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-950/30 dark:to-cyan-950/10 border-2 border-cyan-300 dark:border-cyan-800 shadow-sm">
                                 <CardHeader className="pb-4 border-b border-cyan-200 dark:border-cyan-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-cyan-700 dark:text-cyan-400">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
                                         <div className="p-1.5 bg-cyan-500 dark:bg-cyan-600 rounded-md">
                                             <Globe className="h-5 w-5 text-white" />
                                         </div>
@@ -1191,15 +1199,15 @@ export function ViewApplicantDialog({
                                         <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Linkedin className="h-5 w-5 text-[#0077B5]" />
-                                                <p className="font-semibold text-cyan-900 dark:text-cyan-100">
+                                                <p className="font-semibold text-foreground">
                                                     LinkedIn
                                                 </p>
                                             </div>
                                             {evaluation.socialProfileInsights.linkedin.highlights.length > 0 && (
                                                 <ul className="space-y-2">
                                                     {evaluation.socialProfileInsights.linkedin.highlights.slice(0, 5).map((highlight, i) => (
-                                                        <li key={i} className="text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+                                                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                                                            <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                                                             <span>{highlight}</span>
                                                         </li>
                                                     ))}
@@ -1213,29 +1221,29 @@ export function ViewApplicantDialog({
                                         <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Star className="h-5 w-5 text-amber-500" />
-                                                <p className="font-semibold text-cyan-900 dark:text-cyan-100">
+                                                <p className="font-semibold text-foreground">
                                                     GitHub
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Repos</p>
+                                                    <p className="text-xs text-muted-foreground">Repos</p>
                                                     <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.repositories}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Stars</p>
+                                                    <p className="text-xs text-muted-foreground">Stars</p>
                                                     <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.stars}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-cyan-600 dark:text-cyan-400">Languages</p>
+                                                    <p className="text-xs text-muted-foreground">Languages</p>
                                                     <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.languages.length}</p>
                                                 </div>
                                             </div>
                                             {evaluation.socialProfileInsights.github.highlights.length > 0 && (
                                                 <ul className="space-y-2">
                                                     {evaluation.socialProfileInsights.github.highlights.slice(0, 3).map((highlight, i) => (
-                                                        <li key={i} className="text-sm text-cyan-800 dark:text-cyan-200 flex items-start gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+                                                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                                                            <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                                                             <span>{highlight}</span>
                                                         </li>
                                                     ))}
@@ -1247,7 +1255,7 @@ export function ViewApplicantDialog({
                                     {/* Overall Highlights */}
                                     {evaluation.socialProfileInsights.overallHighlights.length > 0 && (
                                         <div className="p-4 bg-gradient-to-r from-cyan-100 to-purple-100 dark:from-cyan-900/20 dark:to-purple-900/20 rounded-lg border border-cyan-300">
-                                            <p className="font-semibold text-cyan-900 dark:text-cyan-100 mb-3">
+                                            <p className="font-semibold text-foreground mb-3">
                                                 {t("applicants.topHighlights")}
                                             </p>
                                             <div className="flex flex-wrap gap-2">
@@ -1255,7 +1263,7 @@ export function ViewApplicantDialog({
                                                     <Badge
                                                         key={i}
                                                         variant="secondary"
-                                                        className="bg-white dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200"
+                                                        className="bg-white dark:bg-cyan-900/30 text-foreground"
                                                     >
                                                         ✨ {highlight}
                                                     </Badge>
@@ -1271,7 +1279,7 @@ export function ViewApplicantDialog({
                         {evaluation?.textResponseAnalysis && (
                             <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/30 dark:to-indigo-950/10 border-2 border-indigo-300 dark:border-indigo-800 shadow-sm">
                                 <CardHeader className="pb-4 border-b border-indigo-200 dark:border-indigo-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
                                         <div className="p-1.5 bg-indigo-500 dark:bg-indigo-600 rounded-md">
                                             <FileText className="h-5 w-5 text-white" />
                                         </div>
@@ -1282,15 +1290,15 @@ export function ViewApplicantDialog({
                                     {/* Summary */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
-                                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
+                                            <p className="text-xs text-muted-foreground font-medium mb-1">
                                                 {t("applicants.totalResponses")}
                                             </p>
-                                            <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
+                                            <p className="text-2xl font-bold text-foreground">
                                                 {evaluation.textResponseAnalysis.totalResponses}
                                             </p>
                                         </div>
                                         <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
-                                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mb-1">
+                                            <p className="text-xs text-muted-foreground font-medium mb-1">
                                                 {t("applicants.overallQuality")}
                                             </p>
                                             <Badge className={cn(
@@ -1313,7 +1321,7 @@ export function ViewApplicantDialog({
                                                 className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200"
                                             >
                                                 <div className="flex items-start justify-between mb-2">
-                                                    <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-start">
+                                                    <p className="text-sm font-medium text-foreground text-start">
                                                         {response.questionText}
                                                     </p>
                                                     <Badge variant="outline" className="text-xs shrink-0 ms-2">
@@ -1334,13 +1342,13 @@ export function ViewApplicantDialog({
                         {evaluation?.aiAnalysisBreakdown && (
                             <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-950/10 border-2 border-violet-300 dark:border-violet-800 shadow-md">
                                 <CardHeader className="pb-4 border-b border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-violet-700 dark:text-violet-400">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
                                         <div className="p-1.5 bg-violet-500 dark:bg-violet-600 rounded-md">
                                             <Brain className="h-5 w-5 text-white" />
                                         </div>
                                         {t("applicants.aiTransparency")}
                                     </CardTitle>
-                                    <p className="text-sm text-violet-600 dark:text-violet-400 mt-2">
+                                    <p className="text-sm text-muted-foreground mt-2">
                                         {t("applicants.aiTransparencyDesc")}
                                     </p>
                                 </CardHeader>
@@ -1349,22 +1357,22 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <ShieldAlert className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.screeningAnalysis")}
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Questions</p>
+                                                    <p className="text-xs text-muted-foreground">Total Questions</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Knockout</p>
+                                                    <p className="text-xs text-muted-foreground">Knockout</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.knockoutQuestions}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Failed</p>
+                                                    <p className="text-xs text-muted-foreground">Failed</p>
                                                     <p className="text-lg font-bold text-red-600">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length}</p>
                                                 </div>
                                             </div>
@@ -1382,105 +1390,363 @@ export function ViewApplicantDialog({
                                                 </div>
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* 2. Voice Responses Analysis */}
+                                    {/* 2. Voice Responses Analysis - ENHANCED */}
                                     {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Mic className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <Mic className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.voiceResponsesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                            {/* Summary Stats */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
+                                                    <p className="text-xs text-muted-foreground">{t("applicants.responses")}</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Weight</p>
+                                                    <p className="text-xs text-muted-foreground">{t("applicants.totalWeight")}</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalWeight}/10</p>
                                                 </div>
+                                                <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded">
+                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("applicants.avgRelevance")}</p>
+                                                    <p className={cn("text-lg font-bold",
+                                                        (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0) >= 70 ? 'text-emerald-600' :
+                                                        (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                    )}>{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0}%</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                                    <p className="text-xs text-primary">{t("applicants.avgCommunication")}</p>
+                                                    <p className={cn("text-lg font-bold",
+                                                        (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0) >= 70 ? 'text-blue-600' :
+                                                        (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                    )}>{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0}%</p>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2 mb-3">
+
+                                            {/* Overall Strengths & Weaknesses */}
+                                            {((evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 ||
+                                              (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0) && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                                    {(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
+                                                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">{t("applicants.overallStrengths")}</p>
+                                                            <ul className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths) || []).map((s: string, i: number) => (
+                                                                    <li key={i} className="text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                                                                        <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
+                                                                        <span>{s}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    {(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0 && (
+                                                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                                                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">{t("applicants.areasForImprovement")}</p>
+                                                            <ul className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses) || []).map((w: string, i: number) => (
+                                                                    <li key={i} className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                                                                        <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                                                                        <span>{w}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Individual Response Details */}
+                                            <div className="space-y-3 mb-3">
                                                 {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.responses.map((resp, idx) => (
-                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{resp.questionText}</p>
-                                                            <Badge variant="outline" className="text-xs">Weight: {resp.weight}/10</Badge>
+                                                    <div key={idx} className="p-4 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg border border-violet-100">
+                                                        <div className="flex items-start justify-between mb-3">
+                                                            <p className="text-sm font-medium text-foreground flex-1">{resp.questionText}</p>
+                                                            <Badge variant="outline" className="text-xs ms-2 shrink-0">Weight: {resp.weight}/10</Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-xs mb-2">
-                                                            <span className="text-violet-600">Sentiment: {resp.sentiment}</span>
-                                                            <span className="text-violet-600">Confidence: {resp.confidence}%</span>
-                                                            <span className="text-violet-600">Length: {resp.transcriptLength} chars</span>
+
+                                                        {/* Scores Row */}
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.relevance")}</p>
+                                                                <p className={cn("text-sm font-bold",
+                                                                    (resp.relevanceScore || 0) >= 70 ? 'text-emerald-600' :
+                                                                    (resp.relevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                                )}>{resp.relevanceScore || 0}%</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.communication")}</p>
+                                                                <p className={cn("text-sm font-bold",
+                                                                    (resp.communicationScore || 0) >= 70 ? 'text-blue-600' :
+                                                                    (resp.communicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                                )}>{resp.communicationScore || 0}%</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.sentiment")}</p>
+                                                                <p className="text-sm font-medium capitalize">{resp.sentiment}</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.confidence")}</p>
+                                                                <p className="text-sm font-medium">{resp.confidence}%</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
-                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
-                                                                {getLocalizedText(resp.aiReasoning)}
+
+                                                        {/* Key Points Mentioned */}
+                                                        {(resp.keyPointsMentioned?.en?.length || 0) > 0 && (
+                                                            <div className="mb-3">
+                                                                <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.keyPointsMentioned")}:</p>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {(getLocalizedTextArray(resp.keyPointsMentioned) || []).map((point: string, i: number) => (
+                                                                        <Badge key={i} variant="secondary" className="text-[10px] bg-primary/10 text-primary">{point}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Strengths & Areas for Improvement */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                                                            {(resp.strengthsInResponse?.en?.length || 0) > 0 && (
+                                                                <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded">
+                                                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1">{t("applicants.strengths")}:</p>
+                                                                    <ul className="space-y-0.5">
+                                                                        {(getLocalizedTextArray(resp.strengthsInResponse) || []).map((s: string, i: number) => (
+                                                                            <li key={i} className="text-[10px] text-emerald-700 dark:text-emerald-300">• {s}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                            {(resp.areasForImprovement?.en?.length || 0) > 0 && (
+                                                                <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded">
+                                                                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-1">{t("applicants.improvement")}:</p>
+                                                                    <ul className="space-y-0.5">
+                                                                        {(getLocalizedTextArray(resp.areasForImprovement) || []).map((w: string, i: number) => (
+                                                                            <li key={i} className="text-[10px] text-amber-700 dark:text-amber-300">• {w}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Red Flags */}
+                                                        {(resp.redFlagsInResponse?.en?.length || 0) > 0 && (
+                                                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded mb-3 border border-red-200">
+                                                                <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1">{t("applicants.redFlags")}:</p>
+                                                                <ul className="space-y-0.5">
+                                                                    {(getLocalizedTextArray(resp.redFlagsInResponse) || []).map((rf: string, i: number) => (
+                                                                        <li key={i} className="text-[10px] text-red-700 dark:text-red-300 flex items-start gap-1">
+                                                                            <AlertTriangle className="h-3 w-3 text-red-500 mt-0.5 shrink-0" />
+                                                                            <span>{rf}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Specific Feedback */}
+                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded border border-violet-100">
+                                                            <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.aiFeedback")}:</p>
+                                                            <p className="text-xs text-foreground text-start leading-relaxed">
+                                                                {getLocalizedText(resp.specificFeedback) || getLocalizedText(resp.aiReasoning)}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
+
+                                            {/* Overall Impact */}
                                             <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
-                                                <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">{t("applicants.overallImpact")}:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* 3. Text Responses Analysis */}
+                                    {/* 3. Text Responses Analysis - ENHANCED */}
                                     {evaluation.aiAnalysisBreakdown.textResponsesAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <FileText className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <FileText className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.textResponsesAnalysis")}
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                            {/* Summary Stats */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Responses</p>
+                                                    <p className="text-xs text-muted-foreground">{t("applicants.responses")}</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Weight</p>
+                                                    <p className="text-xs text-muted-foreground">{t("applicants.totalWeight")}</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalWeight}/10</p>
                                                 </div>
+                                                <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded">
+                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("applicants.avgRelevance")}</p>
+                                                    <p className={cn("text-lg font-bold",
+                                                        (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0) >= 70 ? 'text-emerald-600' :
+                                                        (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                    )}>{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0}%</p>
+                                                </div>
+                                                <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                                    <p className="text-xs text-primary">{t("applicants.contentQuality")}</p>
+                                                    <p className={cn("text-lg font-bold capitalize",
+                                                        evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'excellent' ? 'text-emerald-600' :
+                                                        evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'good' ? 'text-blue-600' :
+                                                        evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'average' ? 'text-amber-600' : 'text-red-600'
+                                                    )}>{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality || 'N/A'}</p>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2 mb-3">
+
+                                            {/* Overall Strengths & Weaknesses */}
+                                            {((evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 ||
+                                              (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0) && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                                    {(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
+                                                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">{t("applicants.overallStrengths")}</p>
+                                                            <ul className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths) || []).map((s: string, i: number) => (
+                                                                    <li key={i} className="text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                                                                        <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
+                                                                        <span>{s}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    {(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0 && (
+                                                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                                                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">{t("applicants.areasForImprovement")}</p>
+                                                            <ul className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses) || []).map((w: string, i: number) => (
+                                                                    <li key={i} className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                                                                        <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                                                                        <span>{w}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Individual Response Details */}
+                                            <div className="space-y-3 mb-3">
                                                 {evaluation.aiAnalysisBreakdown.textResponsesAnalysis.responses.map((resp, idx) => (
-                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{resp.questionText}</p>
-                                                            <Badge variant="outline" className="text-xs">Weight: {resp.weight}/10</Badge>
+                                                    <div key={idx} className="p-4 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg border border-violet-100">
+                                                        <div className="flex items-start justify-between mb-3">
+                                                            <p className="text-sm font-medium text-foreground flex-1">{resp.questionText}</p>
+                                                            <Badge variant="outline" className="text-xs ms-2 shrink-0">Weight: {resp.weight}/10</Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-xs mb-2">
-                                                            <span className="text-violet-600">Quality: {resp.quality}</span>
-                                                            <span className="text-violet-600">Words: {resp.wordCount}</span>
+
+                                                        {/* Scores Row */}
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.relevance")}</p>
+                                                                <p className={cn("text-sm font-bold",
+                                                                    (resp.relevanceScore || 0) >= 70 ? 'text-emerald-600' :
+                                                                    (resp.relevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                                )}>{resp.relevanceScore || 0}%</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.writingQuality")}</p>
+                                                                <p className={cn("text-sm font-bold",
+                                                                    (resp.communicationScore || 0) >= 70 ? 'text-blue-600' :
+                                                                    (resp.communicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
+                                                                )}>{resp.communicationScore || 0}%</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.quality")}</p>
+                                                                <p className={cn("text-sm font-medium capitalize",
+                                                                    resp.quality === 'excellent' ? 'text-emerald-600' :
+                                                                    resp.quality === 'good' ? 'text-blue-600' :
+                                                                    resp.quality === 'average' ? 'text-amber-600' : 'text-red-600'
+                                                                )}>{resp.quality}</p>
+                                                            </div>
+                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
+                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.wordCount")}</p>
+                                                                <p className="text-sm font-medium">{resp.wordCount}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
-                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
-                                                                {getLocalizedText(resp.aiReasoning)}
+
+                                                        {/* Key Points Mentioned */}
+                                                        {(resp.keyPointsMentioned?.en?.length || 0) > 0 && (
+                                                            <div className="mb-3">
+                                                                <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.keyPointsMentioned")}:</p>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {(getLocalizedTextArray(resp.keyPointsMentioned) || []).map((point: string, i: number) => (
+                                                                        <Badge key={i} variant="secondary" className="text-[10px] bg-primary/10 text-primary">{point}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Strengths & Areas for Improvement */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                                                            {(resp.strengthsInResponse?.en?.length || 0) > 0 && (
+                                                                <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded">
+                                                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1">{t("applicants.strengths")}:</p>
+                                                                    <ul className="space-y-0.5">
+                                                                        {(getLocalizedTextArray(resp.strengthsInResponse) || []).map((s: string, i: number) => (
+                                                                            <li key={i} className="text-[10px] text-emerald-700 dark:text-emerald-300">• {s}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                            {(resp.areasForImprovement?.en?.length || 0) > 0 && (
+                                                                <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded">
+                                                                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-1">{t("applicants.improvement")}:</p>
+                                                                    <ul className="space-y-0.5">
+                                                                        {(getLocalizedTextArray(resp.areasForImprovement) || []).map((w: string, i: number) => (
+                                                                            <li key={i} className="text-[10px] text-amber-700 dark:text-amber-300">• {w}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Red Flags */}
+                                                        {(resp.redFlagsInResponse?.en?.length || 0) > 0 && (
+                                                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded mb-3 border border-red-200">
+                                                                <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1">{t("applicants.redFlags")}:</p>
+                                                                <ul className="space-y-0.5">
+                                                                    {(getLocalizedTextArray(resp.redFlagsInResponse) || []).map((rf: string, i: number) => (
+                                                                        <li key={i} className="text-[10px] text-red-700 dark:text-red-300 flex items-start gap-1">
+                                                                            <AlertTriangle className="h-3 w-3 text-red-500 mt-0.5 shrink-0" />
+                                                                            <span>{rf}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Specific Feedback */}
+                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded border border-violet-100">
+                                                            <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.aiFeedback")}:</p>
+                                                            <p className="text-xs text-foreground text-start leading-relaxed">
+                                                                {getLocalizedText(resp.specificFeedback) || getLocalizedText(resp.aiReasoning)}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
+
+                                            {/* Overall Impact */}
                                             <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">Overall Impact:</p>
-                                                <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">{t("applicants.overallImpact")}:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
@@ -1491,28 +1757,28 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <MessageSquare className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <MessageSquare className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.additionalNotesAnalysis")}
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Notes Provided</p>
+                                                    <p className="text-xs text-muted-foreground">Notes Provided</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? 'Yes' : 'No'}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Length</p>
+                                                    <p className="text-xs text-muted-foreground">Length</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesLength} chars</p>
                                                 </div>
                                             </div>
                                             {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.length > 0 && (
                                                 <div className="mb-3">
-                                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-2">Key Points Extracted:</p>
+                                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Key Points Extracted:</p>
                                                     <ul className="space-y-1">
                                                         {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.map((point, idx) => (
-                                                            <li key={idx} className="text-sm text-violet-800 dark:text-violet-200 flex items-start gap-2">
-                                                                <CheckCircle className="h-4 w-4 text-violet-500 mt-0.5 shrink-0" />
+                                                            <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                                                                <CheckCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                                                                 <span>{point}</span>
                                                             </li>
                                                         ))}
@@ -1520,8 +1786,8 @@ export function ViewApplicantDialog({
                                                 </div>
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1532,32 +1798,32 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.externalProfilesAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Globe className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <Globe className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.externalProfilesAnalysis")}
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">LinkedIn</p>
+                                                    <p className="text-xs text-muted-foreground">LinkedIn</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.linkedinAnalyzed ? '✓' : '✗'}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">GitHub</p>
+                                                    <p className="text-xs text-muted-foreground">GitHub</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.githubAnalyzed ? '✓' : '✗'}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Skills</p>
+                                                    <p className="text-xs text-muted-foreground">Skills</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.skillsDiscovered}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Projects</p>
+                                                    <p className="text-xs text-muted-foreground">Projects</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.projectsFound}</p>
                                                 </div>
                                             </div>
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1568,18 +1834,18 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <Languages className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.languageRequirementsAnalysis")}
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Total Languages</p>
+                                                    <p className="text-xs text-muted-foreground">Total Languages</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages}</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Meets All</p>
+                                                    <p className="text-xs text-muted-foreground">Meets All</p>
                                                     <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'text-emerald-600' : 'text-red-600')}>
                                                         {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'Yes' : 'No'}
                                                     </p>
@@ -1598,8 +1864,8 @@ export function ViewApplicantDialog({
                                                 </div>
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1610,22 +1876,22 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.experienceAnalysis && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Briefcase className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <Briefcase className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.experienceAnalysis")}
                                                 </p>
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Self-Reported</p>
+                                                    <p className="text-xs text-muted-foreground">Self-Reported</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} yrs</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Required</p>
+                                                    <p className="text-xs text-muted-foreground">Required</p>
                                                     <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.required} yrs</p>
                                                 </div>
                                                 <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-violet-600 dark:text-violet-400">Meets?</p>
+                                                    <p className="text-xs text-muted-foreground">Meets?</p>
                                                     <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'text-emerald-600' : 'text-red-600')}>
                                                         {evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'Yes' : 'No'}
                                                     </p>
@@ -1639,8 +1905,8 @@ export function ViewApplicantDialog({
                                                 </div>
                                             )}
                                             <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-violet-800 dark:text-violet-200 leading-relaxed text-start">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.experienceAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
@@ -1651,8 +1917,8 @@ export function ViewApplicantDialog({
                                     {evaluation.aiAnalysisBreakdown.scoringBreakdown && (
                                         <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Target className="h-5 w-5 text-violet-600" />
-                                                <p className="font-semibold text-violet-900 dark:text-violet-100">
+                                                <Target className="h-5 w-5 text-primary" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.criteriaScoring")}
                                                 </p>
                                             </div>
@@ -1660,17 +1926,17 @@ export function ViewApplicantDialog({
                                                 {evaluation.aiAnalysisBreakdown.scoringBreakdown.criteriaWeights.map((cw, idx) => (
                                                     <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-sm font-medium text-violet-900 dark:text-violet-100">{cw.criteriaName}</p>
+                                                            <p className="text-sm font-medium text-foreground">{cw.criteriaName}</p>
                                                             <div className="flex items-center gap-2">
                                                                 <Badge variant="outline" className="text-xs">Weight: {cw.weight}/10</Badge>
                                                                 <Badge variant="outline" className="text-xs">Score: {cw.score}%</Badge>
                                                             </div>
                                                         </div>
                                                         <Progress value={cw.score} className="h-2 mb-2" />
-                                                        <p className="text-xs text-violet-600 mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
+                                                        <p className="text-xs text-primary mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
                                                         <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
-                                                            <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Reasoning:</p>
-                                                            <p className="text-xs text-violet-800 dark:text-violet-200 text-start">
+                                                            <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
+                                                            <p className="text-xs text-foreground text-start">
                                                                 {getLocalizedText(cw.aiReasoning)}
                                                             </p>
                                                         </div>
@@ -1679,12 +1945,12 @@ export function ViewApplicantDialog({
                                             </div>
                                             <div className="p-4 bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 rounded-lg border border-violet-300">
                                                 <div className="flex items-center justify-between mb-3">
-                                                    <p className="font-bold text-violet-900 dark:text-violet-100">Final Weighted Score</p>
-                                                    <p className="text-2xl font-bold text-violet-600">{evaluation.aiAnalysisBreakdown.scoringBreakdown.totalWeightedScore.toFixed(1)}%</p>
+                                                    <p className="font-bold text-foreground">Final Weighted Score</p>
+                                                    <p className="text-2xl font-bold text-primary">{evaluation.aiAnalysisBreakdown.scoringBreakdown.totalWeightedScore.toFixed(1)}%</p>
                                                 </div>
                                                 <div className="p-3 bg-white dark:bg-violet-950/20 rounded">
-                                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">AI Summary:</p>
-                                                    <p className="text-sm text-violet-900 dark:text-violet-100 leading-relaxed text-start">
+                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">AI Summary:</p>
+                                                    <p className="text-sm text-foreground leading-relaxed text-start">
                                                         {getLocalizedText(evaluation.aiAnalysisBreakdown.scoringBreakdown.aiSummary)}
                                                     </p>
                                                 </div>
@@ -1709,7 +1975,7 @@ export function ViewApplicantDialog({
                                     {applicant.personalData.screeningAnswers && Object.keys(applicant.personalData.screeningAnswers).length > 0 && (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                                <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                                                 <p className="font-semibold text-foreground">
                                                     {t("applicants.screeningQuestions")}
                                                 </p>
@@ -1773,7 +2039,7 @@ export function ViewApplicantDialog({
                                     {applicant.personalData.languageProficiency && Object.keys(applicant.personalData.languageProficiency).length > 0 && (
                                         <div className="space-y-3 pt-6 border-t border-border mt-6">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                                <Languages className="h-4 w-4 text-muted-foreground" />
                                                 <p className="font-semibold text-foreground">
                                                     {t("applicants.languageProficiency")}
                                                 </p>
@@ -1808,7 +2074,7 @@ export function ViewApplicantDialog({
                                                                     {language}
                                                                 </p>
                                                                 {hasGap && (
-                                                                    <Badge variant="outline" className="text-xs shrink-0 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400">
+                                                                    <Badge variant="outline" className="text-xs shrink-0 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
                                                                         {t("applicants.languageGap")}
                                                                     </Badge>
                                                                 )}

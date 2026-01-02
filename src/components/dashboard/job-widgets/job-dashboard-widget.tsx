@@ -6,6 +6,13 @@ import { LucideIcon } from 'lucide-react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Helper to check if chart data has meaningful variation (not all same values)
+const hasVariation = (data: number[]): boolean => {
+    if (data.length < 2) return false
+    const first = data[0]
+    return data.some(value => value !== first)
+}
+
 interface JobDashboardWidgetProps {
     title: string
     value: string | number
@@ -95,7 +102,7 @@ export const JobDashboardWidget: React.FC<JobDashboardWidgetProps> = ({
                             </span>
                         </div>
                     )}
-                    {chartData && chartData.length > 0 && (
+                    {chartData && chartData.length > 0 && hasVariation(chartData) && (
                         <div className="mt-2">
                             <MiniLineChart data={chartData} />
                         </div>

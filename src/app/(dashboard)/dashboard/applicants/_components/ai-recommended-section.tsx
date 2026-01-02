@@ -1,13 +1,12 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
-import { Star, Briefcase, Calendar, GraduationCap, Clock } from "lucide-react"
+import { Sparkles, Calendar, Trophy, Star, TrendingUp, CheckCircle, Zap } from "lucide-react"
 import { IBM_Plex_Sans_Arabic } from "next/font/google"
-import type { Applicant } from "./types"
+import type { Applicant, EvaluationData } from "./types"
 
 const ibmPlexArabic = IBM_Plex_Sans_Arabic({
     subsets: ["arabic"],
@@ -17,43 +16,74 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 
 interface AIRecommendedSectionProps {
     applicants: Applicant[]
+    evaluations?: Map<string, EvaluationData>
     onApplicantClick: (applicant: Applicant) => void
 }
 
-export function AIRecommendedSection({ applicants, onApplicantClick }: AIRecommendedSectionProps) {
+export function AIRecommendedSection({ applicants, evaluations, onApplicantClick }: AIRecommendedSectionProps) {
     const { t, isRTL, locale } = useTranslate()
 
-    // Filter and sort top 5 applicants by AI score
+    // Get evaluation for an applicant
+    const getEvaluation = (applicantId: string) => evaluations?.get(applicantId)
+
+    // Calculate intelligent ranking score (not just AI score)
+    const calculateIntelligentScore = (applicant: Applicant) => {
+        const baseScore = applicant.aiScore || 0
+        const evaluation = getEvaluation(applicant.id)
+
+        let bonusPoints = 0
+
+        // Bonus for "hire" recommendation
+        if (evaluation?.recommendation === 'hire') {
+            bonusPoints += 5
+        }
+
+        // Bonus for high voice relevance (if available)
+        const voiceAnalysis = evaluation?.aiAnalysisBreakdown?.voiceResponsesAnalysis
+        if (voiceAnalysis?.averageRelevanceScore && voiceAnalysis.averageRelevanceScore >= 80) {
+            bonusPoints += 3
+        }
+
+        // Bonus for high text relevance (if available)
+        const textAnalysis = evaluation?.aiAnalysisBreakdown?.textResponsesAnalysis
+        if (textAnalysis?.averageRelevanceScore && textAnalysis.averageRelevanceScore >= 80) {
+            bonusPoints += 3
+        }
+
+        // Penalty for red flags
+        if (evaluation?.redFlags?.en && evaluation.redFlags.en.length > 0) {
+            bonusPoints -= evaluation.redFlags.en.length * 2
+        }
+
+        // Bonus for passing all screening questions
+        const screeningAnalysis = evaluation?.aiAnalysisBreakdown?.screeningQuestionsAnalysis
+        if (screeningAnalysis && screeningAnalysis.failedKnockouts.length === 0) {
+            bonusPoints += 2
+        }
+
+        return Math.max(0, Math.min(100, baseScore + bonusPoints))
+    }
+
+    // Filter applicants with score >= 70 and sort by intelligent score
     const topApplicants = applicants
-        .filter(app => app.aiScore !== undefined && app.aiScore !== null)
-        .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+        .filter(app => app.aiScore !== undefined && app.aiScore !== null && app.aiScore >= 70)
+        .map(app => ({
+            ...app,
+            intelligentScore: calculateIntelligentScore(app),
+            isExceptional: (app.aiScore || 0) >= 90,
+            isTopCandidate: (app.aiScore || 0) >= 80,
+        }))
+        .sort((a, b) => b.intelligentScore - a.intelligentScore)
         .slice(0, 5)
 
-    // Don't render if we don't have 5 candidates
+    // Don't render if we don't have candidates
     if (topApplicants.length === 0) {
         return null
     }
 
-    // Avatar gradient colors
-    const getAvatarGradient = (name: string) => {
-        const gradients = [
-            "from-violet-500 to-purple-600",
-            "from-blue-500 to-cyan-600",
-            "from-emerald-500 to-teal-600",
-            "from-orange-500 to-amber-600",
-            "from-pink-500 to-rose-600",
-        ]
-        const index = (name?.charCodeAt(0) || 0) % gradients.length
-        return gradients[index]
-    }
+    // Count exceptional candidates (90%+)
+    const exceptionalCount = topApplicants.filter(a => a.isExceptional).length
 
-    // Get score color
-    const getScoreColor = (score: number) => {
-        if (score >= 85) return "text-emerald-500"
-        if (score >= 70) return "text-blue-500"
-        if (score >= 50) return "text-purple-500"
-        return "text-gray-500"
-    }
 
     // Format date
     const formatDate = (dateString: string) => {
@@ -72,90 +102,248 @@ export function AIRecommendedSection({ applicants, onApplicantClick }: AIRecomme
     // Get status badge config
     const getStatusBadge = (status: string) => {
         const configs: Record<string, { label: string; className: string }> = {
-            new: { label: t("applicants.status.new"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
-            pending: { label: t("applicants.status.pending"), className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300" },
-            evaluated: { label: t("applicants.status.evaluated"), className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
-            interview: { label: t("applicants.status.interview"), className: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
+            new: { label: t("applicants.status.new"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
+            pending: { label: t("applicants.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
+            evaluated: { label: t("applicants.status.evaluated"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
+            interview: { label: t("applicants.status.interview"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
             hired: { label: t("applicants.status.hired"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
             rejected: { label: t("applicants.status.rejected"), className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" },
         }
-        return configs[status] || { label: status, className: "bg-gray-100 text-gray-700" }
+        return configs[status] || { label: status, className: "bg-muted text-muted-foreground" }
+    }
+
+    // Get top strength for a candidate
+    const getTopStrength = (applicantId: string): string | null => {
+        const evaluation = getEvaluation(applicantId)
+        const strengths = locale === 'ar'
+            ? evaluation?.strengths?.ar
+            : evaluation?.strengths?.en
+        return strengths && strengths.length > 0 ? strengths[0] : null
+    }
+
+    // Get recommendation badge
+    const getRecommendationBadge = (applicantId: string) => {
+        const evaluation = getEvaluation(applicantId)
+        if (!evaluation?.recommendation) return null
+
+        const configs: Record<string, { label: string; className: string; icon: typeof CheckCircle }> = {
+            hire: {
+                label: locale === 'ar' ? 'توظيف' : 'Hire',
+                className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+                icon: CheckCircle
+            },
+            hold: {
+                label: locale === 'ar' ? 'انتظار' : 'Hold',
+                className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+                icon: TrendingUp
+            },
+            reject: {
+                label: locale === 'ar' ? 'رفض' : 'Reject',
+                className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+                icon: TrendingUp
+            },
+        }
+        return configs[evaluation.recommendation]
     }
 
     return (
-        <div className={cn("space-y-6 pb-6", ibmPlexArabic.className)} dir={isRTL ? "rtl" : "ltr"}>
-            {/* Section Header */}
+        <div className={cn("space-y-6 pb-6 mt-10", ibmPlexArabic.className)} dir={isRTL ? "rtl" : "ltr"}>
+            {/* Section Header - Enhanced with exceptional count */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    {t("applicants.aiRecommendedTitle")}
-                </h2>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    <span>Top {topApplicants.length}</span>
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Sparkles className="h-7 w-7 text-foreground" />
+                        {exceptionalCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {exceptionalCount}
+                            </span>
+                        )}
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                            {t("applicants.aiRecommendedTitle")}
+                            {exceptionalCount > 0 && (
+                                <Badge className="bg-primary text-white text-[10px] font-semibold px-2 py-0.5">
+                                    <Trophy className="w-3 h-3 me-1" />
+                                    {exceptionalCount} {locale === 'ar' ? 'مرشح استثنائي' : 'Exceptional'}
+                                </Badge>
+                            )}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {locale === 'ar'
+                                ? 'أفضل المرشحين مصنفين بذكاء اصطناعي متقدم'
+                                : 'Top candidates ranked by intelligent AI scoring'}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            {/* Cards Grid - Horizontal Layout (5 columns) */}
+            {/* Cards Grid */}
             <div className={cn(
                 "grid gap-4",
-                // Responsive: 1 column on mobile, 2 on sm, 3 on md, 5 on lg+
                 "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
             )}>
                 {topApplicants.map((applicant, index) => {
                     const score = applicant.aiScore || 0
                     const name = applicant.displayName || applicant.personalData?.name || "Unnamed"
+                    const topStrength = getTopStrength(applicant.id)
+                    const recBadge = getRecommendationBadge(applicant.id)
 
-                    // Get gradient colors based on index
-                    const getGradientColors = (index: number) => {
-                        const gradients = [
-                            "from-violet-500/30 via-purple-500/20 to-pink-500/30",
-                            "from-blue-500/30 via-cyan-500/20 to-teal-500/30",
-                            "from-emerald-500/30 via-green-500/20 to-lime-500/30",
-                            "from-indigo-500/30 via-blue-500/20 to-cyan-500/30",
-                            "from-pink-500/30 via-rose-500/20 to-fuchsia-500/30",
-                        ]
-                        return gradients[index % gradients.length]
-                    }
+                    // Determine score color based on threshold - unified to primary + amber
+                    const scoreColorClass = score >= 80
+                        ? "stroke-primary"
+                        : "stroke-amber-500"
+
+                    const scoreBgClass = score >= 80
+                        ? "bg-primary/5 border-primary/20"
+                        : "bg-amber-500/5 border-amber-500/20"
 
                     return (
-                        <div key={applicant.id} className="group relative">
-                            {/* Gradient blur background orb */}
+                        <div key={applicant.id} className="relative group">
+                            {/* Enhanced glow for exceptional candidates - subtle in light mode, prominent in dark mode */}
                             <div className={cn(
-                                "absolute -inset-4 rounded-full bg-gradient-to-br blur-3xl -z-10",
-                                "opacity-40 group-hover:opacity-60 transition-opacity duration-500",
-                                getGradientColors(index)
+                                "absolute -inset-[2px] rounded-xl transition-all duration-300",
+                                // Light mode: subtle shadow-based glow
+                                "blur-[4px] opacity-40",
+                                // Dark mode: stronger blur glow
+                                "dark:blur-[6px] dark:opacity-100",
+                                // Hover enhancement
+                                "group-hover:opacity-60 dark:group-hover:opacity-100",
+                                // Unified primary color glow
+                                "bg-primary/20 dark:bg-primary/30"
                             )} />
-
                             <Card
                                 dir={isRTL ? "rtl" : "ltr"}
                                 className={cn(
-                                    "cursor-pointer transition-all duration-300 h-full relative",
-                                    "hover:shadow-xl hover:-translate-y-1",
-                                    "glass overflow-hidden"
+                                    "relative cursor-pointer h-full rounded-xl transition-all hover:scale-[1.02]",
+                                    // Light mode: visible border and shadow for definition
+                                    "border shadow-md hover:shadow-lg",
+                                    "border-gray-200 bg-white",
+                                    // Dark mode: subtle border, rely on glow effect
+                                    "dark:border-border/30 dark:shadow-none dark:bg-card",
+                                    // Unified primary color for all top candidates
+                                    (applicant.isExceptional || applicant.isTopCandidate)
+                                        ? "border-primary/30 bg-gradient-to-br from-white to-primary/5 dark:from-card dark:to-primary/5 dark:border-primary/30"
+                                        : ""
                                 )}
                                 onClick={() => onApplicantClick(applicant)}
                             >
-                                <CardContent className="p-5 space-y-4">
-                                {/* Header: Rank & Status */}
-                                <div className="flex items-center justify-between">
-                                    <Badge
-                                        variant="outline"
-                                        className={cn(
-                                            "text-xs font-bold px-2.5 py-0.5",
-                                            index === 0 ? "border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30" :
-                                            index === 1 ? "border-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-950/30" :
-                                            index === 2 ? "border-rose-600 text-rose-600 bg-rose-50 dark:bg-rose-950/30" :
-                                            "border-border"
+                            <div className="p-5 flex flex-col h-full min-h-[380px]">
+                                {/* Rank badge + Status + Exceptional indicator */}
+                                <div className={cn(
+                                    "flex items-center justify-between mb-4",
+                                    isRTL ? "flex-row-reverse" : ""
+                                )}>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold",
+                                            index === 0
+                                                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white"
+                                                : index === 1
+                                                ? "bg-gradient-to-br from-gray-300 to-gray-500 text-white"
+                                                : index === 2
+                                                ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white"
+                                                : "bg-muted text-muted-foreground"
+                                        )}>
+                                            {index + 1}
+                                        </span>
+                                        {applicant.isExceptional && (
+                                            <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">
+                                                <Zap className="w-2.5 h-2.5 me-0.5" />
+                                                {locale === 'ar' ? 'استثنائي' : 'Top'}
+                                            </Badge>
                                         )}
-                                    >
-                                        #{index + 1}
-                                    </Badge>
+                                    </div>
+                                    {recBadge && (
+                                        <Badge
+                                            variant="secondary"
+                                            className={cn("text-[10px] font-medium", recBadge.className)}
+                                        >
+                                            <recBadge.icon className="w-3 h-3 me-1" />
+                                            {recBadge.label}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {/* Avatar with circular score - colored by threshold */}
+                                <div className="flex justify-center mb-4">
+                                    <div className="relative">
+                                        <svg className="w-24 h-24 -rotate-90">
+                                            <circle
+                                                cx="48"
+                                                cy="48"
+                                                r="42"
+                                                strokeWidth="4"
+                                                fill="none"
+                                                className="stroke-muted"
+                                            />
+                                            <circle
+                                                cx="48"
+                                                cy="48"
+                                                r="42"
+                                                strokeWidth="5"
+                                                fill="none"
+                                                strokeLinecap="round"
+                                                className={scoreColorClass}
+                                                strokeDasharray={2 * Math.PI * 42}
+                                                strokeDashoffset={(2 * Math.PI * 42) - (score / 100) * (2 * Math.PI * 42)}
+                                            />
+                                        </svg>
+                                        <div className={cn(
+                                            "absolute inset-2 rounded-full flex items-center justify-center font-semibold text-xl border",
+                                            scoreBgClass
+                                        )}>
+                                            {name.charAt(0).toUpperCase()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Score - prominent display with color */}
+                                <div className="text-center mb-3">
+                                    <div className="flex items-baseline justify-center gap-0.5">
+                                        <span className={cn(
+                                            "text-3xl font-bold",
+                                            score >= 80 ? "text-primary" : "text-amber-600 dark:text-amber-400"
+                                        )}>
+                                            {score}
+                                        </span>
+                                        <span className="text-lg font-medium text-muted-foreground">%</span>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {t("applicants.matchScore")}
+                                    </span>
+                                </div>
+
+                                {/* Name & Job */}
+                                <div className="text-center mb-3">
+                                    <h3 className="font-semibold text-sm text-foreground truncate mb-0.5">
+                                        {name}
+                                    </h3>
+                                    <p className="text-[11px] text-muted-foreground truncate">
+                                        {applicant.jobId?.title || t("applicants.noJob")}
+                                    </p>
+                                </div>
+
+                                {/* Top Strength (from AI evaluation) */}
+                                {topStrength && (
+                                    <div className="mb-3 px-2">
+                                        <div className="flex items-start gap-1.5 p-2 bg-primary/5 rounded-lg border border-primary/10">
+                                            <Star className="w-3 h-3 text-amber-500 fill-amber-500 mt-0.5 shrink-0" />
+                                            <p className="text-[10px] text-foreground line-clamp-2 leading-tight text-start">
+                                                {topStrength}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Status badge */}
+                                <div className="flex justify-center mb-3">
                                     {(() => {
                                         const statusConfig = getStatusBadge(applicant.status)
                                         return (
                                             <Badge
                                                 variant="secondary"
-                                                className={cn("text-[10px] px-2 py-0.5", statusConfig.className)}
+                                                className={cn("text-[10px] font-medium", statusConfig.className)}
                                             >
                                                 {statusConfig.label}
                                             </Badge>
@@ -163,146 +351,23 @@ export function AIRecommendedSection({ applicants, onApplicantClick }: AIRecomme
                                     })()}
                                 </div>
 
-                                {/* Avatar - themed */}
-                                <div className="flex justify-center py-1">
-                                    <div className="relative">
-                                        {/* Avatar */}
-                                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xl shadow-md">
-                                            {name.charAt(0).toUpperCase()}
-                                        </div>
-                                        {/* Online indicator */}
-                                        <div className={cn(
-                                            "absolute bottom-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-card",
-                                            isRTL ? "left-0" : "right-0"
-                                        )} />
-                                    </div>
-                                </div>
-
-                                {/* Name & Job */}
-                                <div className="text-center space-y-1">
-                                    <h3 className="font-semibold text-sm leading-tight truncate px-2">
-                                        {name}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground truncate px-2">
-                                        {applicant.jobId?.title || t("applicants.noJob")}
-                                    </p>
-                                </div>
-
-                                {/* AI Match Score */}
-                                <div className="px-2">
-                                    <div className={cn(
-                                        "flex items-center justify-between mb-1.5",
-                                        isRTL ? "flex-row-reverse" : ""
-                                    )}>
-                                        <span className={cn(
-                                            "text-[10px] font-medium text-muted-foreground uppercase tracking-wide",
-                                            isRTL ? "text-right" : "text-left"
-                                        )}>
-                                            {t("applicants.matchScore")}
-                                        </span>
-                                        <div className={cn(
-                                            "flex items-center gap-1",
-                                            isRTL ? "flex-row-reverse" : ""
-                                        )}>
-                                            <Star className={cn("h-3 w-3 fill-current", getScoreColor(score))} />
-                                            <span className={cn("text-sm font-bold", getScoreColor(score))}>
-                                                {score}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                        <div
-                                            className={cn(
-                                                "h-full rounded-full transition-all duration-500",
-                                                score >= 85 ? "bg-emerald-500" :
-                                                score >= 70 ? "bg-blue-500" :
-                                                "bg-purple-500",
-                                                isRTL ? "origin-right" : "origin-left"
-                                            )}
-                                            style={{ width: `${score}%` }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Skills/Tags */}
-                                {applicant.tags && applicant.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 justify-center px-2">
-                                        {applicant.tags.slice(0, 3).map((tag, tagIndex) => (
-                                            <span
-                                                key={tagIndex}
-                                                className="inline-flex px-2 py-0.5 rounded-md text-[9px] font-medium bg-primary/10 text-primary border border-primary/20"
-                                            >
-                                                {tag}
-                                            </span>
-                                        ))}
-                                        {applicant.tags.length > 3 && (
-                                            <span className="inline-flex px-2 py-0.5 rounded-md text-[9px] font-medium bg-muted text-muted-foreground">
-                                                +{applicant.tags.length - 3}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Details Grid - Enhanced */}
-                                <div className="space-y-2">
-                                    {/* Experience */}
+                                {/* Meta info - bottom section */}
+                                <div className={cn(
+                                    "flex items-center justify-center gap-4 text-xs text-muted-foreground pt-3 border-t border-border/30 mt-auto",
+                                    isRTL ? "flex-row-reverse" : ""
+                                )}>
                                     {applicant.personalData?.yearsOfExperience !== undefined && (
-                                        <div className={cn(
-                                            "flex items-center gap-2 px-3 py-2 rounded-lg",
-                                            "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent",
-                                            "border border-primary/20",
-                                            "hover:border-primary/30 transition-colors",
-                                            isRTL ? "flex-row-reverse" : ""
-                                        )}>
-                                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10">
-                                                <GraduationCap className="h-4 w-4 text-primary shrink-0" />
-                                            </div>
-                                            <div className={cn("flex-1", isRTL ? "text-right" : "text-left")}>
-                                                <p className="text-[9px] text-muted-foreground uppercase tracking-wide">
-                                                    {t("applicants.experience") || "Experience"}
-                                                </p>
-                                                <p className="text-xs font-semibold text-foreground">
-                                                    {applicant.personalData.yearsOfExperience} {t("common.yearsShort")}
-                                                </p>
-                                            </div>
+                                        <div className="flex items-center gap-1">
+                                            <span className="font-medium text-foreground">{applicant.personalData.yearsOfExperience}</span>
+                                            <span>{t("common.yearsShort")}</span>
                                         </div>
                                     )}
-
-                                    {/* Applied Date */}
-                                    <div className={cn(
-                                        "flex items-center gap-2 px-3 py-2 rounded-lg",
-                                        "bg-gradient-to-r from-muted/80 via-muted/40 to-transparent",
-                                        "border border-border/50",
-                                        "hover:border-border transition-colors",
-                                        isRTL ? "flex-row-reverse" : ""
-                                    )}>
-                                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted">
-                                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        </div>
-                                        <div className={cn("flex-1", isRTL ? "text-right" : "text-left")}>
-                                            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">
-                                                {t("applicants.applied") || "Applied"}
-                                            </p>
-                                            <p className="text-xs font-semibold text-foreground">
-                                                {formatDate(applicant.createdAt)}
-                                            </p>
-                                        </div>
+                                    <div className="flex items-center gap-1">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span>{formatDate(applicant.createdAt)}</span>
                                     </div>
                                 </div>
-
-                                {/* Action Button */}
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="w-full text-xs font-medium h-8"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        onApplicantClick(applicant)
-                                    }}
-                                >
-                                    {t("common.view")}
-                                </Button>
-                            </CardContent>
+                            </div>
                         </Card>
                         </div>
                     )

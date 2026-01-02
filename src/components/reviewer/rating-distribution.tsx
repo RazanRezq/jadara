@@ -65,29 +65,6 @@ export function RatingDistribution({ reviewerId, initialData, avgRating = 0 }: R
         .reduce((sum, item) => sum + item.count, 0)
     const highRatingsPercentage = total > 0 ? Math.round((highRatingsCount / total) * 100) : 0
 
-    // Get rating color
-    const getRatingColor = (rating: number) => {
-        const colors = {
-            5: "bg-emerald-500",
-            4: "bg-blue-500",
-            3: "bg-amber-500",
-            2: "bg-white dark:bg-gray-300",
-            1: "bg-rose-500",
-        }
-        return colors[rating as keyof typeof colors] || "bg-gray-500"
-    }
-
-    const getStarColor = (rating: number) => {
-        const colors = {
-            5: "text-emerald-500",
-            4: "text-blue-500",
-            3: "text-amber-500",
-            2: "text-white dark:text-gray-300",
-            1: "text-rose-500",
-        }
-        return colors[rating as keyof typeof colors] || "text-gray-500"
-    }
-
     return (
         <Card className="rounded-2xl h-full border shadow-sm bg-card">
             <CardHeader className="pb-4 border-b">
@@ -126,70 +103,80 @@ export function RatingDistribution({ reviewerId, initialData, avgRating = 0 }: R
                     </div>
                 ) : (
                     <>
-                        {/* Quick Insights */}
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* Quick Insights - Unified Style */}
+                        <div className="grid grid-cols-2 gap-4">
                             {/* Most Common Rating */}
-                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Star className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-current" />
-                                    <span className="text-xs font-medium text-amber-900 dark:text-amber-100">{t("dashboard.reviewer.mostCommon")}</span>
+                            <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground font-medium">{t("dashboard.reviewer.mostCommon")}</span>
                                 </div>
-                                <div className="text-xl font-bold text-amber-700 dark:text-amber-300">
+                                <div className="text-2xl font-bold text-foreground">
                                     {mostCommonRating.rating > 0 ? mostCommonRating.rating : '-'}
                                 </div>
-                                <p className="text-xs text-amber-600/70 dark:text-amber-400/70">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     {mostCommonRating.count} {t("dashboard.reviewer.times")}
                                 </p>
                             </div>
 
                             {/* High Ratings */}
-                            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span className="text-xs font-medium text-emerald-900 dark:text-emerald-100">{t("dashboard.reviewer.highRatings")}</span>
+                            <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <TrendingUp className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground font-medium">{t("dashboard.reviewer.highRatings")}</span>
                                 </div>
-                                <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                                <div className="text-2xl font-bold text-foreground">
                                     {highRatingsPercentage}%
                                 </div>
-                                <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     4-5 {t("dashboard.reviewer.stars")}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Horizontal Bar Chart */}
-                        <div className="space-y-3">
-                            {allDistributionData.slice().reverse().map((item) => {
-                                const percentage = total > 0 ? (item.count / total * 100).toFixed(0) : 0
-                                const barWidth = maxCount > 0 ? (item.count / maxCount * 100) : 0
+                        {/* Rating Bars */}
+                        <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                            <div className="space-y-3">
+                                {allDistributionData.slice().reverse().map((item) => {
+                                    const percentage = total > 0 ? Math.round(item.count / total * 100) : 0
+                                    const barWidth = maxCount > 0 ? (item.count / maxCount * 100) : 0
 
-                                return (
-                                    <div key={item.rating} className="space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <Star className={cn("w-4 h-4 fill-current", getStarColor(item.rating))} />
-                                                <span className="font-medium text-foreground">
-                                                    {item.rating} {t('dashboard.reviewer.stars')}
+                                    return (
+                                        <div key={item.rating} className="flex items-center gap-3">
+                                            {/* Rating number */}
+                                            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/10">
+                                                <span className="text-xs font-bold text-amber-500">
+                                                    {item.rating}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-2">
+
+                                            {/* Progress Bar Container */}
+                                            <div className="flex-1 flex items-center gap-2">
+                                                <div className="flex-1 h-2.5 bg-muted rounded-md overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-md bg-primary transition-all duration-500 ease-out"
+                                                        style={{ width: `${barWidth}%`, minWidth: item.count > 0 ? '8px' : '0' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Percentage & Count */}
+                                            <div className="flex items-center gap-2 min-w-[60px] justify-end">
                                                 <span className="text-xs text-muted-foreground">
                                                     {percentage}%
                                                 </span>
-                                                <span className="font-bold text-foreground min-w-[2rem] text-right">
+                                                <span className="text-xs font-semibold text-foreground w-4 text-right">
                                                     {item.count}
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                            <div
-                                                className={cn("h-full rounded-full transition-all duration-500 ease-out", getRatingColor(item.rating))}
-                                                style={{ width: `${barWidth}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })}
+                            </div>
                         </div>
                     </>
                 )}

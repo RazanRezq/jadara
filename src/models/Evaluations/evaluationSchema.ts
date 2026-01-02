@@ -458,8 +458,17 @@ const voiceResponseBreakdownSchema = new Schema(
         questionText: String,
         weight: Number,
         transcriptLength: Number,
+        transcript: String, // The actual transcript for context
         sentiment: String,
         confidence: Number,
+        // ENHANCED fields
+        relevanceScore: Number, // 0-100 - How well does answer address question?
+        communicationScore: Number, // 0-100 - Clarity, fluency, structure
+        keyPointsMentioned: bilingualTextArraySchema, // Specific topics/skills mentioned
+        strengthsInResponse: bilingualTextArraySchema, // What was done well
+        areasForImprovement: bilingualTextArraySchema, // What could be better
+        redFlagsInResponse: bilingualTextArraySchema, // Concerning patterns
+        specificFeedback: bilingualTextSchema, // Detailed feedback for this answer
         aiReasoning: bilingualTextSchema,
     },
     { _id: false }
@@ -469,8 +478,12 @@ const voiceResponsesAnalysisSchema = new Schema(
     {
         totalResponses: Number,
         totalWeight: Number,
+        averageRelevanceScore: Number, // 0-100 average across all responses
+        averageCommunicationScore: Number, // 0-100 average
         responses: [voiceResponseBreakdownSchema],
         overallImpact: bilingualTextSchema,
+        overallStrengths: bilingualTextArraySchema, // Summary of communication strengths
+        overallWeaknesses: bilingualTextArraySchema, // Summary of communication weaknesses
     },
     { _id: false }
 )
@@ -481,6 +494,15 @@ const textResponseBreakdownSchema = new Schema(
         weight: Number,
         wordCount: Number,
         quality: String,
+        answer: String, // The actual answer for context
+        // ENHANCED fields
+        relevanceScore: Number, // 0-100 - How well does answer address question?
+        communicationScore: Number, // 0-100 - Writing quality, structure
+        keyPointsMentioned: bilingualTextArraySchema, // Specific topics/skills mentioned
+        strengthsInResponse: bilingualTextArraySchema, // What was done well
+        areasForImprovement: bilingualTextArraySchema, // What could be better
+        redFlagsInResponse: bilingualTextArraySchema, // Concerning patterns
+        specificFeedback: bilingualTextSchema, // Detailed feedback for this answer
         aiReasoning: bilingualTextSchema,
     },
     { _id: false }
@@ -490,8 +512,12 @@ const textResponsesAnalysisSchema = new Schema(
     {
         totalResponses: Number,
         totalWeight: Number,
+        averageRelevanceScore: Number, // 0-100 average across all responses
+        averageContentQuality: String, // 'poor' | 'average' | 'good' | 'excellent'
         responses: [textResponseBreakdownSchema],
         overallImpact: bilingualTextSchema,
+        overallStrengths: bilingualTextArraySchema, // Summary of writing strengths
+        overallWeaknesses: bilingualTextArraySchema, // Summary of writing weaknesses
     },
     { _id: false }
 )

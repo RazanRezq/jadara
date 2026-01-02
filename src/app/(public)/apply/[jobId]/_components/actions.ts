@@ -68,11 +68,8 @@ export interface SubmitApplicationResult {
     success: boolean
     error?: string
     applicantId?: string
-    // AI Evaluation status
-    evaluationStarted?: boolean
-    evaluationCompleted?: boolean
-    evaluationScore?: number
-    evaluationError?: string
+    // AI Evaluation runs in background - no longer blocking
+    evaluationStatus?: 'pending' | 'processing'
 }
 
 // ============================================
@@ -137,7 +134,7 @@ export async function submitApplication(
             )
         }
 
-        // Create the applicant record
+        // Create the applicant record with pending evaluation status
         const applicant = await Applicant.create({
             jobId: payload.jobId,
             personalData,
@@ -151,6 +148,7 @@ export async function submitApplication(
             ipAddress: payload.metadata.ipAddress,
             userAgent: payload.metadata.userAgent,
             status: "new",
+            evaluationStatus: "pending", // Will be updated by background task
         })
 
         // Create all response records
@@ -173,273 +171,22 @@ export async function submitApplication(
         }
 
         // ============================================
-        // TRIGGER AI EVALUATION (Real-time)
+        // TRIGGER AI EVALUATION (Background - Fire and Forget)
         // ============================================
-        // Run evaluation immediately after saving
-        // Errors here won't affect the application submission
+        // Return success immediately to the user, run evaluation in background
         const applicantId = applicant._id.toString()
-        let evaluationResult: {
-            started: boolean
-            completed: boolean
-            score?: number
-            error?: string
-        } = { started: false, completed: false }
 
-        try {
-            console.log("[Submission] Starting AI evaluation for applicant:", applicantId)
-            
-            // Fetch the job to get criteria
-            const job = await Job.findById(payload.jobId)
-            
-            if (job) {
-                // Build voice responses from the submitted data
-                const voiceResponses: CandidateEvaluationInput['voiceResponses'] = []
-                const textResponses: CandidateEvaluationInput['textResponses'] = []
+        // Fire-and-forget: Start background evaluation without awaiting
+        runBackgroundEvaluation(applicantId, payload).catch(err => {
+            console.error("[Background Evaluation] Unhandled error:", err)
+        })
 
-                for (const response of payload.responses) {
-                    const questionText = job.questions?.[response.questionIndex]?.text || `Question ${response.questionIndex + 1}`
-                    const questionWeight = job.questions?.[response.questionIndex]?.weight || 5
-
-                    if (response.type === 'voice' && response.audioUrl) {
-                        voiceResponses.push({
-                            questionId: `q_${response.questionIndex}`,
-                            questionText,
-                            questionWeight,
-                            audioUrl: response.audioUrl,
-                        })
-                    } else if (response.type === 'text' && response.answer) {
-                        textResponses.push({
-                            questionId: `q_${response.questionIndex}`,
-                            questionText,
-                            questionWeight, // Include weight
-                            answer: response.answer,
-                        })
-                    }
-                }
-
-                // Build job criteria
-                const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
-                    title: job.title,
-                    description: job.description,
-                    skills: job.skills?.map(s => ({
-                        name: s.name,
-                        importance: s.importance,
-                        type: s.type,
-                    })) || [],
-                    minExperience: job.minExperience || 0,
-                    languages: job.languages?.map(l => ({
-                        language: l.language,
-                        level: l.level,
-                    })) || [],
-                    criteria: job.criteria?.map(c => ({
-                        name: c.name,
-                        description: c.description,
-                        weight: c.weight,
-                        required: c.required,
-                    })) || [],
-                    screeningQuestions: job.screeningQuestions?.map(sq => ({
-                        question: sq.question,
-                        idealAnswer: sq.idealAnswer ?? true, // Default to true for backward compatibility
-                        disqualify: sq.disqualify,
-                    })) || [],
-                    salaryMin: job.salaryMin,
-                    salaryMax: job.salaryMax,
-                    autoRejectThreshold: job.autoRejectThreshold || 35,
-                }
-
-                // Build candidate input
-                const candidateInput: CandidateEvaluationInput = {
-                    applicantId,
-                    jobId: payload.jobId,
-                    personalData: {
-                        name: payload.personalData.name,
-                        email: payload.personalData.email,
-                        phone: payload.personalData.phone,
-                        age: payload.personalData.age,
-                        yearsOfExperience: payload.personalData.yearsOfExperience,
-                        salaryExpectation: payload.personalData.salaryExpectation,
-                        linkedinUrl: payload.personalData.linkedinUrl,
-                        portfolioUrl: payload.personalData.portfolioUrl,
-                        screeningAnswers: payload.personalData.screeningAnswers,
-                        languageProficiency: payload.personalData.languageProficiency,
-                    },
-                    voiceResponses,
-                    textResponses,
-                    cvUrl: payload.fileUploads.cvUrl,
-                    additionalNotes: payload.notes || undefined,
-                    jobCriteria,
-                }
-
-                evaluationResult.started = true
-                console.log("[Submission] Evaluation input prepared, starting AI analysis...")
-
-                // Run the evaluation
-                const result = await evaluateCandidate(candidateInput)
-
-                if (result.success && result.evaluation) {
-                    evaluationResult.completed = true
-                    evaluationResult.score = result.evaluation.overallScore
-
-                    // Save evaluation to database
-                    console.log('[Submission] 🔍 Saving evaluation with detailed analysis:', {
-                        hasVoiceAnalysis: !!result.evaluation.voiceAnalysisDetails,
-                        voiceAnalysisLength: result.evaluation.voiceAnalysisDetails?.length,
-                        hasSocialInsights: !!result.evaluation.socialProfileInsights,
-                        hasTextAnalysis: !!result.evaluation.textResponseAnalysis,
-                    })
-                    
-                    await Evaluation.create({
-                        applicantId,
-                        jobId: payload.jobId,
-                        overallScore: result.evaluation.overallScore,
-                        criteriaMatches: result.evaluation.criteriaMatches,
-                        strengths: result.evaluation.strengths,
-                        weaknesses: result.evaluation.weaknesses,
-                        redFlags: result.evaluation.redFlags,
-                        summary: result.evaluation.summary,
-                        recommendation: result.evaluation.recommendation,
-                        recommendationReason: result.evaluation.recommendationReason,
-                        suggestedQuestions: result.evaluation.suggestedQuestions,
-                        sentimentScore: result.evaluation.sentimentScore,
-                        confidenceScore: result.evaluation.confidenceScore,
-                        // NEW: Detailed analysis sections
-                        voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
-                        socialProfileInsights: result.evaluation.socialProfileInsights,
-                        textResponseAnalysis: result.evaluation.textResponseAnalysis,
-                        // NEW: AI Analysis Breakdown for transparency
-                        aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
-                        isProcessed: true,
-                        processedAt: new Date(),
-                    })
-
-                    // Update applicant with AI results (use English for legacy fields)
-                    // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
-                    await Applicant.findByIdAndUpdate(applicantId, {
-                        // status: 'evaluated', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
-                        aiScore: result.evaluation.overallScore,
-                        aiSummary: result.evaluation.summary.en,
-                        aiRedFlags: result.evaluation.redFlags.en,
-                        cvParsedData: result.evaluation.parsedResume,
-                    })
-
-                    // Update voice response transcripts
-                    for (const transcript of result.evaluation.transcripts) {
-                        await Response.findOneAndUpdate(
-                            { applicantId, questionId: transcript.questionId },
-                            {
-                                rawTranscript: transcript.rawTranscript,
-                                cleanTranscript: transcript.cleanTranscript,
-                            }
-                        )
-                    }
-
-                    console.log("[Submission] AI evaluation completed successfully!")
-                    console.log("[Submission] Score:", result.evaluation.overallScore)
-                    console.log("[Submission] Recommendation:", result.evaluation.recommendation)
-                } else if (!result.success && result.partialEvaluation) {
-                    // Handle partial evaluation (scoring failed but we have voice/social/text data)
-                    console.log('[Submission] 💾 Saving PARTIAL evaluation with collected data:', {
-                        hasVoiceAnalysis: !!result.partialEvaluation.voiceAnalysisDetails,
-                        voiceAnalysisLength: result.partialEvaluation.voiceAnalysisDetails?.length,
-                        hasSocialInsights: !!result.partialEvaluation.socialProfileInsights,
-                        hasTextAnalysis: !!result.partialEvaluation.textResponseAnalysis,
-                        hasTranscripts: !!result.partialEvaluation.transcripts,
-                        hasParsedResume: !!result.partialEvaluation.parsedResume,
-                        errorType: result.errorType,
-                        retryAfter: result.retryAfter,
-                    })
-
-                    evaluationResult.error = result.error || "Evaluation incomplete"
-                    evaluationResult.completed = false
-
-                    // Save partial evaluation with fallback values
-                    await Evaluation.create({
-                        applicantId,
-                        jobId: payload.jobId,
-                        overallScore: 0, // No score yet
-                        criteriaMatches: [],
-                        strengths: { 
-                            en: ['⚠️ Evaluation incomplete - voice and profile data collected'], 
-                            ar: ['⚠️ التقييم غير مكتمل - تم جمع بيانات الصوت والملف الشخصي'] 
-                        },
-                        weaknesses: { en: [], ar: [] },
-                        redFlags: { 
-                            en: result.errorType === 'quota_exceeded' 
-                                ? ['⚠️ Evaluation incomplete due to API quota limit. Retry available.']
-                                : ['⚠️ Evaluation incomplete due to technical error'],
-                            ar: result.errorType === 'quota_exceeded'
-                                ? ['⚠️ التقييم غير مكتمل بسبب حد حصة API. إعادة المحاولة متاحة.']
-                                : ['⚠️ التقييم غير مكتمل بسبب خطأ تقني']
-                        },
-                        summary: { 
-                            en: `Partial evaluation: ${result.partialEvaluation.failedStages?.join(', ')} failed. ${result.error}`, 
-                            ar: `تقييم جزئي: فشل ${result.partialEvaluation.failedStages?.join(', ')}. ${result.error}` 
-                        },
-                        recommendation: 'pending',
-                        recommendationReason: { 
-                            en: 'Manual review required - automatic evaluation incomplete', 
-                            ar: 'مطلوب مراجعة يدوية - التقييم التلقائي غير مكتمل' 
-                        },
-                        suggestedQuestions: { en: [], ar: [] },
-                        sentimentScore: undefined,
-                        confidenceScore: undefined,
-                        // CRITICAL: Save the collected data even though evaluation is incomplete
-                        voiceAnalysisDetails: result.partialEvaluation.voiceAnalysisDetails,
-                        socialProfileInsights: result.partialEvaluation.socialProfileInsights,
-                        textResponseAnalysis: result.partialEvaluation.textResponseAnalysis,
-                        isProcessed: false, // Mark as unprocessed so it can be retried
-                        processedAt: new Date(),
-                    })
-
-                    // Update applicant with partial AI results
-                    // SILENT SCORER: AI does NOT update status - only reviewers can move candidates
-                    await Applicant.findByIdAndUpdate(applicantId, {
-                        // status: 'pending', // REMOVED: AI does not update status per Reviewer-Driven Pipeline
-                        aiScore: 0,
-                        aiSummary: `Partial evaluation: ${result.error}`,
-                        aiRedFlags: result.errorType === 'quota_exceeded' ? ['API quota exceeded - retry available'] : ['Evaluation incomplete'],
-                        cvParsedData: result.partialEvaluation.parsedResume,
-                    })
-
-                    // Update voice response transcripts if available
-                    if (result.partialEvaluation.transcripts) {
-                        for (const transcript of result.partialEvaluation.transcripts) {
-                            await Response.findOneAndUpdate(
-                                { applicantId, questionId: transcript.questionId },
-                                {
-                                    rawTranscript: transcript.rawTranscript,
-                                    cleanTranscript: transcript.cleanTranscript,
-                                }
-                            )
-                        }
-                    }
-
-                    console.log("[Submission] ⚠️ Partial evaluation saved - manual review required")
-                    console.log("[Submission] Error type:", result.errorType)
-                    if (result.retryAfter) {
-                        console.log("[Submission] Can retry after:", result.retryAfter, "seconds")
-                    }
-                } else {
-                    evaluationResult.error = result.error || "Evaluation failed"
-                    console.warn("[Submission] AI evaluation failed:", result.error)
-                }
-            } else {
-                evaluationResult.error = "Job not found for evaluation"
-                console.warn("[Submission] Job not found for AI evaluation")
-            }
-        } catch (evalError) {
-            // Graceful error handling - don't fail the submission
-            evaluationResult.error = evalError instanceof Error ? evalError.message : "Evaluation error"
-            console.error("[Submission] AI evaluation error (non-blocking):", evalError)
-        }
+        console.log("[Submission] Application saved successfully, AI evaluation started in background")
 
         return {
             success: true,
             applicantId,
-            evaluationStarted: evaluationResult.started,
-            evaluationCompleted: evaluationResult.completed,
-            evaluationScore: evaluationResult.score,
-            evaluationError: evaluationResult.error,
+            evaluationStatus: 'pending',
         }
     } catch (error) {
         console.error("Submit application error:", error)
@@ -455,6 +202,261 @@ export async function submitApplication(
         return {
             success: false,
             error: error instanceof Error ? error.message : "An unexpected error occurred",
+        }
+    }
+}
+
+// ============================================
+// BACKGROUND AI EVALUATION
+// ============================================
+
+/**
+ * Runs AI evaluation in the background without blocking the user.
+ * Updates the applicant record with evaluation status and results.
+ * This function is fire-and-forget - errors are logged but don't affect the submission.
+ */
+async function runBackgroundEvaluation(
+    applicantId: string,
+    payload: ApplicationSubmissionPayload
+): Promise<void> {
+    try {
+        console.log("[Background Evaluation] Starting for applicant:", applicantId)
+
+        // Mark as processing
+        await Applicant.findByIdAndUpdate(applicantId, {
+            evaluationStatus: 'processing',
+        })
+
+        // Fetch the job to get criteria
+        const job = await Job.findById(payload.jobId)
+
+        if (!job) {
+            console.warn("[Background Evaluation] Job not found:", payload.jobId)
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: 'Job not found for evaluation',
+            })
+            return
+        }
+
+        // Build voice responses from the submitted data
+        const voiceResponses: CandidateEvaluationInput['voiceResponses'] = []
+        const textResponses: CandidateEvaluationInput['textResponses'] = []
+
+        for (const response of payload.responses) {
+            const questionText = job.questions?.[response.questionIndex]?.text || `Question ${response.questionIndex + 1}`
+            const questionWeight = job.questions?.[response.questionIndex]?.weight || 5
+
+            if (response.type === 'voice' && response.audioUrl) {
+                voiceResponses.push({
+                    questionId: `q_${response.questionIndex}`,
+                    questionText,
+                    questionWeight,
+                    audioUrl: response.audioUrl,
+                })
+            } else if (response.type === 'text' && response.answer) {
+                textResponses.push({
+                    questionId: `q_${response.questionIndex}`,
+                    questionText,
+                    questionWeight,
+                    answer: response.answer,
+                })
+            }
+        }
+
+        // Build job criteria
+        const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
+            title: job.title,
+            description: job.description,
+            skills: job.skills?.map(s => ({
+                name: s.name,
+                importance: s.importance,
+                type: s.type,
+            })) || [],
+            minExperience: job.minExperience || 0,
+            languages: job.languages?.map(l => ({
+                language: l.language,
+                level: l.level,
+            })) || [],
+            criteria: job.criteria?.map(c => ({
+                name: c.name,
+                description: c.description,
+                weight: c.weight,
+                required: c.required,
+            })) || [],
+            screeningQuestions: job.screeningQuestions?.map(sq => ({
+                question: sq.question,
+                idealAnswer: sq.idealAnswer ?? true,
+                disqualify: sq.disqualify,
+            })) || [],
+            salaryMin: job.salaryMin,
+            salaryMax: job.salaryMax,
+            autoRejectThreshold: job.autoRejectThreshold || 35,
+        }
+
+        // Build candidate input
+        const candidateInput: CandidateEvaluationInput = {
+            applicantId,
+            jobId: payload.jobId,
+            personalData: {
+                name: payload.personalData.name,
+                email: payload.personalData.email,
+                phone: payload.personalData.phone,
+                age: payload.personalData.age,
+                yearsOfExperience: payload.personalData.yearsOfExperience,
+                salaryExpectation: payload.personalData.salaryExpectation,
+                linkedinUrl: payload.personalData.linkedinUrl,
+                portfolioUrl: payload.personalData.portfolioUrl,
+                screeningAnswers: payload.personalData.screeningAnswers,
+                languageProficiency: payload.personalData.languageProficiency,
+            },
+            voiceResponses,
+            textResponses,
+            cvUrl: payload.fileUploads.cvUrl,
+            additionalNotes: payload.notes || undefined,
+            jobCriteria,
+        }
+
+        console.log("[Background Evaluation] Starting AI analysis...")
+
+        // Run the evaluation
+        const result = await evaluateCandidate(candidateInput)
+
+        if (result.success && result.evaluation) {
+            console.log("[Background Evaluation] Completed successfully, score:", result.evaluation.overallScore)
+
+            // Save evaluation to database
+            await Evaluation.create({
+                applicantId,
+                jobId: payload.jobId,
+                overallScore: result.evaluation.overallScore,
+                criteriaMatches: result.evaluation.criteriaMatches,
+                strengths: result.evaluation.strengths,
+                weaknesses: result.evaluation.weaknesses,
+                redFlags: result.evaluation.redFlags,
+                summary: result.evaluation.summary,
+                recommendation: result.evaluation.recommendation,
+                recommendationReason: result.evaluation.recommendationReason,
+                suggestedQuestions: result.evaluation.suggestedQuestions,
+                sentimentScore: result.evaluation.sentimentScore,
+                confidenceScore: result.evaluation.confidenceScore,
+                voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+                socialProfileInsights: result.evaluation.socialProfileInsights,
+                textResponseAnalysis: result.evaluation.textResponseAnalysis,
+                aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
+                isProcessed: true,
+                processedAt: new Date(),
+            })
+
+            // Update applicant with AI results
+            await Applicant.findByIdAndUpdate(applicantId, {
+                aiScore: result.evaluation.overallScore,
+                aiSummary: result.evaluation.summary.en,
+                aiRedFlags: result.evaluation.redFlags.en,
+                cvParsedData: result.evaluation.parsedResume,
+                evaluationStatus: 'completed',
+                evaluationError: undefined,
+            })
+
+            // Update voice response transcripts
+            for (const transcript of result.evaluation.transcripts) {
+                await Response.findOneAndUpdate(
+                    { applicantId, questionId: transcript.questionId },
+                    {
+                        rawTranscript: transcript.rawTranscript,
+                        cleanTranscript: transcript.cleanTranscript,
+                    }
+                )
+            }
+
+            console.log("[Background Evaluation] All data saved successfully")
+
+        } else if (!result.success && result.partialEvaluation) {
+            // Handle partial evaluation
+            console.log("[Background Evaluation] Partial evaluation - saving collected data")
+
+            await Evaluation.create({
+                applicantId,
+                jobId: payload.jobId,
+                overallScore: 0,
+                criteriaMatches: [],
+                strengths: {
+                    en: ['Evaluation incomplete - voice and profile data collected'],
+                    ar: ['التقييم غير مكتمل - تم جمع بيانات الصوت والملف الشخصي']
+                },
+                weaknesses: { en: [], ar: [] },
+                redFlags: {
+                    en: result.errorType === 'quota_exceeded'
+                        ? ['Evaluation incomplete due to API quota limit. Retry available.']
+                        : ['Evaluation incomplete due to technical error'],
+                    ar: result.errorType === 'quota_exceeded'
+                        ? ['التقييم غير مكتمل بسبب حد حصة API. إعادة المحاولة متاحة.']
+                        : ['التقييم غير مكتمل بسبب خطأ تقني']
+                },
+                summary: {
+                    en: `Partial evaluation: ${result.partialEvaluation.failedStages?.join(', ')} failed. ${result.error}`,
+                    ar: `تقييم جزئي: فشل ${result.partialEvaluation.failedStages?.join(', ')}. ${result.error}`
+                },
+                recommendation: 'pending',
+                recommendationReason: {
+                    en: 'Manual review required - automatic evaluation incomplete',
+                    ar: 'مطلوب مراجعة يدوية - التقييم التلقائي غير مكتمل'
+                },
+                suggestedQuestions: { en: [], ar: [] },
+                voiceAnalysisDetails: result.partialEvaluation.voiceAnalysisDetails,
+                socialProfileInsights: result.partialEvaluation.socialProfileInsights,
+                textResponseAnalysis: result.partialEvaluation.textResponseAnalysis,
+                isProcessed: false,
+                processedAt: new Date(),
+            })
+
+            await Applicant.findByIdAndUpdate(applicantId, {
+                aiScore: 0,
+                aiSummary: `Partial evaluation: ${result.error}`,
+                aiRedFlags: result.errorType === 'quota_exceeded'
+                    ? ['API quota exceeded - retry available']
+                    : ['Evaluation incomplete'],
+                cvParsedData: result.partialEvaluation.parsedResume,
+                evaluationStatus: 'failed',
+                evaluationError: result.error || 'Partial evaluation - some stages failed',
+            })
+
+            // Update transcripts if available
+            if (result.partialEvaluation.transcripts) {
+                for (const transcript of result.partialEvaluation.transcripts) {
+                    await Response.findOneAndUpdate(
+                        { applicantId, questionId: transcript.questionId },
+                        {
+                            rawTranscript: transcript.rawTranscript,
+                            cleanTranscript: transcript.cleanTranscript,
+                        }
+                    )
+                }
+            }
+
+            console.log("[Background Evaluation] Partial data saved")
+
+        } else {
+            // Complete failure
+            console.error("[Background Evaluation] Failed:", result.error)
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: result.error || 'Evaluation failed',
+            })
+        }
+
+    } catch (error) {
+        // Log error and update status - don't throw
+        const errorMessage = error instanceof Error ? error.message : 'Unknown evaluation error'
+        console.error("[Background Evaluation] Error:", errorMessage)
+
+        try {
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: errorMessage,
+            })
+        } catch (updateError) {
+            console.error("[Background Evaluation] Failed to update error status:", updateError)
         }
     }
 }

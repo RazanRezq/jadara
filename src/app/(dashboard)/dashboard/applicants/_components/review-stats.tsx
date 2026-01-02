@@ -81,31 +81,31 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
         })
     }
 
-    // Decision labels with translations
+    // Decision labels with translations - unified color scheme
     const decisionLabels: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
         strong_hire: {
             label: t("applicants.review.strongHire"),
-            color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-900",
+            color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/50",
             icon: <ThumbsUp className="h-3 w-3" />,
         },
         recommended: {
             label: t("applicants.review.recommended"),
-            color: "text-green-600 bg-green-100 dark:bg-green-900",
+            color: "text-primary bg-primary/10 dark:bg-primary/20",
             icon: <ThumbsUp className="h-3 w-3" />,
         },
         neutral: {
             label: t("applicants.review.neutral"),
-            color: "text-gray-600 bg-gray-100 dark:bg-gray-800",
+            color: "text-muted-foreground bg-muted",
             icon: null,
         },
         not_recommended: {
             label: t("applicants.review.notRecommended"),
-            color: "text-gray-700 bg-gray-100 dark:bg-gray-700",
+            color: "text-amber-600 bg-amber-100 dark:bg-amber-900/50",
             icon: <ThumbsDown className="h-3 w-3" />,
         },
         strong_no: {
             label: t("applicants.review.strongNo"),
-            color: "text-red-600 bg-red-100 dark:bg-red-900",
+            color: "text-red-600 bg-red-100 dark:bg-red-900/50",
             icon: <ThumbsDown className="h-3 w-3" />,
         },
     }
@@ -200,11 +200,11 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
                 {/* Decision Breakdown */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span className="text-green-600 flex items-center gap-1">
+                        <span className="text-primary flex items-center gap-1">
                             <ThumbsUp className="h-4 w-4" />
                             {positiveCount} {t("applicants.review.positive")}
                         </span>
-                        <span className="text-red-600 flex items-center gap-1">
+                        <span className="text-muted-foreground flex items-center gap-1">
                             {negativeCount} {t("applicants.review.negative")}
                             <ThumbsDown className="h-4 w-4" />
                         </span>
@@ -249,9 +249,9 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
                                                     variant="outline"
                                                     className={cn(
                                                         "text-xs px-1.5 py-0 h-5",
-                                                        review.reviewer.role === 'superadmin' && "border-purple-300 text-purple-700 bg-purple-50 dark:bg-purple-900/20",
-                                                        review.reviewer.role === 'admin' && "border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20",
-                                                        review.reviewer.role === 'reviewer' && "border-gray-300 text-gray-700 bg-gray-50 dark:bg-gray-800"
+                                                        review.reviewer.role === 'superadmin' && "border-primary/30 text-primary bg-primary/10 dark:bg-primary/20",
+                                                        review.reviewer.role === 'admin' && "border-primary/30 text-primary bg-primary/10 dark:bg-primary/20",
+                                                        review.reviewer.role === 'reviewer' && "border-muted text-muted-foreground bg-muted"
                                                     )}
                                                 >
                                                     {review.reviewer.role === 'superadmin' && t("roles.superadmin")}
@@ -308,14 +308,14 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
                                 {/* Pros Section */}
                                 {review.pros.length > 0 && (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-1">
+                                        <p className="text-xs font-medium text-primary flex items-center gap-1">
                                             <CheckCircle2 className="h-3.5 w-3.5" />
                                             {t("applicants.review.pros")}
                                         </p>
                                         <div className="space-y-1 ps-5">
                                             {review.pros.map((pro, i) => (
                                                 <div key={`pro-${i}`} className="flex items-start gap-2 text-sm">
-                                                    <span className="text-green-600 dark:text-green-400 mt-0.5">•</span>
+                                                    <span className="text-primary mt-0.5">•</span>
                                                     <span className="text-foreground">{pro}</span>
                                                 </div>
                                             ))}
@@ -326,14 +326,14 @@ export function ReviewStats({ applicantId, aiScore, currentUserId, currentUserRo
                                 {/* Cons Section */}
                                 {review.cons.length > 0 && (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-medium text-red-700 dark:text-red-400 flex items-center gap-1">
+                                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                                             <XCircle className="h-3.5 w-3.5" />
                                             {t("applicants.review.cons")}
                                         </p>
                                         <div className="space-y-1 ps-5">
                                             {review.cons.map((con, i) => (
                                                 <div key={`con-${i}`} className="flex items-start gap-2 text-sm">
-                                                    <span className="text-red-600 dark:text-red-400 mt-0.5">•</span>
+                                                    <span className="text-muted-foreground mt-0.5">•</span>
                                                     <span className="text-foreground">{con}</span>
                                                 </div>
                                             ))}

@@ -104,7 +104,7 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
 
     const topCandidates = useMemo(() => {
         return completedApplicants
-            .filter(a => a.myRating !== undefined && a.myRating !== null)
+            .filter(a => a.myRating !== undefined && a.myRating !== null && a.myRating >= 4)
             .sort((a, b) => (b.myRating || 0) - (a.myRating || 0))
             .slice(0, 3)
     }, [completedApplicants])
@@ -284,9 +284,9 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                 </div>
 
                 {/* Section 2: Review Activity Widgets */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     {/* Review Performance Card */}
-                    <Card className="rounded-2xl border shadow-sm bg-card">
+                    <Card className="rounded-2xl border shadow-sm bg-card flex flex-col">
                         <CardHeader className="pb-4 border-b">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -302,115 +302,79 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            {/* Primary Stats */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        <span className="text-xs text-muted-foreground">
+
+                        <CardContent className="p-6 flex-1 flex flex-col">
+                            {/* Primary Stats - Unified Style */}
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                            <Users className="w-4 h-4 text-primary" />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground font-medium">
                                             {t("dashboard.reviewer.totalReviews")}
                                         </span>
                                     </div>
                                     <div className="text-3xl font-bold text-foreground">{stats.total}</div>
                                 </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                        <span className="text-xs text-muted-foreground">
+                                <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground font-medium">
                                             {t("dashboard.reviewer.avgRating")}
                                         </span>
                                     </div>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-bold text-amber-600">{avgMyRating}</span>
+                                        <span className="text-3xl font-bold text-foreground">{avgMyRating}</span>
                                         <span className="text-sm text-muted-foreground">/5</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Secondary Metrics */}
-                            <div className="grid grid-cols-2 gap-3">
+                            {/* Secondary Metrics - Unified Style */}
+                            <div className="grid grid-cols-2 gap-4">
                                 {/* Recent Activity */}
-                                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                        <span className="text-xs font-medium text-blue-900 dark:text-blue-100">{t("dashboard.reviewer.last7Days")}</span>
+                                <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                            <Clock className="w-4 h-4 text-primary" />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground font-medium">{t("dashboard.reviewer.last7Days")}</span>
                                     </div>
-                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{recentReviews}</div>
-                                    <p className="text-xs text-blue-600/70 dark:text-blue-400/70">{t("dashboard.reviewer.reviews")}</p>
+                                    <div className="text-2xl font-bold text-foreground">{recentReviews}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">{t("dashboard.reviewer.reviews")}</p>
                                 </div>
 
-                                {/* Top Rating */}
-                                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Trophy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        <span className="text-xs font-medium text-emerald-900 dark:text-emerald-100">{t("dashboard.reviewer.bestScore")}</span>
+                                {/* Best Score */}
+                                <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                            <Trophy className="w-4 h-4 text-amber-500" />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground font-medium">{t("dashboard.reviewer.bestScore")}</span>
                                     </div>
-                                    <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                                    <div className="text-2xl font-bold text-foreground">
                                         {topCandidates.length > 0 ? topCandidates[0].myRating : '-'}
                                     </div>
-                                    <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">{t("dashboard.reviewer.rating")}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t("dashboard.reviewer.rating")}</p>
                                 </div>
                             </div>
 
-                            {/* Quick Rating Breakdown */}
-                            {totalRated > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-foreground">{t("dashboard.reviewer.myRatingBreakdown")}</span>
-                                        {ratingConsistency && (
-                                            <Badge
-                                                variant="outline"
-                                                className={cn(
-                                                    "text-xs",
-                                                    ratingConsistency === 'high' && "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
-                                                    ratingConsistency === 'medium' && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
-                                                    ratingConsistency === 'low' && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
-                                                )}
-                                            >
-                                                {ratingConsistency === 'high' ? t("dashboard.reviewer.consistent") : ratingConsistency === 'medium' ? t("dashboard.reviewer.moderate") : t("dashboard.reviewer.varied")}
-                                            </Badge>
-                                        )}
-                                    </div>
+                            {/* Spacer to push button to bottom */}
+                            <div className="flex-1" />
 
-                                    <div className="space-y-2">
-                                        {[5, 4, 3, 2, 1].map((rating) => {
-                                            const count = ratingBreakdown[rating as keyof typeof ratingBreakdown]
-                                            const percentage = totalRated > 0 ? (count / totalRated) * 100 : 0
-                                            const barColor = rating >= 4 ? 'bg-emerald-500' : rating === 3 ? 'bg-amber-500' : 'bg-rose-500'
-
-                                            return (
-                                                <div key={rating} className="space-y-1">
-                                                    <div className="flex items-center justify-between text-xs">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Star className={cn("w-3 h-3 fill-current",
-                                                                rating >= 4 ? "text-emerald-500" : rating === 3 ? "text-amber-500" : "text-rose-500"
-                                                            )} />
-                                                            <span className="text-muted-foreground">{rating}</span>
-                                                        </div>
-                                                        <span className="font-medium text-foreground">{count}</span>
-                                                    </div>
-                                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                                        <div
-                                                            className={cn("h-full rounded-full transition-all duration-500", barColor)}
-                                                            style={{ width: `${percentage}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            <Button
-                                onClick={handleViewAllApplicants}
-                                className="w-full"
-                                variant="default"
-                            >
-                                {t("dashboard.reviewer.viewAllApplicants")}
-                                {isRTL ? <ArrowLeft className="w-4 h-4 ms-2" /> : <ArrowRight className="w-4 h-4 ms-2" />}
-                            </Button>
+                            <div className="pt-6 flex justify-center">
+                                <Button
+                                    onClick={handleViewAllApplicants}
+                                    className="w-2/3 h-10"
+                                    variant="default"
+                                >
+                                    {t("dashboard.reviewer.viewAllApplicants")}
+                                    {isRTL ? <ArrowLeft className="w-4 h-4 ms-2" /> : <ArrowRight className="w-4 h-4 ms-2" />}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 

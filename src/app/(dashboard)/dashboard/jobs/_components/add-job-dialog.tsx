@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
+import { Briefcase, MapPin, DollarSign, FileText } from "lucide-react"
 
 const addJobSchema = z.object({
     title: z.string().min(3, "Title must be at least 3 characters"),
@@ -112,150 +113,182 @@ export function AddJobDialog({ open, onOpenChange, onSuccess, userId }: AddJobDi
                 </DialogHeader>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t("jobs.jobTitle")}</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder={t("jobs.titlePlaceholder")} {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t("jobs.description")}</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                            placeholder={t("jobs.descriptionPlaceholder")}
-                                            rows={4}
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="department"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.department")}</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder={t("jobs.departmentPlaceholder")} {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="location"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.location")}</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder={t("jobs.locationPlaceholder")} {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="employmentType"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.employmentType")}</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Basic Info Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <FileText className="h-4 w-4" />
+                                <span>{t("jobs.basicInfo")}</span>
+                            </div>
+                            <div className="space-y-4 rounded-lg border p-4">
+                                <FormField
+                                    control={form.control}
+                                    name="title"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.jobTitle")}</FormLabel>
                                             <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
+                                                <Input placeholder={t("jobs.titlePlaceholder")} {...field} />
                                             </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="full-time">{t("jobs.fullTime")}</SelectItem>
-                                                <SelectItem value="part-time">{t("jobs.partTime")}</SelectItem>
-                                                <SelectItem value="contract">{t("jobs.contract")}</SelectItem>
-                                                <SelectItem value="internship">{t("jobs.internship")}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("common.status")}</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.description")}</FormLabel>
                                             <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
+                                                <Textarea
+                                                    placeholder={t("jobs.descriptionPlaceholder")}
+                                                    rows={4}
+                                                    className="resize-none"
+                                                    {...field}
+                                                />
                                             </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="draft">{t("jobs.status.draft")}</SelectItem>
-                                                <SelectItem value="active">{t("jobs.status.active")}</SelectItem>
-                                                <SelectItem value="closed">{t("jobs.status.closed")}</SelectItem>
-                                                <SelectItem value="archived">{t("jobs.status.archived")}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="salaryMin"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.salaryMin")}</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" placeholder="0" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                        {/* Location & Department Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <MapPin className="h-4 w-4" />
+                                <span>{t("jobs.locationDetails")}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
+                                <FormField
+                                    control={form.control}
+                                    name="department"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.department")}</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder={t("jobs.departmentPlaceholder")} {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <FormField
-                                control={form.control}
-                                name="salaryMax"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.salaryMax")}</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" placeholder="0" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                <FormField
+                                    control={form.control}
+                                    name="location"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.location")}</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder={t("jobs.locationPlaceholder")} {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4">
+                        {/* Employment Details Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <Briefcase className="h-4 w-4" />
+                                <span>{t("jobs.employmentDetails")}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
+                                <FormField
+                                    control={form.control}
+                                    name="employmentType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.employmentType")}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="full-time">{t("jobs.fullTime")}</SelectItem>
+                                                    <SelectItem value="part-time">{t("jobs.partTime")}</SelectItem>
+                                                    <SelectItem value="contract">{t("jobs.contract")}</SelectItem>
+                                                    <SelectItem value="internship">{t("jobs.internship")}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("common.status")}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="draft">{t("jobs.status.draft")}</SelectItem>
+                                                    <SelectItem value="active">{t("jobs.status.active")}</SelectItem>
+                                                    <SelectItem value="closed">{t("jobs.status.closed")}</SelectItem>
+                                                    <SelectItem value="archived">{t("jobs.status.archived")}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Salary Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <DollarSign className="h-4 w-4" />
+                                <span>{t("jobs.salaryRange")}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
+                                <FormField
+                                    control={form.control}
+                                    name="salaryMin"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.salaryMin")}</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" placeholder="0" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="salaryMax"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.salaryMax")}</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" placeholder="0" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-3 pt-2 border-t">
                             <Button
                                 type="button"
                                 variant="outline"

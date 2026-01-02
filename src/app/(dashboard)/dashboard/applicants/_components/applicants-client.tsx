@@ -510,11 +510,12 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 <ApplicantDashboardWidgets stats={stats} loading={loading} />
             </div>
 
-            {/* AI Recommended Section */}
+            {/* AI Recommended Section - Enhanced with evaluations for intelligent ranking */}
             <div className="px-4">
                 {!loading && (
                     <AIRecommendedSection
                         applicants={applicants}
+                        evaluations={evaluations}
                         onApplicantClick={handleViewApplicant}
                     />
                 )}

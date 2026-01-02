@@ -17,6 +17,9 @@ export const STATUS_ORDER: ApplicantStatus[] = ['new', 'evaluated', 'interview',
 
 export type ViewMode = 'list' | 'board'
 
+// AI Evaluation status - tracks background evaluation progress
+export type EvaluationStatusType = 'pending' | 'processing' | 'completed' | 'failed'
+
 export interface Applicant {
     id: string
     jobId: { _id: string; title: string; currency?: string }
@@ -43,6 +46,8 @@ export interface Applicant {
     aiScore?: number
     aiSummary?: string
     aiRedFlags?: string[]
+    evaluationStatus?: EvaluationStatusType
+    evaluationError?: string
     isSuspicious: boolean
     isComplete: boolean
     submittedAt?: string
@@ -175,27 +180,53 @@ export interface EvaluationData {
         voiceResponsesAnalysis?: {
             totalResponses: number
             totalWeight: number
+            averageRelevanceScore?: number
+            averageCommunicationScore?: number
             responses: Array<{
                 questionText: string
                 weight: number
                 transcriptLength: number
+                transcript?: string
                 sentiment: string
                 confidence: number
+                // Enhanced fields
+                relevanceScore?: number
+                communicationScore?: number
+                keyPointsMentioned?: BilingualTextArray
+                strengthsInResponse?: BilingualTextArray
+                areasForImprovement?: BilingualTextArray
+                redFlagsInResponse?: BilingualTextArray
+                specificFeedback?: BilingualText
                 aiReasoning: BilingualText
             }>
             overallImpact: BilingualText
+            overallStrengths?: BilingualTextArray
+            overallWeaknesses?: BilingualTextArray
         }
         textResponsesAnalysis?: {
             totalResponses: number
             totalWeight: number
+            averageRelevanceScore?: number
+            averageContentQuality?: string
             responses: Array<{
                 questionText: string
                 weight: number
                 wordCount: number
                 quality: string
+                answer?: string
+                // Enhanced fields
+                relevanceScore?: number
+                communicationScore?: number
+                keyPointsMentioned?: BilingualTextArray
+                strengthsInResponse?: BilingualTextArray
+                areasForImprovement?: BilingualTextArray
+                redFlagsInResponse?: BilingualTextArray
+                specificFeedback?: BilingualText
                 aiReasoning: BilingualText
             }>
             overallImpact: BilingualText
+            overallStrengths?: BilingualTextArray
+            overallWeaknesses?: BilingualTextArray
         }
         additionalNotesAnalysis?: {
             notesProvided: boolean

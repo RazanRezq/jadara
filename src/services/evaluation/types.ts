@@ -118,6 +118,19 @@ export interface TextResponseAnalysis {
     insights: string[]
 }
 
+// Enhanced Response Analysis - Detailed AI evaluation of each response
+export interface EnhancedResponseAnalysis {
+    relevanceScore: number // 0-100 - How well does the answer address the question?
+    contentQuality: 'poor' | 'average' | 'good' | 'excellent'
+    keyPointsMentioned: BilingualTextArray // What specific topics/skills did candidate mention?
+    strengthsInResponse: BilingualTextArray // What the candidate did well
+    areasForImprovement: BilingualTextArray // What could have been better
+    redFlagsInResponse: BilingualTextArray // Any concerning patterns (empty if none)
+    communicationScore: number // 0-100 - Clarity, structure, grammar
+    technicalAccuracy?: number // 0-100 - For technical questions only
+    specificFeedback: BilingualText // Detailed AI feedback on this specific answer
+}
+
 // AI Analysis Breakdown - Shows WHAT the AI analyzed and WHY it made decisions
 export interface AIAnalysisBreakdown {
     // What screening questions were considered
@@ -132,32 +145,58 @@ export interface AIAnalysisBreakdown {
         passedQuestions: string[]
         aiReasoning: BilingualText // Why screening answers affected the score
     }
-    // What voice responses were analyzed
+    // What voice responses were analyzed - ENHANCED
     voiceResponsesAnalysis?: {
         totalResponses: number
         totalWeight: number // Sum of all voice question weights
+        averageRelevanceScore: number // 0-100 average across all responses
+        averageCommunicationScore: number // 0-100 average
         responses: Array<{
             questionText: string
             weight: number
             transcriptLength: number
+            transcript: string // The actual transcript for context
             sentiment: string // e.g., "positive", "neutral"
             confidence: number // 0-100
+            // ENHANCED fields
+            relevanceScore: number // 0-100 - How well does answer address question?
+            communicationScore: number // 0-100 - Clarity, fluency, structure
+            keyPointsMentioned: BilingualTextArray // Specific topics/skills mentioned
+            strengthsInResponse: BilingualTextArray // What was done well
+            areasForImprovement: BilingualTextArray // What could be better
+            redFlagsInResponse: BilingualTextArray // Concerning patterns
+            specificFeedback: BilingualText // Detailed feedback for this answer
             aiReasoning: BilingualText // Why this response affected the score
         }>
         overallImpact: BilingualText // How voice responses influenced final score
+        overallStrengths: BilingualTextArray // Summary of communication strengths
+        overallWeaknesses: BilingualTextArray // Summary of communication weaknesses
     }
-    // What text responses were analyzed
+    // What text responses were analyzed - ENHANCED
     textResponsesAnalysis?: {
         totalResponses: number
         totalWeight: number // Sum of all text question weights
+        averageRelevanceScore: number // 0-100 average across all responses
+        averageContentQuality: string // 'poor' | 'average' | 'good' | 'excellent'
         responses: Array<{
             questionText: string
             weight: number
             wordCount: number
             quality: string
+            answer: string // The actual answer for context
+            // ENHANCED fields
+            relevanceScore: number // 0-100 - How well does answer address question?
+            communicationScore: number // 0-100 - Writing quality, structure
+            keyPointsMentioned: BilingualTextArray // Specific topics/skills mentioned
+            strengthsInResponse: BilingualTextArray // What was done well
+            areasForImprovement: BilingualTextArray // What could be better
+            redFlagsInResponse: BilingualTextArray // Concerning patterns (e.g., copy-paste, generic answers)
+            specificFeedback: BilingualText // Detailed feedback for this answer
             aiReasoning: BilingualText // Why this response affected the score
         }>
         overallImpact: BilingualText // How text responses influenced final score
+        overallStrengths: BilingualTextArray // Summary of writing strengths
+        overallWeaknesses: BilingualTextArray // Summary of writing weaknesses
     }
     // What additional notes were considered
     additionalNotesAnalysis?: {

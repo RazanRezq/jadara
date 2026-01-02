@@ -34,6 +34,9 @@ export interface IPersonalData {
     languageProficiency?: Record<string, string>
 }
 
+// AI Evaluation status - tracks background evaluation progress
+export type EvaluationStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 export interface IApplicant extends Document {
     _id: mongoose.Types.ObjectId
     jobId: mongoose.Types.ObjectId
@@ -47,6 +50,8 @@ export interface IApplicant extends Document {
     aiScore?: number // 0-100
     aiSummary?: string
     aiRedFlags?: string[] // Hidden from reviewers
+    evaluationStatus: EvaluationStatus // Background evaluation status
+    evaluationError?: string // Error message if evaluation failed
     // Session tracking
     sessionId: string
     isComplete: boolean
@@ -167,6 +172,14 @@ const applicantSchema = new Schema<IApplicant>(
         aiRedFlags: {
             type: [String],
             default: [],
+        },
+        evaluationStatus: {
+            type: String,
+            enum: ['pending', 'processing', 'completed', 'failed'],
+            default: 'pending',
+        },
+        evaluationError: {
+            type: String,
         },
         // Session
         sessionId: {
