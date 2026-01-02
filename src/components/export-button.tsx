@@ -21,31 +21,55 @@ interface ExportButtonProps {
     }
     variant?: "default" | "outline" | "ghost"
     size?: "default" | "sm" | "lg"
+    /** Custom title for exports (defaults to "Applicants Report") */
+    title?: string
+    /** Include company branding in exports */
+    includeBranding?: boolean
+    /** Language for export headers and labels */
+    language?: 'en' | 'ar' | 'both'
 }
 
-export function ExportButton({ data, variant = "outline", size = "default" }: ExportButtonProps) {
-    const { t } = useTranslate()
+export function ExportButton({
+    data,
+    variant = "outline",
+    size = "default",
+    title = "Applicants Report",
+    includeBranding = true,
+    language = 'en',
+}: ExportButtonProps) {
+    const { t, locale } = useTranslate()
     const [isExporting, setIsExporting] = useState(false)
+
+    // Auto-detect language from locale if not specified
+    const exportLanguage = language || (locale === 'ar' ? 'ar' : 'en')
 
     const handleExport = async (format: "csv" | "excel" | "pdf") => {
         setIsExporting(true)
 
         try {
+            const exportOptions = {
+                title,
+                includeBranding,
+                includeTimestamp: true,
+                language: exportLanguage,
+                direction: exportLanguage === 'ar' ? 'rtl' as const : 'ltr' as const,
+            }
+
             switch (format) {
                 case "csv":
-                    exportToCSV(data)
+                    exportToCSV(data, exportOptions)
                     toast.success(t("export.success"), {
                         description: t("export.csvDownloaded"),
                     })
                     break
                 case "excel":
-                    exportToExcel(data)
+                    await exportToExcel(data, exportOptions)
                     toast.success(t("export.success"), {
                         description: t("export.excelDownloaded"),
                     })
                     break
                 case "pdf":
-                    await exportToPDF(data)
+                    await exportToPDF(data, exportOptions)
                     toast.success(t("export.success"), {
                         description: t("export.pdfDownloaded"),
                     })

@@ -67,7 +67,7 @@ const defaultFilters: ApplicantsFilterState = {
 }
 
 export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientProps) {
-    const { t } = useTranslate()
+    const { t, locale } = useTranslate()
     const searchParams = useSearchParams()
     const jobIdFromUrl = searchParams.get("jobId")
     const statusFromUrl = searchParams.get("status")
@@ -487,7 +487,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
             evaluation: evaluations.get(applicant.id)
         }))
 
-        const { headers, rows } = formatApplicantsForExport(applicantsWithEvaluations, true)
+        // Get current language from context
+        const { headers, rows } = formatApplicantsForExport(applicantsWithEvaluations, true, locale as 'en' | 'ar')
 
         return {
             headers,
@@ -536,7 +537,12 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     />
                 }
                 exportSlot={
-                    <ExportButton data={exportData} variant="outline" size="default" />
+                    <ExportButton
+                        data={exportData}
+                        variant="outline"
+                        size="default"
+                        language={locale as 'en' | 'ar'}
+                    />
                 }
                 totalApplicants={total}
                 onRefresh={fetchApplicants}
