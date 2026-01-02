@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Shield, RefreshCw, RotateCcw, Save, AlertTriangle } from "lucide-react"
+import { RefreshCw, RotateCcw, Save, AlertTriangle } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 import { PermissionEditor } from "./permission-editor"
@@ -184,17 +185,14 @@ export function PermissionsClient() {
         <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className={cn("text-3xl font-bold flex items-center gap-2", locale === "ar" && ibmPlexArabic.className)}>
-                        <Shield className="h-8 w-8 text-primary" />
-                        {locale === "ar" ? "إدارة الصلاحيات" : "Permissions Management"}
-                    </h1>
-                    <p className={cn("text-muted-foreground mt-1", locale === "ar" && ibmPlexArabic.className)}>
-                        {locale === "ar"
-                            ? "قم بتخصيص صلاحيات كل دور في النظام"
-                            : "Customize permissions for each role in the system"}
-                    </p>
-                </div>
+                <PageHeader
+                    title={locale === "ar" ? "إدارة الصلاحيات" : "Permissions Management"}
+                    subtitle={locale === "ar"
+                        ? "قم بتخصيص صلاحيات كل دور في النظام"
+                        : "Customize permissions for each role in the system"}
+                    className="px-0 pt-0 pb-0"
+                    iconSize="h-8 w-8"
+                />
                 <Button
                     variant="outline"
                     onClick={fetchData}

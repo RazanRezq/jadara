@@ -36,7 +36,12 @@
         "characters": "حرف",
         "saving": "جارٍ الحفظ...",
         "reset": "إعادة تعيين",
-        "required": "مطلوب"
+        "required": "مطلوب",
+        "today": "اليوم",
+        "yesterday": "أمس",
+        "daysAgo": "ي",
+        "weeksAgo": "أ",
+        "yearsShort": "س"
     },
     "auth": {
         "login": "تسجيل الدخول",
@@ -75,7 +80,8 @@
         "roles": "الأدوار",
         "system": "النظام",
         "notifications": "الإشعارات",
-        "preferences": "التفضيلات"
+        "preferences": "التفضيلات",
+        "applicants": "المتقدمون"
     },
     "sidebar": {
         "dashboard": "لوحة التحكم",
@@ -597,6 +603,15 @@
         "aiScore": "درجة الذكاء الاصطناعي",
         "aiSummary": "ملخص الذكاء الاصطناعي",
         "redFlags": "علامات تحذيرية",
+        "redFlagPatterns": {
+            "experienceGap": "فجوة خبرة: {{gap}} سنوات تحت الحد الأدنى (لديه {{has}}، يحتاج {{requires}})",
+            "minExperienceNotMet": "لا تستوفي متطلبات الخبرة الأدنى",
+            "cannotStartImmediately": "لا يمكنه البدء فورًا، عدم تطابق في سؤال فرز رئيسي",
+            "knockoutQuestionFailed": "فشل في سؤال فرز حاسم",
+            "languageGap": "فجوة في اللغة",
+            "salaryMismatch": "عدم تطابق في الراتب",
+            "screeningMismatch": "عدم تطابق في الفرز"
+        },
         "tags": "العلامات",
         "notes": "الملاحظات",
         "suspiciousActivity": "تم اكتشاف نشاط مشبوه",
@@ -641,6 +656,7 @@
         "location": "الموقع",
         "locationValue": "دبي، الإمارات",
         "applicationDate": "تاريخ التقديم",
+        "applied": "تقدم",
         "noCVUploaded": "لم يتم تحميل السيرة الذاتية",
         "playRecording": "تشغيل التسجيل",
         "cleanText": "نص نظيف",
@@ -667,6 +683,8 @@
             "aiRecommendations": "توصيات الذكاء الاصطناعي",
             "vsLastMonth": "مقارنة بالشهر الماضي",
             "newApplicants": "جديد",
+            "candidatesEvaluated": "مرشح تم تقييمه",
+            "highRatedApplicants": "متقدمون بتقييم عالٍ",
             "lastWeek": "الأسبوع الماضي",
             "noQualifiedCandidates": "لا يوجد مرشحون مؤهلون حالياً",
             "notEnoughMatchData": "لا توجد بيانات مطابقة كافية",

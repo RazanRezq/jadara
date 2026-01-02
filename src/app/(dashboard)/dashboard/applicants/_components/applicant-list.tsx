@@ -129,7 +129,7 @@ export function ApplicantList({
             new: { variant: "secondary", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
             pending: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300" },
             evaluated: { variant: "secondary", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" },
-            interview: { variant: "secondary", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
+            interview: { variant: "secondary", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
             hired: { variant: "secondary", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
             rejected: { variant: "destructive", className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" },
         }
@@ -234,7 +234,7 @@ export function ApplicantList({
                                                         <span className="font-semibold truncate">
                                                             {applicant.displayName || applicant.personalData?.name}
                                                         </span>
-                                                        {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
+                                                        {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
                                                     </div>
                                                     <span className="text-sm text-muted-foreground truncate block">
                                                         {applicant.personalData?.email}
@@ -327,7 +327,7 @@ export function ApplicantList({
                                                     <h4 className="font-semibold text-base truncate">
                                                         {applicant.displayName || applicant.personalData?.name}
                                                     </h4>
-                                                    {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
+                                                    {applicant.isSuspicious && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground truncate">
                                                     {applicant.personalData?.email}

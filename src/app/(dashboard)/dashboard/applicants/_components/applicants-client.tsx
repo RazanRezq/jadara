@@ -21,6 +21,7 @@ import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import { X, Archive, Trash2, Users } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 
 // Components
 import { ApplicantsToolbar } from "./applicants-toolbar"
@@ -479,6 +480,27 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
     return (
         <div className="dashboard-container flex flex-col min-h-screen">
+            {/* Page Header */}
+            <PageHeader
+                titleKey="applicants.title"
+                subtitleKey="applicants.subtitle"
+            />
+
+            {/* Stats Widgets */}
+            <div className="px-4 pb-4">
+                <ApplicantDashboardWidgets stats={stats} loading={loading} />
+            </div>
+
+            {/* AI Recommended Section */}
+            <div className="px-4">
+                {!loading && (
+                    <AIRecommendedSection
+                        applicants={applicants}
+                        onApplicantClick={handleViewApplicant}
+                    />
+                )}
+            </div>
+
             {/* Toolbar */}
             <ApplicantsToolbar
                 viewMode={viewMode}
@@ -502,17 +524,6 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
             {/* Main Content */}
             <div className="flex-1 p-4 space-y-6">
-                {/* AI Recommended Section - Above Everything */}
-                {!loading && (
-                    <AIRecommendedSection
-                        applicants={applicants}
-                        onApplicantClick={handleViewApplicant}
-                    />
-                )}
-
-                {/* Stats Cards */}
-                <ApplicantDashboardWidgets stats={stats} loading={loading} />
-
                 {/* Loading State */}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">

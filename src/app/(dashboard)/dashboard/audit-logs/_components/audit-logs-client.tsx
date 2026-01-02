@@ -29,6 +29,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Search, Filter, Download, Eye, AlertCircle, Info, AlertTriangle, XCircle } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { format } from "date-fns"
 import { toast } from "sonner"
 
@@ -156,12 +157,10 @@ export function AuditLogsClient() {
     return (
         <div className="dashboard-container space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">{t("auditLogs.title")}</h1>
-                <p className="text-muted-foreground">
-                    {t("auditLogs.subtitle")}
-                </p>
-            </div>
+            <PageHeader
+                titleKey="auditLogs.title"
+                subtitleKey="auditLogs.subtitle"
+            />
 
             {/* Filters */}
             <Card>

@@ -23,15 +23,15 @@
   --destructive-foreground: oklch(1.0000 0 0);
   --border: oklch(0.8847 0.0069 97.3627);
   --input: oklch(0.7621 0.0156 98.3528);
-  --ring: oklch(0.6171 0.1375 39.0427);
-  --chart-1: oklch(0.5583 0.1276 42.9956);
+  --ring: oklch(0.6171 0.1375 280);
+  --chart-1: oklch(0.5583 0.1276 220);
   --chart-2: oklch(0.6898 0.1581 290.4107);
   --chart-3: oklch(0.8816 0.0276 93.1280);
   --chart-4: oklch(0.8822 0.0403 298.1792);
-  --chart-5: oklch(0.5608 0.1348 42.0584);
+  --chart-5: oklch(0.5608 0.1348 160);
   --sidebar: oklch(0.9663 0.0080 98.8792);
   --sidebar-foreground: oklch(0.3590 0.0051 106.6524);
-  --sidebar-primary: oklch(0.6171 0.1375 39.0427);
+  --sidebar-primary: oklch(0.6171 0.1375 280);
   --sidebar-primary-foreground: oklch(0.9881 0 0);
   --sidebar-accent: oklch(0.9245 0.0138 92.9892);
   --sidebar-accent-foreground: oklch(0.3250 0 0);
@@ -57,6 +57,24 @@
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+
+  /* Lovable gradient tokens */
+  --gradient-lovable: linear-gradient(135deg, hsl(280 85% 55%) 0%, hsl(330 85% 60%) 50%, hsl(280 85% 55%) 100%);
+  --gradient-lovable-soft: linear-gradient(135deg, hsl(280 85% 55% / 0.08) 0%, hsl(330 85% 60% / 0.08) 50%, hsl(280 85% 55% / 0.08) 100%);
+
+  /* Glassmorphism - Light */
+  --glass-bg: hsl(0 0% 100% / 0.95);
+  --glass-border: hsl(0 0% 100% / 0.7);
+  --glass-shadow: 0 8px 32px hsl(280 85% 55% / 0.08);
+
+  /* Card effects - Light */
+  --card-shadow: 0 4px 24px -2px hsl(280 85% 55% / 0.06), 0 12px 48px -4px hsl(330 85% 60% / 0.04);
+  --card-shadow-hover: 0 8px 32px -2px hsl(280 85% 55% / 0.12), 0 20px 64px -4px hsl(330 85% 60% / 0.08);
+
+  /* Blob colors - Light */
+  --blob-primary: hsl(280 85% 55% / 0.15);
+  --blob-accent: hsl(330 85% 60% / 0.12);
+  --blob-secondary: hsl(220 85% 55% / 0.10);
 }
 
 .dark {
@@ -66,7 +84,7 @@
   --card-foreground: oklch(0.9818 0.0054 95.0986);
   --popover: oklch(0.3085 0.0035 106.6039);
   --popover-foreground: oklch(0.9211 0.0040 106.4781);
-  --primary: oklch(0.6724 0.1308 38.7559);
+  --primary: oklch(0.6724 0.1308 280);
   --primary-foreground: oklch(1.0000 0 0);
   --secondary: oklch(0.9818 0.0054 95.0986);
   --secondary-foreground: oklch(0.3085 0.0035 106.6039);
@@ -78,12 +96,12 @@
   --destructive-foreground: oklch(1.0000 0 0);
   --border: oklch(0.3618 0.0101 106.8928);
   --input: oklch(0.4336 0.0113 100.2195);
-  --ring: oklch(0.6724 0.1308 38.7559);
-  --chart-1: oklch(0.5583 0.1276 42.9956);
+  --ring: oklch(0.6724 0.1308 280);
+  --chart-1: oklch(0.5583 0.1276 220);
   --chart-2: oklch(0.6898 0.1581 290.4107);
   --chart-3: oklch(0.2130 0.0078 95.4245);
   --chart-4: oklch(0.3074 0.0516 289.3230);
-  --chart-5: oklch(0.5608 0.1348 42.0584);
+  --chart-5: oklch(0.5608 0.1348 160);
   --sidebar: oklch(0.2357 0.0024 67.7077);
   --sidebar-foreground: oklch(0.8074 0.0142 93.0137);
   --sidebar-primary: oklch(0.3250 0 0);
@@ -110,6 +128,20 @@
   --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
   --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+
+  /* Glassmorphism - Dark */
+  --glass-bg: hsl(240 15% 18% / 0.95);
+  --glass-border: hsl(0 0% 100% / 0.12);
+  --glass-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+
+  /* Card effects - Dark */
+  --card-shadow: 0 4px 24px -2px hsl(0 0% 0% / 0.3), 0 12px 48px -4px hsl(280 85% 55% / 0.1);
+  --card-shadow-hover: 0 8px 32px -2px hsl(0 0% 0% / 0.4), 0 20px 64px -4px hsl(280 85% 55% / 0.2);
+
+  /* Blob colors - Dark */
+  --blob-primary: hsl(280 85% 55% / 0.25);
+  --blob-accent: hsl(330 85% 60% / 0.20);
+  --blob-secondary: hsl(220 85% 55% / 0.15);
 }
 
 @theme inline {
@@ -336,10 +368,19 @@
     direction: rtl;
   }
 
+  /* LTR Input and Placeholder - Force LTR for inputs with dir="ltr" */
+  input[dir="ltr"],
+  textarea[dir="ltr"] {
+    direction: ltr !important;
+    text-align: left !important;
+  }
+
   [dir="ltr"] input::placeholder,
-  [dir="ltr"] textarea::placeholder {
-    text-align: left;
-    direction: ltr;
+  [dir="ltr"] textarea::placeholder,
+  input[dir="ltr"]::placeholder,
+  textarea[dir="ltr"]::placeholder {
+    text-align: left !important;
+    direction: ltr !important;
   }
 
   /* Auto direction - Arabic text in placeholder should be RTL */
@@ -491,10 +532,10 @@
      ======================================== */
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 5px rgba(251, 191, 36, 0.4), 0 0 10px rgba(251, 191, 36, 0.2);
+      box-shadow: 0 0 5px rgba(168, 85, 247, 0.4), 0 0 10px rgba(168, 85, 247, 0.2);
     }
     50% {
-      box-shadow: 0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.3), 0 0 30px rgba(251, 191, 36, 0.1);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.3), 0 0 30px rgba(168, 85, 247, 0.1);
     }
   }
 
@@ -519,9 +560,59 @@
   }
 
   /* ========================================
+     GRADIENT XY ANIMATION FOR AI CARDS
+     ======================================== */
+  @keyframes gradient-xy {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-gradient-xy {
+    background-size: 200% 200%;
+    animation: gradient-xy 3s ease infinite;
+  }
+
+  /* ========================================
      IBM PLEX SANS ARABIC FONT UTILITY
      ======================================== */
   .font-ibm-plex {
     font-family: var(--font-ibm-arabic), system-ui, sans-serif !important;
+  }
+}
+
+@layer utilities {
+  .gradient-lovable {
+    background: var(--gradient-lovable);
+  }
+
+  .gradient-lovable-text {
+    background: var(--gradient-lovable);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .blob-primary {
+    background: var(--blob-primary);
+  }
+
+  .blob-accent {
+    background: var(--blob-accent);
+  }
+
+  .blob-secondary {
+    background: var(--blob-secondary);
   }
 }

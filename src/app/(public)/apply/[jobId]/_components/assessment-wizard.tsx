@@ -21,6 +21,7 @@ import {
     Sparkles,
     Check,
     Info,
+    MapPin,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -33,6 +34,9 @@ interface Job {
     id: string
     title: string
     description: string
+    location?: string
+    employmentType?: string
+    department?: string
     currency?: string
     screeningQuestions: Array<{ question: string; disqualify: boolean }>
     languages: Array<{ language: string; level: string }>
@@ -341,28 +345,43 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
         <div className="min-h-screen">
             {/* Header */}
             <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-background/95 border-b border-border">
-                <div className="container mx-auto px-4 py-4">
-                    {/* Top Row: Logo, Title, and Controls */}
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-xl bg-primary flex items-center justify-center">
+                <div className="container mx-auto px-4 py-3">
+                    {/* Top Row: Logo, Job Info, and Controls */}
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="size-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
                                 <Sparkles className="size-5 text-primary-foreground" />
                             </div>
-                            <div>
-                                <span className="font-bold text-sm">SmartRecruit</span>
-                                <p className="text-xs text-muted-foreground truncate max-w-[200px]" dir="auto">
+                            <div className="flex-1 min-w-0">
+                                <h1 className="font-bold text-sm leading-tight truncate" dir="auto">
                                     {job.title}
-                                </p>
+                                </h1>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                    {job.location && (
+                                        <span className="flex items-center gap-1" dir="auto">
+                                            <MapPin className="size-3" />
+                                            {job.location}
+                                        </span>
+                                    )}
+                                    {job.employmentType && (
+                                        <>
+                                            {job.location && <span>•</span>}
+                                            <span dir="auto">
+                                                {job.employmentType}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             <LanguageSwitcher />
                             <ThemeToggle />
                         </div>
                     </div>
 
                     {/* Steps Indicator */}
-                    <div className="flex items-center justify-center gap-2 mb-2" dir={isRTL ? "rtl" : "ltr"}>
+                    <div className="flex items-center justify-center gap-2 mt-4 mb-2" dir={isRTL ? "rtl" : "ltr"}>
                         {wizardSteps.map((step, index) => (
                             <div key={step.id} className="flex items-center">
                                 {/* Step Circle */}

@@ -70,7 +70,10 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
             const response = await fetch(`/api/notifications?userId=${userId}&limit=10`)
 
             if (!response.ok) {
-                console.error(`Error fetching notifications: ${response.status} ${response.statusText}`)
+                // Only log error in development, fail silently in production
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn(`Failed to fetch notifications: ${response.status} ${response.statusText}`)
+                }
                 setIsLoading(false)
                 return
             }
@@ -81,10 +84,15 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
                 setNotifications(result.data.notifications)
                 setUnreadCount(result.data.unreadCount)
             } else {
-                console.error("Error fetching notifications:", result.error)
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn("Error fetching notifications:", result.error)
+                }
             }
         } catch (error) {
-            console.error("Error fetching notifications:", error)
+            // Silently handle network errors - notifications are non-critical
+            if (process.env.NODE_ENV === 'development') {
+                console.warn("Error fetching notifications:", error)
+            }
         } finally {
             setIsLoading(false)
         }
@@ -169,7 +177,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
     return (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0">
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
                         <Badge

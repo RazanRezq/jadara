@@ -3,7 +3,6 @@
 import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
     Select,
     SelectContent,
@@ -19,7 +18,6 @@ import {
     LayoutList,
     Columns3,
     RefreshCw,
-    Users,
 } from "lucide-react"
 import type { ViewMode } from "./types"
 
@@ -59,23 +57,8 @@ export function ApplicantsToolbar({
     const { t } = useTranslate()
 
     return (
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex flex-col gap-4 p-4">
-                {/* Title Row */}
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                        <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-bold">
-                            {t("applicants.title")}
-                        </h1>
-                        <Badge variant="secondary" className="text-xs">
-                            {totalApplicants}
-                        </Badge>
-                    </div>
-                </div>
-
                 {/* Controls Row: Search + Dropdown + Actions */}
                 <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
                     {/* Left: Search + Job Filter */}

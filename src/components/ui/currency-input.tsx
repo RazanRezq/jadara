@@ -13,7 +13,7 @@ interface CurrencyInputProps
 export const CurrencyInput = React.forwardRef<
     HTMLInputElement,
     CurrencyInputProps
->(({ className, currency, currencyPosition = "suffix", ...props }, ref) => {
+>(({ className, currency, currencyPosition = "suffix", dir, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null)
     const combinedRef = React.useCallback(
         (node: HTMLInputElement | null) => {
@@ -28,11 +28,11 @@ export const CurrencyInput = React.forwardRef<
     )
 
     if (!currency) {
-        return <Input ref={ref} type="number" className={className} {...props} />
+        return <Input ref={ref} type="number" className={className} dir={dir} {...props} />
     }
 
     return (
-        <div className="relative">
+        <div className="relative" dir={dir || "ltr"}>
             <Input
                 ref={combinedRef}
                 type="number"
@@ -42,6 +42,7 @@ export const CurrencyInput = React.forwardRef<
                         : "ps-16",
                     className
                 )}
+                dir={dir || "ltr"}
                 {...props}
             />
             <div

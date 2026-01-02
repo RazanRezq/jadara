@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Monitor, Smartphone, Tablet, MapPin, Chrome, AlertCircle, Loader2, Trash2, Search } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { format, formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import { useTranslate } from "@/hooks/useTranslate"
@@ -230,12 +231,11 @@ export function SessionsClient() {
         <div className="dashboard-container space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{t("sessions.title")}</h1>
-                    <p className="text-muted-foreground">
-                        {t("sessions.subtitle")}
-                    </p>
-                </div>
+                <PageHeader
+                    titleKey="sessions.title"
+                    subtitleKey="sessions.subtitle"
+                    className="px-0 pt-0 pb-0"
+                />
                 <Button variant="outline" onClick={handleCleanup}>
                     <Trash2 className="h-4 w-4 me-2" />
                     {t("sessions.cleanupOld")}

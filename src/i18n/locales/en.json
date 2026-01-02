@@ -36,7 +36,12 @@
         "characters": "characters",
         "saving": "Saving...",
         "reset": "Reset",
-        "required": "Required"
+        "required": "Required",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "daysAgo": "d ago",
+        "weeksAgo": "w ago",
+        "yearsShort": "y"
     },
     "auth": {
         "login": "Login",
@@ -75,7 +80,8 @@
         "roles": "Roles",
         "system": "System",
         "notifications": "Notifications",
-        "preferences": "Preferences"
+        "preferences": "Preferences",
+        "applicants": "Applicants"
     },
     "sidebar": {
         "dashboard": "Dashboard",
@@ -597,6 +603,15 @@
         "aiScore": "AI Score",
         "aiSummary": "AI Summary",
         "redFlags": "Red Flags",
+        "redFlagPatterns": {
+            "experienceGap": "Experience gap: {{gap}} years below minimum (Has {{has}}, requires {{requires}})",
+            "minExperienceNotMet": "Minimum experience requirement not met",
+            "cannotStartImmediately": "Cannot start immediately, a key screening question mismatch",
+            "knockoutQuestionFailed": "Failed knockout question",
+            "languageGap": "Language gap",
+            "salaryMismatch": "Salary mismatch",
+            "screeningMismatch": "Screening question mismatch"
+        },
         "tags": "Tags",
         "notes": "Notes",
         "suspiciousActivity": "Suspicious Activity Detected",
@@ -641,6 +656,7 @@
         "location": "Location",
         "locationValue": "Dubai, UAE",
         "applicationDate": "Application Date",
+        "applied": "Applied",
         "noCVUploaded": "No CV uploaded",
         "playRecording": "Play Recording",
         "cleanText": "Clean Text",
@@ -667,6 +683,8 @@
             "aiRecommendations": "AI Recommendations",
             "vsLastMonth": "vs last month",
             "newApplicants": "new applicants",
+            "candidatesEvaluated": "candidates evaluated",
+            "highRatedApplicants": "high-rated applicants",
             "lastWeek": "last week",
             "noQualifiedCandidates": "No qualified candidates currently",
             "notEnoughMatchData": "Not enough matching data",

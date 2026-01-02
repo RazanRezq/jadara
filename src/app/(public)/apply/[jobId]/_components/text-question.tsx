@@ -2,6 +2,14 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
+
+// Helper function to detect text direction based on content
+const detectTextDirection = (text: string): "rtl" | "ltr" => {
+    if (!text) return "ltr"
+    // Arabic Unicode range: \u0600-\u06FF
+    const arabicRegex = /[\u0600-\u06FF]/
+    return arabicRegex.test(text.charAt(0)) ? "rtl" : "ltr"
+}
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -130,7 +138,7 @@ export function TextQuestion({
                         placeholder={readOnly ? "" : t("apply.typeAnswer")}
                         className={`min-h-[200px] resize-none text-base leading-relaxed ${readOnly ? "bg-muted/50 cursor-not-allowed opacity-80" : ""
                             }`}
-                        dir={locale === "ar" ? "rtl" : "ltr"}
+                        dir={answer ? detectTextDirection(answer) : (isRTL ? "rtl" : "ltr")}
                         readOnly={readOnly}
                         disabled={readOnly}
                     />

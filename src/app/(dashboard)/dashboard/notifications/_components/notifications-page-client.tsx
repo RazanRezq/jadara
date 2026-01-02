@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
-import { Bell, Search, Trash2, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Trash2, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -169,18 +170,14 @@ export function NotificationsPageClient({ userId }: NotificationsPageClientProps
         <div className="p-6 space-y-6" dir={dir}>
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">{t("notifications.page.title")}</h1>
-                    <p className="text-muted-foreground mt-1">
-                        {totalCount > 0 ? (
-                            <>
-                                {t("notifications.page.showing")} {startItem} {t("notifications.page.to")} {endItem} {t("notifications.page.of")} {totalCount} {t("notifications.page.notifications")}
-                            </>
-                        ) : (
-                            t("notifications.noNotifications")
-                        )}
-                    </p>
-                </div>
+                <PageHeader
+                    titleKey="notifications.page.title"
+                    subtitle={totalCount > 0 ?
+                        `${t("notifications.page.showing")} ${startItem} ${t("notifications.page.to")} ${endItem} ${t("notifications.page.of")} ${totalCount} ${t("notifications.page.notifications")}`
+                        : t("notifications.noNotifications")
+                    }
+                    className="px-0 pt-0 pb-0"
+                />
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={markAllAsRead}>
                         <Check className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />

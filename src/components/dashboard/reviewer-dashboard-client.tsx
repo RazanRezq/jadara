@@ -28,8 +28,9 @@ import {
     BarChart3,
     Lightbulb,
     Target,
-    ArrowRight
+    ArrowRight,
 } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { RatingDistribution } from "@/components/reviewer/rating-distribution"
@@ -216,14 +217,13 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
             <div className="dashboard-container p-4 md:p-6 space-y-8">
 
                 {/* Header */}
-                <div className="flex flex-col gap-1">
-                    <h1 className={cn("text-2xl md:text-3xl font-bold tracking-tight text-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t("dashboard.reviewer.welcome")}, {userName}!
-                    </h1>
-                    <p className={cn("text-sm text-muted-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t("dashboard.reviewer.subtitle")}
-                    </p>
-                </div>
+                <PageHeader
+                    title={`${t("dashboard.reviewer.welcome")}, ${userName}!`}
+                    subtitleKey="dashboard.reviewer.subtitle"
+                    className="px-0 pt-0"
+                    iconSize="h-6 w-6 md:h-7 md:w-7"
+                    titleClassName="text-2xl md:text-3xl"
+                />
 
                 {/* Section 1: Top Metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

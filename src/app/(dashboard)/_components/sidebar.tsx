@@ -6,68 +6,8 @@ import { cn } from "@/lib/utils"
 import { type SessionPayload } from "@/lib/auth"
 import { hasGranularPermission, getRoleColor } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
-import {
-    LayoutDashboard,
-    Users,
-    BookOpen,
-    Briefcase,
-    Calendar,
-    HelpCircle,
-    ClipboardList,
-    UsersRound,
-} from "lucide-react"
-
-interface NavItem {
-    titleKey: string
-    href: string
-    icon: React.ElementType
-    requiredPermission?: string // Granular permission (optional - some items always visible)
-}
-
-const navItems: NavItem[] = [
-    {
-        titleKey: "sidebar.dashboard",
-        href: "/dashboard",
-        icon: LayoutDashboard,
-        // Dashboard always visible to all authenticated users
-    },
-    {
-        titleKey: "sidebar.jobs",
-        href: "/dashboard/jobs",
-        icon: Briefcase,
-        requiredPermission: "jobs.view",
-    },
-    {
-        titleKey: "sidebar.candidates",
-        href: "/dashboard/applicants",
-        icon: Users,
-        requiredPermission: "applicants.view",
-    },
-    {
-        titleKey: "sidebar.calendar",
-        href: "/dashboard/calendar",
-        icon: Calendar,
-        requiredPermission: "jobs.create", // Calendar is for admins who can create jobs
-    },
-    {
-        titleKey: "sidebar.questionBank",
-        href: "/dashboard/questions",
-        icon: HelpCircle,
-        requiredPermission: "questions.view",
-    },
-    {
-        titleKey: "sidebar.scorecards",
-        href: "/dashboard/scorecards",
-        icon: ClipboardList,
-        requiredPermission: "evaluations.create", // Scorecards for those who can evaluate
-    },
-    {
-        titleKey: "sidebar.team",
-        href: "/dashboard/team",
-        icon: UsersRound,
-        requiredPermission: "users.view",
-    },
-]
+import { BookOpen } from "lucide-react"
+import { navigationConfig, getIconColorClass } from "@/config/navigation"
 
 interface DashboardSidebarProps {
     user: SessionPayload
@@ -78,7 +18,18 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     const { t, isRTL } = useTranslate()
 
     // Filter nav items based on granular permissions
-    const filteredNavItems = navItems.filter((item) => {
+    // Only show sidebar items (exclude settings pages and other secondary pages)
+    const sidebarItems = navigationConfig.filter(item =>
+        item.href === "/dashboard" ||
+        item.href === "/dashboard/jobs" ||
+        item.href === "/dashboard/applicants" ||
+        item.href === "/dashboard/calendar" ||
+        item.href === "/dashboard/questions" ||
+        item.href === "/dashboard/scorecards" ||
+        item.href === "/dashboard/users"
+    )
+
+    const filteredNavItems = sidebarItems.filter((item) => {
         // If no permission required, always show
         if (!item.requiredPermission) {
             return true
@@ -132,7 +83,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                                 >
                                     <item.icon className={cn(
                                         "w-5 h-5",
-                                        isActive ? "text-gray-900" : "text-gray-500"
+                                        getIconColorClass(item)
                                     )} />
                                     {t(item.titleKey)}
                                 </Link>

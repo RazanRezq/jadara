@@ -98,7 +98,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                             {t("header.profile")}
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-slate-300 focus:text-white focus:bg-white/5 cursor-pointer">
-                            <Settings className="h-4 w-4 me-2" />
+                            <Settings className="h-4 w-4 me-2 text-gray-400" />
                             {t("header.settings")}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-white/10" />

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useTranslate } from "@/hooks/useTranslate"
 import { CheckCircle2, Clock, Play } from "lucide-react"
 import Link from "next/link"
+import { PageHeader } from "@/components/page-header"
 import {
     Table,
     TableBody,
@@ -40,10 +41,11 @@ export function ReviewerView({ stats }: ReviewerViewProps) {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.reviewer.title")}</h1>
-                <p className="text-muted-foreground mt-1">{t("dashboard.reviewer.subtitle")}</p>
-            </div>
+            <PageHeader
+                titleKey="dashboard.reviewer.title"
+                subtitleKey="dashboard.reviewer.subtitle"
+                className="px-0 pt-0 pb-0"
+            />
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

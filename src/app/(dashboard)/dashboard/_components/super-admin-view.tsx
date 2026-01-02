@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useTranslate } from "@/hooks/useTranslate"
 import { Users, Briefcase, Activity, Plus, Edit, UserX } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import Link from "next/link"
 import {
     Table,
@@ -134,12 +135,10 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
     return (
         <div className="dashboard-container space-y-6">
             {/* Header - Clean and simple */}
-            <div className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                    {t("dashboard.superAdmin.title")}
-                </h1>
-                <p className="text-muted-foreground text-base">{t("dashboard.superAdmin.subtitle")}</p>
-            </div>
+            <PageHeader
+                titleKey="dashboard.superAdmin.title"
+                subtitleKey="dashboard.superAdmin.subtitle"
+            />
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -148,8 +147,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     value={stats.totalUsers}
                     icon={Users}
                     iconVariant="primary"
-                    iconColor="text-blue-600 dark:text-blue-400"
-                    iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                    iconColor="text-emerald-600 dark:text-emerald-500"
+                    iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
                     gradientFrom={usersGradient.from}
                     gradientTo={usersGradient.to}
                     description={t("dashboard.superAdmin.registeredUsers")}
@@ -160,7 +159,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                     value={stats.totalJobs}
                     icon={Briefcase}
                     iconVariant="info"
-                    iconColor="text-purple-600 dark:text-purple-400"
+                    iconColor="text-purple-600 dark:text-purple-500"
                     iconBgColor="bg-purple-100 dark:bg-purple-900/30"
                     gradientFrom={jobsGradient.from}
                     gradientTo={jobsGradient.to}
@@ -183,7 +182,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
             {/* User Analytics Section */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                    <Users className="w-5 h-5" />
+                    <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
                     {t("dashboard.superAdmin.userAnalytics")}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -285,8 +284,8 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                         value={stats.totalUsers}
                         icon={Users}
                         iconVariant="primary"
-                        iconColor="text-blue-600 dark:text-blue-400"
-                        iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                        iconColor="text-emerald-600 dark:text-emerald-500"
+                        iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
                         gradientFrom={usersGradient.from}
                         gradientTo={usersGradient.to}
                         description={t("dashboard.superAdmin.registeredUsers")}

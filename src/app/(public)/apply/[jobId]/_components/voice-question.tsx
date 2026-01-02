@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { QuestionResponse } from "./store"
 import { uploadAudio } from "./actions"
+import { useApplicationStore } from "./store"
 
 interface Question {
     text: string
@@ -95,6 +96,7 @@ export function VoiceQuestion({
     onBack,
 }: VoiceQuestionProps) {
     const { t, locale } = useTranslate()
+    const { hasSeenVoiceWarning, markVoiceWarningAsSeen } = useApplicationStore()
     const [stage, setStage] = useState<"permission" | "ready" | "countdown" | "recording" | "preview" | "readonly">(
         readOnly ? "readonly" : "permission"
     )
@@ -362,12 +364,32 @@ export function VoiceQuestion({
             return
         }
 
+        // Check if stream is active
+        const tracks = streamRef.current.getTracks()
+        if (tracks.length === 0 || !tracks[0].enabled) {
+            console.error('[Voice Recording] Stream is not active')
+            toast.error(t("apply.microphoneError") || "Microphone not available")
+            return
+        }
+
+        let mediaRecorder: MediaRecorder | null = null
+
         try {
             const mimeType = getSupportedMimeType()
             const options = mimeType ? { mimeType } : undefined
 
             console.log('[Voice Recording] Creating MediaRecorder with options:', options)
-            const mediaRecorder = new MediaRecorder(streamRef.current, options)
+
+            // Try to create MediaRecorder with the supported MIME type
+            try {
+                mediaRecorder = new MediaRecorder(streamRef.current, options)
+                console.log('[Voice Recording] ✅ MediaRecorder created with MIME type:', mimeType || 'default')
+            } catch (mimeError) {
+                console.warn('[Voice Recording] Failed with MIME type, trying without options:', mimeError)
+                // Fallback: Let the browser choose the MIME type
+                mediaRecorder = new MediaRecorder(streamRef.current)
+                console.log('[Voice Recording] ✅ MediaRecorder created with browser default')
+            }
 
             audioChunksRef.current = []
 
@@ -387,7 +409,7 @@ export function VoiceQuestion({
                     return
                 }
 
-                const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' })
+                const blob = new Blob(audioChunksRef.current, { type: mediaRecorder?.mimeType || 'audio/webm' })
                 console.log('[Voice Recording] Created blob:', blob.size, 'bytes, type:', blob.type)
                 setAudioBlob(blob)
                 const url = URL.createObjectURL(blob)
@@ -402,11 +424,22 @@ export function VoiceQuestion({
             }
 
             mediaRecorder.onstart = () => {
-                console.log('[Voice Recording] Recording started')
+                console.log('[Voice Recording] Recording started successfully')
             }
 
-            console.log('[Voice Recording] Starting MediaRecorder...')
-            mediaRecorder.start(100) // Collect data every 100ms
+            // Try to start recording
+            try {
+                console.log('[Voice Recording] Starting MediaRecorder...')
+                mediaRecorder.start(100) // Collect data every 100ms
+                console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully')
+            } catch (startError) {
+                console.error('[Voice Recording] Failed to start MediaRecorder:', startError)
+                // Try again without timeslice parameter
+                console.log('[Voice Recording] Retrying without timeslice...')
+                mediaRecorder.start()
+                console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully (no timeslice)')
+            }
+
             mediaRecorderRef.current = mediaRecorder
             startTimeRef.current = new Date().toISOString()
             setStage("recording")
@@ -416,7 +449,11 @@ export function VoiceQuestion({
             updateAudioLevels()
         } catch (error) {
             console.error('[Voice Recording] Failed to start recording:', error)
-            toast.error(t("apply.recordingError") || "Failed to start recording")
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            toast.error(
+                t("apply.recordingError") ||
+                `Failed to start recording: ${errorMessage}`
+            )
             setStage("ready")
         }
     }, [timeLimitSeconds, t, updateAudioLevels])
@@ -992,10 +1029,6 @@ export function VoiceQuestion({
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-start">
-                                <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-                                <p className="text-sm text-amber-600 dark:text-amber-400">{t("apply.noRetakeWarning")}</p>
-                            </div>
                         </div>
                         <div className="flex gap-3">
                             {onBack && (
@@ -1006,7 +1039,14 @@ export function VoiceQuestion({
                                 </Button>
                             )}
                             <Button
-                                onClick={() => setShowNoRetakeDialog(true)}
+                                onClick={() => {
+                                    // If user has already seen the warning, skip the dialog
+                                    if (hasSeenVoiceWarning) {
+                                        startCountdown()
+                                    } else {
+                                        setShowNoRetakeDialog(true)
+                                    }
+                                }}
                                 size="lg"
                                 className="flex-1 h-12 text-base gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                             >
@@ -1229,6 +1269,7 @@ export function VoiceQuestion({
                         <AlertDialogAction
                             onClick={() => {
                                 setShowNoRetakeDialog(false)
+                                markVoiceWarningAsSeen()
                                 startCountdown()
                             }}
                             className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"

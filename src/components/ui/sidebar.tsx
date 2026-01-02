@@ -404,7 +404,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-muted-foreground ring-sidebar-ring flex h-9 shrink-0 items-center rounded-lg px-3 text-xs font-bold uppercase tracking-wider outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 border-l-2 rtl:border-l-0 rtl:border-r-2 border-border",
+        "flex items-center px-3 mb-2 text-sm font-bold transition-[margin,opacity] duration-200 ease-linear",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}

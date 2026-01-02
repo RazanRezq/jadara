@@ -156,6 +156,60 @@ export function ViewApplicantDialog({
         return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
     }
 
+    // Helper to translate red flags
+    const translateRedFlag = (flag: string): string => {
+        if (locale !== 'ar') return flag // Only translate for Arabic
+
+        // Pattern matching for common red flag messages
+        const patterns = [
+            {
+                pattern: /Experience gap: (\d+) years? below minimum \(Has (\d+), requires (\d+)\)/i,
+                replace: (match: RegExpMatchArray) => {
+                    const gap = match[1]
+                    const has = match[2]
+                    const requires = match[3]
+                    return t('applicants.redFlagPatterns.experienceGap')
+                        .replace('{{gap}}', gap)
+                        .replace('{{has}}', has)
+                        .replace('{{requires}}', requires)
+                }
+            },
+            {
+                pattern: /Minimum experience requirement not met/i,
+                replace: () => t('applicants.redFlagPatterns.minExperienceNotMet')
+            },
+            {
+                pattern: /Cannot start immediately, a key screening question mismatch/i,
+                replace: () => t('applicants.redFlagPatterns.cannotStartImmediately')
+            },
+            {
+                pattern: /Failed knockout question/i,
+                replace: () => t('applicants.redFlagPatterns.knockoutQuestionFailed')
+            },
+            {
+                pattern: /Language gap/i,
+                replace: () => t('applicants.redFlagPatterns.languageGap')
+            },
+            {
+                pattern: /Salary.*(?:mismatch|expectation)/i,
+                replace: () => t('applicants.redFlagPatterns.salaryMismatch')
+            },
+            {
+                pattern: /screening question mismatch/i,
+                replace: () => t('applicants.redFlagPatterns.screeningMismatch')
+            }
+        ]
+
+        for (const { pattern, replace } of patterns) {
+            const match = flag.match(pattern)
+            if (match) {
+                return replace(match)
+            }
+        }
+
+        return flag // Return original if no pattern matches
+    }
+
     // DEBUG: Log evaluation and applicant data
     useEffect(() => {
         if (evaluation) {
@@ -570,46 +624,46 @@ export function ViewApplicantDialog({
                     </div>
                 </DialogHeader>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1" dir={dir}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 -mt-4" dir={dir}>
                     <TabsList className="w-full justify-start px-6 bg-transparent border-b rounded-none h-auto py-0">
                         <TabsTrigger
                             value="overview"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <User className="h-4 w-4 me-2" />
                             {t("applicants.overview")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="cv"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <FileText className="h-4 w-4 me-2" />
                             {t("applicants.cv")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="voice"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <Mic className="h-4 w-4 me-2" />
                             {t("applicants.voiceResponse")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="evaluation"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <Sparkles className="h-4 w-4 me-2" />
                             {t("applicants.aiEvaluation")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="review"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <Star className="h-4 w-4 me-2" />
                             {t("applicants.teamReview")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="notes"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                         >
                             <MessageSquare className="h-4 w-4 me-2" />
                             {t("applicants.teamNotes")}
@@ -874,12 +928,10 @@ export function ViewApplicantDialog({
                         {/* Strengths & Weaknesses */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Strengths */}
-                            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-950/10 border-2 border-emerald-300 dark:border-emerald-800 shadow-sm hover:shadow-md transition-shadow">
+                            <Card className="bg-gradient-to-br from-teal-50/80 via-emerald-50/60 to-teal-50/80 dark:from-teal-950/20 dark:via-emerald-950/15 dark:to-teal-950/20 border border-teal-200/60 dark:border-teal-800/50 shadow-sm hover:shadow-md transition-all">
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-emerald-700 dark:text-emerald-400">
-                                        <div className="p-1.5 bg-emerald-500 dark:bg-emerald-600 rounded-md">
-                                            <CheckCircle className="h-5 w-5 text-white" />
-                                        </div>
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-teal-700 dark:text-teal-300">
+                                        <CheckCircle className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                                         {t("applicants.strengths")}
                                     </CardTitle>
                                 </CardHeader>
@@ -907,12 +959,10 @@ export function ViewApplicantDialog({
                             </Card>
 
                             {/* Weaknesses */}
-                            <Card className="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-950/10 border-2 border-red-300 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                            <Card className="bg-gradient-to-br from-rose-50/80 via-pink-50/60 to-rose-50/80 dark:from-rose-950/20 dark:via-pink-950/15 dark:to-rose-950/20 border border-rose-200/60 dark:border-rose-800/50 shadow-sm hover:shadow-md transition-all">
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-red-700 dark:text-red-400">
-                                        <div className="p-1.5 bg-red-500 dark:bg-red-600 rounded-md">
-                                            <AlertTriangle className="h-5 w-5 text-white" />
-                                        </div>
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-rose-700 dark:text-rose-300">
+                                        <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
                                         {t("applicants.weaknesses")}
                                     </CardTitle>
                                 </CardHeader>
@@ -941,12 +991,10 @@ export function ViewApplicantDialog({
                         </div>
 
                         {/* Missing Requirements */}
-                        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-950/10 border-2 border-amber-300 dark:border-amber-800 shadow-sm">
+                        <Card className="bg-card border-border shadow-sm">
                             <CardHeader className="pb-4">
-                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-amber-700 dark:text-amber-400">
-                                    <div className="p-1.5 bg-amber-500 dark:bg-amber-600 rounded-md">
-                                        <XCircle className="h-5 w-5 text-white" />
-                                    </div>
+                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
+                                    <XCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                                     {t("applicants.missingRequirements")}
                                 </CardTitle>
                             </CardHeader>
@@ -985,12 +1033,10 @@ export function ViewApplicantDialog({
                         </Card>
 
                         {/* AI Recommendation */}
-                        <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-2 border-primary/30 dark:border-primary/20 shadow-md">
-                            <CardHeader className="pb-4 border-b bg-primary/5">
+                        <Card className="bg-card border-border shadow-sm">
+                            <CardHeader className="pb-4 border-b">
                                 <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                    <div className="p-1.5 bg-primary rounded-md">
-                                        <Sparkles className="h-5 w-5 text-white" />
-                                    </div>
+                                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                     {t("applicants.aiRecommendation")}
                                 </CardTitle>
                             </CardHeader>
@@ -1043,12 +1089,10 @@ export function ViewApplicantDialog({
 
                         {/* Voice Analysis Details */}
                         {evaluation?.voiceAnalysisDetails && evaluation.voiceAnalysisDetails.length > 0 && (
-                            <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-950/10 border-2 border-purple-300 dark:border-purple-800 shadow-sm">
-                                <CardHeader className="pb-4 border-b border-purple-200 dark:border-purple-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-purple-700 dark:text-purple-400">
-                                        <div className="p-1.5 bg-purple-500 dark:bg-purple-600 rounded-md">
-                                            <Mic className="h-5 w-5 text-white" />
-                                        </div>
+                            <Card className="bg-card border-border shadow-sm">
+                                <CardHeader className="pb-4 border-b">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
+                                        <Mic className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                         {t("applicants.voiceAnalysis")}
                                     </CardTitle>
                                 </CardHeader>
@@ -1653,12 +1697,10 @@ export function ViewApplicantDialog({
 
                         {/* HR Requirements: Screening Questions & Language Proficiency */}
                         {(applicant.personalData.screeningAnswers || applicant.personalData.languageProficiency) && (
-                            <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950/30 dark:to-gray-950/10 border-2 border-gray-300 dark:border-gray-700 shadow-sm">
-                                <CardHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-gray-700 dark:text-gray-400">
-                                        <div className="p-1.5 bg-gray-400 dark:bg-gray-500 rounded-md">
-                                            <ShieldAlert className="h-5 w-5 text-white" />
-                                        </div>
+                            <Card className="bg-card border-border shadow-sm">
+                                <CardHeader className="pb-4 border-b">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
+                                        <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                         {t("applicants.hrRequirements")}
                                     </CardTitle>
                                 </CardHeader>
@@ -1667,8 +1709,8 @@ export function ViewApplicantDialog({
                                     {applicant.personalData.screeningAnswers && Object.keys(applicant.personalData.screeningAnswers).length > 0 && (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-4 w-4 text-gray-600" />
-                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                <ShieldAlert className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.screeningQuestions")}
                                                 </p>
                                             </div>
@@ -1683,21 +1725,12 @@ export function ViewApplicantDialog({
                                                         <div
                                                             key={idx}
                                                             className={cn(
-                                                                "p-3 rounded-lg border flex items-start gap-3",
+                                                                "p-3 rounded-lg border",
                                                                 isFailed
-                                                                    ? "bg-red-100 dark:bg-red-950/30 border-red-300 dark:border-red-700"
-                                                                    : answer
-                                                                        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                                                                        : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                                                                    ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/60 dark:border-red-800/40"
+                                                                    : "bg-muted/50 border-border"
                                                             )}
                                                         >
-                                                            {isFailed ? (
-                                                                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
-                                                            ) : answer ? (
-                                                                <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
-                                                            ) : (
-                                                                <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
-                                                            )}
                                                             <div className="flex-1">
                                                                 <div className="flex items-start justify-between gap-2">
                                                                     <p className="text-sm font-medium flex-1 text-start">
@@ -1738,10 +1771,10 @@ export function ViewApplicantDialog({
 
                                     {/* Language Proficiency */}
                                     {applicant.personalData.languageProficiency && Object.keys(applicant.personalData.languageProficiency).length > 0 && (
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 pt-6 border-t border-border mt-6">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-4 w-4 text-gray-600" />
-                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                <Languages className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                                <p className="font-semibold text-foreground">
                                                     {t("applicants.languageProficiency")}
                                                 </p>
                                             </div>
@@ -1764,52 +1797,31 @@ export function ViewApplicantDialog({
                                                         <div
                                                             key={idx}
                                                             className={cn(
-                                                                "p-3 rounded-lg border",
+                                                                "p-3 rounded-lg border bg-muted/30",
                                                                 hasGap
-                                                                    ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-                                                                    : jobLanguage
-                                                                        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                                                                        : "bg-white dark:bg-gray-800/20 border-gray-200"
+                                                                    ? "border-orange-200/60 dark:border-orange-800/40"
+                                                                    : "border-border"
                                                             )}
                                                         >
                                                             <div className="flex items-start justify-between gap-2 mb-2">
-                                                                <p className={cn(
-                                                                    "text-xs font-medium text-start",
-                                                                    hasGap
-                                                                        ? "text-red-700 dark:text-red-300"
-                                                                        : jobLanguage
-                                                                            ? "text-emerald-700 dark:text-emerald-300"
-                                                                            : "text-gray-600 dark:text-gray-400"
-                                                                )}>
+                                                                <p className="text-sm font-medium text-start text-foreground">
                                                                     {language}
                                                                 </p>
                                                                 {hasGap && (
-                                                                    <Badge className="bg-red-600 text-white text-xs shrink-0">
+                                                                    <Badge variant="outline" className="text-xs shrink-0 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400">
                                                                         {t("applicants.languageGap")}
                                                                     </Badge>
                                                                 )}
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Badge className={cn(
-                                                                    "text-xs",
-                                                                    hasGap
-                                                                        ? "bg-red-500 text-white"
-                                                                        : jobLanguage
-                                                                            ? "bg-emerald-500 text-white"
-                                                                            : "bg-gray-400 text-white"
-                                                                )}>
+                                                                <Badge variant="secondary" className="text-xs">
                                                                     {candidateLevel.toUpperCase()}
                                                                 </Badge>
                                                                 {jobLanguage && (
-                                                                    <p className={cn(
-                                                                        "text-xs mt-1 text-start",
-                                                                        hasGap
-                                                                            ? "text-red-600 dark:text-red-400"
-                                                                            : "text-emerald-600 dark:text-emerald-400"
-                                                                    )}>
+                                                                    <p className="text-xs mt-1 text-start text-muted-foreground">
                                                                         {hasGap
-                                                                            ? `⚠️ ${t("applicants.required")}: ${requiredLevel.toUpperCase()}`
-                                                                            : `✅ ${t("applicants.meetsRequirement")}`}
+                                                                            ? `${t("applicants.required")}: ${requiredLevel.toUpperCase()}`
+                                                                            : `${t("applicants.meetsRequirement")}`}
                                                                     </p>
                                                                 )}
                                                             </div>
@@ -1840,12 +1852,10 @@ export function ViewApplicantDialog({
 
                         {/* Red Flags - Hidden from reviewers */}
                         {!isReviewer && (getLocalizedArray(evaluation?.redFlags).length > 0 || (applicant.aiRedFlags?.length ?? 0) > 0) && (
-                            <Card className="bg-gradient-to-br from-red-50 to-red-100/60 dark:from-red-950/40 dark:to-red-950/20 border-2 border-red-300 dark:border-red-700 shadow-md">
-                                <CardHeader className="pb-4 border-b border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-red-600 dark:text-red-400">
-                                        <div className="p-1.5 bg-red-500 dark:bg-red-600 rounded-md animate-pulse">
-                                            <AlertTriangle className="h-5 w-5 text-white" />
-                                        </div>
+                            <Card className="bg-gradient-to-br from-red-50/40 via-rose-50/30 to-red-50/40 dark:from-red-950/15 dark:via-rose-950/10 dark:to-red-950/15 border border-red-200/40 dark:border-red-800/30 shadow-sm">
+                                <CardHeader className="pb-4 border-b border-red-200/30 dark:border-red-800/20 bg-red-50/30 dark:bg-red-950/10">
+                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-red-700/90 dark:text-red-400/90">
+                                        <AlertTriangle className="h-5 w-5 text-red-600/80 dark:text-red-400/80" />
                                         {t("applicants.redFlags")}
                                     </CardTitle>
                                 </CardHeader>
@@ -1856,13 +1866,13 @@ export function ViewApplicantDialog({
                                     ).map((flag, index) => (
                                         <div
                                             key={index}
-                                            className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-red-950/30 border-s-4 border-red-500 dark:border-red-600 shadow-sm"
+                                            className="flex items-start gap-3 p-4 rounded-lg bg-white/60 dark:bg-red-950/15 border-s-2 border-red-400/60 dark:border-red-600/50 shadow-sm"
                                         >
                                             <div className="mt-0.5 shrink-0">
-                                                <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                                <XCircle className="h-5 w-5 text-red-500/70 dark:text-red-400/70" />
                                             </div>
-                                            <p className="text-sm leading-relaxed text-red-900 dark:text-red-200 whitespace-pre-line flex-1 font-medium text-start">
-                                                {flag}
+                                            <p className="text-sm leading-relaxed text-red-800/90 dark:text-red-200/80 whitespace-pre-line flex-1 font-medium text-start">
+                                                {translateRedFlag(flag)}
                                             </p>
                                         </div>
                                     ))}

@@ -19,7 +19,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { useTranslate } from "@/hooks/useTranslate"
-import { Building2, Save, RefreshCw } from "lucide-react"
+import { Save, RefreshCw } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { toast } from "sonner"
 
 import { type UserRole } from "@/lib/auth"
@@ -168,12 +169,10 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
     return (
         <div className="dashboard-container space-y-6">
             {/* Page Header */}
-            <div>
-                <h1 className="text-3xl font-bold">{t("settings.company.title")}</h1>
-                <p className="text-muted-foreground mt-1">
-                    {t("settings.company.subtitle")}
-                </p>
-            </div>
+            <PageHeader
+                titleKey="settings.company.title"
+                subtitleKey="settings.company.subtitle"
+            />
 
             {/* Permission Notice */}
             {!canEdit && (

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Loader2, Settings, Mail, Brain, Shield, Database, Bell, ToggleLeft } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 
 import { EmailSettings } from "./tabs/email-settings"
 import { AISettings } from "./tabs/ai-settings"
@@ -156,15 +157,12 @@ export function SystemSettingsClient() {
         <div className="dashboard-container space-y-6" dir={dir}>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="text-start">
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <Settings className="h-8 w-8" />
-                        {t("settings.system.systemConfiguration")}
-                    </h1>
-                    <p className="text-muted-foreground">
-                        {t("settings.system.manageSystemWide")}
-                    </p>
-                </div>
+                <PageHeader
+                    titleKey="settings.system.systemConfiguration"
+                    subtitleKey="settings.system.manageSystemWide"
+                    className="px-0 pt-0 pb-0"
+                    iconSize="h-8 w-8"
+                />
                 <Button variant="destructive" onClick={handleReset} disabled={saving}>
                     {t("settings.system.resetToDefaults")}
                 </Button>

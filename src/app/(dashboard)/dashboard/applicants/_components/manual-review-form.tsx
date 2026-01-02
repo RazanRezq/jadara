@@ -329,7 +329,7 @@ export function ManualReviewForm({
         <Card dir={dir}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-amber-500" />
+                    <Star className="h-5 w-5 text-yellow-500" />
                     {existingReview ? t("applicants.review.editYourReview") : t("applicants.review.submitYourReview")}
                 </CardTitle>
                 <CardDescription>

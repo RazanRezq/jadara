@@ -56,6 +56,18 @@ const categoryIcons: Record<string, any> = {
     notifications: Bell,
 }
 
+const categoryIconColors: Record<string, string> = {
+    users: "text-emerald-600",
+    jobs: "text-purple-600",
+    applicants: "text-blue-600",
+    evaluations: "text-green-600",
+    questions: "text-orange-600",
+    company: "text-cyan-600",
+    system: "text-gray-600",
+    audit: "text-slate-600",
+    notifications: "text-amber-600",
+}
+
 export function PermissionEditor({
     role,
     permissions,
@@ -111,6 +123,7 @@ export function PermissionEditor({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(permissionsByCategory).map(([category, categoryPermissions]) => {
                 const Icon = categoryIcons[category] || Settings
+                const iconColor = categoryIconColors[category] || "text-gray-600"
                 const categoryName =
                     locale === "ar"
                         ? metadata.categories.ar[category]
@@ -124,7 +137,7 @@ export function PermissionEditor({
                         <CardHeader className="border-b border-border/50">
                             <div className="flex items-center justify-between">
                                 <CardTitle className={cn("text-sm font-medium flex items-center gap-2", locale === "ar" && ibmPlexArabic.className)}>
-                                    <Icon className="h-4 w-4 text-primary" />
+                                    <Icon className={cn("h-4 w-4", iconColor)} />
                                     {categoryName}
                                 </CardTitle>
                                 <Checkbox

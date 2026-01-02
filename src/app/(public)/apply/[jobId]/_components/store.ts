@@ -70,6 +70,9 @@ export interface ApplicationState {
     currentQuestionIndex: number
     wizardStep: "personalInfo" | "instructions" | "questions" | "upload" | "complete"
 
+    // Voice warning dialog state
+    hasSeenVoiceWarning: boolean
+
     // Submission state
     isSubmitted: boolean
     submittedAt: string | null
@@ -102,6 +105,9 @@ export interface ApplicationActions {
     setWizardStep: (step: ApplicationState["wizardStep"]) => void
     goToNextQuestion: () => void
     goToPreviousQuestion: () => void
+
+    // Voice warning
+    markVoiceWarningAsSeen: () => void
 
     // Submission
     markAsSubmitted: () => void
@@ -145,6 +151,7 @@ const initialState: ApplicationState = {
     suspiciousReasons: [],
     currentQuestionIndex: 0,
     wizardStep: "personalInfo",
+    hasSeenVoiceWarning: false,
     isSubmitted: false,
     submittedAt: null,
 }
@@ -268,6 +275,11 @@ export const useApplicationStore = create<ApplicationState & ApplicationActions>
                 }
             },
 
+            // Voice warning
+            markVoiceWarningAsSeen: () => {
+                set({ hasSeenVoiceWarning: true })
+            },
+
             // Submission
             markAsSubmitted: () => {
                 set({
@@ -323,6 +335,7 @@ export const useApplicationStore = create<ApplicationState & ApplicationActions>
                 suspiciousReasons: state.suspiciousReasons,
                 currentQuestionIndex: state.currentQuestionIndex,
                 wizardStep: state.wizardStep,
+                hasSeenVoiceWarning: state.hasSeenVoiceWarning,
                 isSubmitted: state.isSubmitted,
                 submittedAt: state.submittedAt,
             }),

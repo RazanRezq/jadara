@@ -34,6 +34,7 @@ import {
     Eye,
     Sparkles,
 } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -815,7 +816,7 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             trend: stats.totalApplicantsTrend,
             icon: Users,
             iconVariant: 'info' as const,
-            iconColor: "text-teal-600 dark:text-teal-400",
+            iconColor: "text-blue-600 dark:text-blue-500",
             iconBgColor: "bg-teal-100 dark:bg-teal-900/30",
             gradientFrom: applicantsGradient.from,
             gradientTo: applicantsGradient.to,
@@ -827,7 +828,7 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             trend: stats.activeJobsTrend,
             icon: Briefcase,
             iconVariant: 'primary' as const,
-            iconColor: "text-blue-600 dark:text-blue-400",
+            iconColor: "text-purple-600 dark:text-purple-500",
             iconBgColor: "bg-blue-100 dark:bg-blue-900/30",
             gradientFrom: jobsGradient.from,
             gradientTo: jobsGradient.to,
@@ -839,7 +840,7 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             trend: stats.upcomingInterviewsTrend,
             icon: Calendar,
             iconVariant: 'warning' as const,
-            iconColor: "text-purple-600 dark:text-purple-400",
+            iconColor: "text-sky-600 dark:text-sky-500",
             iconBgColor: "bg-purple-100 dark:bg-purple-900/30",
             gradientFrom: interviewsGradient.from,
             gradientTo: interviewsGradient.to,
@@ -851,7 +852,7 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
             trend: stats.totalHiredTrend,
             icon: UserCheck,
             iconVariant: 'success' as const,
-            iconColor: "text-emerald-600 dark:text-emerald-400",
+            iconColor: "text-blue-600 dark:text-blue-500",
             iconBgColor: "bg-emerald-100 dark:bg-emerald-900/30",
             gradientFrom: successGradient.from,
             gradientTo: successGradient.to,
@@ -862,14 +863,10 @@ export function AdminView({ stats, userRole, userId }: AdminViewProps) {
     return (
         <div className="dashboard-container space-y-6" dir={dir}>
             {/* Header - Clean and simple */}
-            <div className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                    {t("dashboard.admin.title")}
-                </h1>
-                <p className="text-muted-foreground text-base">
-                    {t("dashboard.admin.subtitle")}
-                </p>
-            </div>
+            <PageHeader
+                titleKey="dashboard.admin.title"
+                subtitleKey="dashboard.admin.subtitle"
+            />
 
             {/* Row 1: Stats Grid - 4 columns on xl, 2 on md, 1 on mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

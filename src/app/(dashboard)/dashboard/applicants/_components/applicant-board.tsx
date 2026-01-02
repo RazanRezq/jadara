@@ -51,9 +51,9 @@ const getReviewerBadgeStyle = (role: string) => {
     switch (role) {
         case 'superadmin':
             return {
-                bg: 'bg-amber-100 dark:bg-amber-900/50',
-                text: 'text-amber-700 dark:text-amber-300',
-                border: 'border-amber-300 dark:border-amber-700',
+                bg: 'bg-yellow-100 dark:bg-yellow-900/50',
+                text: 'text-yellow-700 dark:text-yellow-300',
+                border: 'border-yellow-300 dark:border-yellow-700',
                 icon: Crown,
                 label: '👑'
             }
@@ -100,8 +100,8 @@ const KANBAN_COLUMNS: KanbanColumn[] = [
         id: "interview",
         title: "interview",
         statuses: ["interview"],  // In interview process
-        color: "text-amber-700 dark:text-amber-300",
-        bgColor: "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/50",
+        color: "text-violet-700 dark:text-violet-300",
+        bgColor: "bg-violet-50/50 dark:bg-violet-950/20 border-violet-200/50 dark:border-violet-800/50",
     },
     {
         id: "hired",
@@ -174,7 +174,7 @@ export function ApplicantBoard({
     const getScoreBadgeColor = (score?: number) => {
         if (!score) return "bg-muted text-muted-foreground"
         if (score >= 75) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-        if (score >= 50) return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+        if (score >= 50) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
         return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
     }
 
@@ -294,7 +294,7 @@ export function ApplicantBoard({
                                                                             {applicant.displayName || applicant.personalData?.name || "Unnamed"}
                                                                         </h4>
                                                                         {applicant.isSuspicious && (
-                                                                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
                                                                         )}
                                                                     </div>
                                                                     <div className={cn(
@@ -335,7 +335,7 @@ export function ApplicantBoard({
                                                             {/* Interview Date/Time - Only show for interview status */}
                                                             {applicant.status === 'interview' && applicant.interview && (
                                                                 <div
-                                                                    className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-900/30 animate-pulse-glow"
+                                                                    className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 rounded-md px-3 py-2 cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-violet-200/50 dark:hover:shadow-violet-900/30 animate-pulse-glow"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation()
                                                                         if (!applicant.interview?.scheduledDate) return
@@ -345,7 +345,7 @@ export function ApplicantBoard({
                                                                 >
                                                                     <div className="flex flex-col gap-1">
                                                                         <div className={cn(
-                                                                            "flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300",
+                                                                            "flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-300",
                                                                             isRTL ? "flex-row-reverse" : "flex-row"
                                                                         )}>
                                                                             <Calendar className="h-3.5 w-3.5 shrink-0" />
@@ -357,7 +357,7 @@ export function ApplicantBoard({
                                                                             </span>
                                                                         </div>
                                                                         <div className={cn(
-                                                                            "flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300",
+                                                                            "flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-300",
                                                                             isRTL ? "flex-row-reverse" : "flex-row"
                                                                         )}>
                                                                             <Clock className="h-3.5 w-3.5 shrink-0" />

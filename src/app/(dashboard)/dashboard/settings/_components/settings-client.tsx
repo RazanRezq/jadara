@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Building2, Database, Lock } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 import { type UserRole } from "@/lib/auth"
 import { hasPermission } from "@/lib/authClient"
@@ -48,10 +49,10 @@ export function SettingsClient({ userRole }: SettingsClientProps) {
     return (
         <div className="dashboard-container space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold">{t("settings.title")}</h1>
-                <p className="text-muted-foreground mt-2">{t("settings.description")}</p>
-            </div>
+            <PageHeader
+                titleKey="settings.title"
+                subtitleKey="settings.description"
+            />
 
             {/* Settings Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

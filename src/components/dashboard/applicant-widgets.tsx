@@ -56,7 +56,7 @@ export const ApplicantDashboardWidgets: React.FC<ApplicantWidgetsProps> = ({ sta
             <JobDashboardWidget
                 title={t('applicants.stats.totalApplicants')}
                 value={stats.totalApplicants}
-                subtitle={`+0% ${t('applicants.stats.lastWeek')}`}
+                subtitle={stats.totalApplicants > 0 ? `+0% ${t('applicants.stats.lastWeek')}` : t('applicants.stats.noQualifiedCandidates')}
                 icon={Inbox}
                 iconVariant="primary"
             />
@@ -65,7 +65,7 @@ export const ApplicantDashboardWidgets: React.FC<ApplicantWidgetsProps> = ({ sta
             <JobDashboardWidget
                 title={t('applicants.stats.bestCandidates')}
                 value={stats.aiRecommended}
-                subtitle={t('applicants.stats.noQualifiedCandidates')}
+                subtitle={stats.aiRecommended > 0 ? `${stats.aiRecommended} ${t('applicants.stats.newApplicants')}` : t('applicants.stats.noQualifiedCandidates')}
                 icon={Trophy}
                 iconVariant="success"
             />
@@ -74,7 +74,7 @@ export const ApplicantDashboardWidgets: React.FC<ApplicantWidgetsProps> = ({ sta
             <JobDashboardWidget
                 title={t('applicants.stats.avgScore')}
                 value={`${Math.round(stats.averageScore)}%`}
-                subtitle={t('applicants.stats.notEnoughMatchData')}
+                subtitle={stats.averageScore > 0 ? `${stats.totalApplicants} ${t('applicants.stats.candidatesEvaluated')}` : t('applicants.stats.notEnoughMatchData')}
                 icon={TrendingUp}
                 iconVariant="info"
             />
@@ -83,7 +83,7 @@ export const ApplicantDashboardWidgets: React.FC<ApplicantWidgetsProps> = ({ sta
             <JobDashboardWidget
                 title={t('applicants.stats.aiRecommendations')}
                 value={stats.aiRecommended}
-                subtitle={t('applicants.stats.noRecommendationsAvailable')}
+                subtitle={stats.aiRecommended > 0 ? `${stats.aiRecommended} ${t('applicants.stats.highRatedApplicants')}` : t('applicants.stats.noRecommendationsAvailable')}
                 icon={Users}
                 iconVariant="warning"
             />

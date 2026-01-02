@@ -8,7 +8,6 @@ import { Spinner } from "@/components/ui/spinner"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
 import {
-    Activity,
     RefreshCw,
     Database,
     Cpu,
@@ -20,6 +19,7 @@ import {
     Server,
     Zap,
 } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
 
@@ -161,17 +161,14 @@ export function SystemHealthClient() {
         <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-2">
-                        <Activity className="h-8 w-8 text-primary" />
-                        {locale === "ar" ? "مراقبة صحة النظام" : "System Health Monitoring"}
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        {locale === "ar"
-                            ? "مراقبة أداء النظام والموارد في الوقت الفعلي"
-                            : "Real-time system performance and resource monitoring"}
-                    </p>
-                </div>
+                <PageHeader
+                    title={locale === "ar" ? "مراقبة صحة النظام" : "System Health Monitoring"}
+                    subtitle={locale === "ar"
+                        ? "مراقبة أداء النظام والموارد في الوقت الفعلي"
+                        : "Real-time system performance and resource monitoring"}
+                    className="px-0 pt-0 pb-0"
+                    iconSize="h-8 w-8"
+                />
                 <div className="flex gap-2">
                     <Button
                         variant={autoRefresh ? "default" : "outline"}

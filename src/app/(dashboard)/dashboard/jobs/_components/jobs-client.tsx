@@ -38,7 +38,6 @@ import {
     MoreHorizontal,
     Pencil,
     Trash2,
-    Briefcase,
     Eye,
     RefreshCw,
     Users,
@@ -57,6 +56,7 @@ import {
     X,
     FileText,
     Archive,
+    Briefcase,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -76,6 +76,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { JobDashboardWidgets } from "@/components/dashboard/job-widgets"
+import { PageHeader } from "@/components/page-header"
 
 export type JobStatus = 'draft' | 'active' | 'closed' | 'archived'
 
@@ -632,12 +633,11 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
         <div className="dashboard-container space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">{t("jobs.title")}</h1>
-                    <p className="text-muted-foreground mt-1">
-                        {t("jobs.subtitle")}
-                    </p>
-                </div>
+                <PageHeader
+                    titleKey="jobs.title"
+                    subtitleKey="jobs.subtitle"
+                    className="px-0 pt-0 pb-0"
+                />
             </div>
 
             {/* Dashboard Widgets */}

@@ -35,6 +35,14 @@ import { toast } from "sonner"
 import { getLocalizedLanguageName } from "@/lib/language-translations"
 import type { PersonalData } from "./store"
 
+// Helper function to detect text direction based on content
+const detectTextDirection = (text: string): "rtl" | "ltr" => {
+    if (!text) return "ltr"
+    // Arabic Unicode range: \u0600-\u06FF
+    const arabicRegex = /[\u0600-\u06FF]/
+    return arabicRegex.test(text.charAt(0)) ? "rtl" : "ltr"
+}
+
 interface Job {
     id: string
     title: string
@@ -217,7 +225,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.namePlaceholder")}
-                                                dir={locale === "ar" ? "rtl" : "ltr"}
+                                                dir={detectTextDirection(field.value || "")}
                                                 className="h-10"
                                                 {...field}
                                             />
@@ -339,7 +347,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.majorPlaceholder")}
-                                                dir={locale === "ar" ? "rtl" : "ltr"}
+                                                dir={detectTextDirection(field.value || "")}
                                                 className="h-10 w-full"
                                                 {...field}
                                             />
@@ -455,7 +463,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                             dir={isRTL ? "rtl" : "ltr"}
                                                             className="flex gap-6 mt-2"
                                                         >
-                                                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                                            <div className="flex items-center gap-3 rtl:flex-row-reverse">
                                                                 <RadioGroupItem value="true" id={`sq-${index}-yes`} />
                                                                 <label
                                                                     htmlFor={`sq-${index}-yes`}
@@ -464,7 +472,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                                                     {t("common.yes")}
                                                                 </label>
                                                             </div>
-                                                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                                            <div className="flex items-center gap-3 rtl:flex-row-reverse">
                                                                 <RadioGroupItem value="false" id={`sq-${index}-no`} />
                                                                 <label
                                                                     htmlFor={`sq-${index}-no`}

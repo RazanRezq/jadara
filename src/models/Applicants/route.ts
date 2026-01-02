@@ -105,13 +105,27 @@ app.get('/list', authenticate, async (c) => {
 
         const skip = (page - 1) * limit
         const total = await Applicant.countDocuments(query)
-        const applicants = await Applicant.find(query)
-            .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
-            .populate('jobId', 'title currency')
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
-            .lean()
+        
+        // Fetch applicants with safe populate
+        let applicants
+        try {
+            applicants = await Applicant.find(query)
+                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
+                .populate('jobId', 'title currency')
+                .skip(skip)
+                .limit(limit)
+                .sort({ createdAt: -1 })
+                .lean()
+        } catch (populateError) {
+            // If populate fails, try without populate
+            console.error('Error populating jobId, fetching without populate:', populateError)
+            applicants = await Applicant.find(query)
+                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
+                .skip(skip)
+                .limit(limit)
+                .sort({ createdAt: -1 })
+                .lean()
+        }
 
         // Fetch related data (evaluations, review badges, and interviews) if requested
         let evaluationsMap = new Map()
@@ -119,99 +133,119 @@ app.get('/list', authenticate, async (c) => {
         let interviewsMap = new Map()
 
         if (includeRelations && applicants.length > 0) {
-            const applicantIds = applicants.map((a: any) => a._id)
+            try {
+                const applicantIds = applicants.map((a: any) => a._id)
 
-            // Fetch evaluations, reviews, and interviews in parallel
-            const [evaluations, reviews, interviews] = await Promise.all([
-                // Fetch evaluations
-                Evaluation.find({ applicantId: { $in: applicantIds } })
-                    .select('applicantId summary strengths weaknesses recommendation overallScore categoryScores')
-                    .lean(),
+                // Fetch evaluations, reviews, and interviews in parallel
+                const [evaluations, reviews, interviews] = await Promise.all([
+                    // Fetch evaluations
+                    Evaluation.find({ applicantId: { $in: applicantIds } })
+                        .select('applicantId summary strengths weaknesses recommendation overallScore categoryScores')
+                        .lean()
+                        .catch(() => []), // Return empty array on error
 
-                // Fetch reviews with reviewer info
-                Review.aggregate([
-                    { $match: { applicantId: { $in: applicantIds } } },
-                    {
-                        $lookup: {
-                            from: 'users',
-                            localField: 'reviewerId',
-                            foreignField: '_id',
-                            as: 'reviewer'
-                        }
-                    },
-                    { $unwind: '$reviewer' },
-                    { $match: { 'reviewer.role': 'reviewer' } }, // Only include reviews from reviewers
-                    {
-                        $project: {
-                            applicantId: 1,
-                            reviewerId: 1,
-                            rating: 1,
-                            reviewerName: '$reviewer.name',
-                            reviewerInitials: {
-                                $concat: [
-                                    { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, 0] }, 0, 1] },
-                                    { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, -1] }, 0, 1] }
-                                ]
+                    // Fetch reviews with reviewer info
+                    Review.aggregate([
+                        { $match: { applicantId: { $in: applicantIds } } },
+                        {
+                            $lookup: {
+                                from: 'users',
+                                localField: 'reviewerId',
+                                foreignField: '_id',
+                                as: 'reviewer'
+                            }
+                        },
+                        { $unwind: { path: '$reviewer', preserveNullAndEmptyArrays: false } },
+                        { $match: { 'reviewer.role': 'reviewer' } }, // Only include reviews from reviewers
+                        {
+                            $project: {
+                                applicantId: 1,
+                                reviewerId: 1,
+                                rating: 1,
+                                reviewerName: '$reviewer.name',
+                                reviewerInitials: {
+                                    $concat: [
+                                        { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, 0] }, 0, 1] },
+                                        { $substr: [{ $arrayElemAt: [{ $split: ['$reviewer.name', ' '] }, -1] }, 0, 1] }
+                                    ]
+                                }
                             }
                         }
-                    }
-                ]),
+                    ]).catch(() => []), // Return empty array on error
 
-                // Fetch interviews
-                Interview.find({
-                    applicantId: { $in: applicantIds },
-                    status: { $in: ['scheduled', 'confirmed'] } // Only fetch upcoming/scheduled interviews
-                })
-                    .select('applicantId scheduledDate scheduledTime duration meetingLink notes status')
-                    .sort({ scheduledDate: 1 }) // Get earliest upcoming interview
-                    .lean()
-            ])
+                    // Fetch interviews
+                    Interview.find({
+                        applicantId: { $in: applicantIds },
+                        status: { $in: ['scheduled', 'confirmed'] } // Only fetch upcoming/scheduled interviews
+                    })
+                        .select('applicantId scheduledDate scheduledTime duration meetingLink notes status')
+                        .sort({ scheduledDate: 1 }) // Get earliest upcoming interview
+                        .lean()
+                        .catch(() => []) // Return empty array on error
+                ])
 
-            // Build evaluations map
-            evaluations.forEach((evaluation: any) => {
-                const applicantId = String(evaluation.applicantId)
-                evaluationsMap.set(applicantId, {
-                    summary: evaluation.summary,
-                    strengths: evaluation.strengths,
-                    weaknesses: evaluation.weaknesses,
-                    recommendation: evaluation.recommendation,
-                    overallScore: evaluation.overallScore,
-                    categoryScores: evaluation.categoryScores,
-                })
-            })
-
-            // Build reviews map (grouped by applicant)
-            const reviewsByApplicant = new Map()
-            reviews.forEach((review: any) => {
-                const applicantId = String(review.applicantId)
-                if (!reviewsByApplicant.has(applicantId)) {
-                    reviewsByApplicant.set(applicantId, [])
-                }
-                reviewsByApplicant.get(applicantId).push({
-                    reviewerId: String(review.reviewerId),
-                    rating: review.rating,
-                    initials: review.reviewerInitials || review.reviewerName.substring(0, 2).toUpperCase(),
-                    name: review.reviewerName,
-                })
-            })
-            reviewsMap = reviewsByApplicant
-
-            // Build interviews map (only the most recent upcoming interview per applicant)
-            interviews.forEach((interview: any) => {
-                const applicantId = String(interview.applicantId)
-                // Only store the first (earliest) interview for each applicant
-                if (!interviewsMap.has(applicantId)) {
-                    interviewsMap.set(applicantId, {
-                        id: String(interview._id),
-                        scheduledDate: interview.scheduledDate,
-                        scheduledTime: interview.scheduledTime,
-                        duration: interview.duration,
-                        meetingLink: interview.meetingLink,
-                        notes: interview.notes,
-                        status: interview.status,
+                // Build evaluations map
+                if (Array.isArray(evaluations)) {
+                    evaluations.forEach((evaluation: any) => {
+                        if (evaluation && evaluation.applicantId) {
+                            const applicantId = String(evaluation.applicantId)
+                            evaluationsMap.set(applicantId, {
+                                summary: evaluation.summary,
+                                strengths: evaluation.strengths,
+                                weaknesses: evaluation.weaknesses,
+                                recommendation: evaluation.recommendation,
+                                overallScore: evaluation.overallScore,
+                                categoryScores: evaluation.categoryScores,
+                            })
+                        }
                     })
                 }
-            })
+
+                // Build reviews map (grouped by applicant)
+                if (Array.isArray(reviews)) {
+                    const reviewsByApplicant = new Map()
+                    reviews.forEach((review: any) => {
+                        if (review && review.applicantId && review.reviewerName) {
+                            const applicantId = String(review.applicantId)
+                            if (!reviewsByApplicant.has(applicantId)) {
+                                reviewsByApplicant.set(applicantId, [])
+                            }
+                            reviewsByApplicant.get(applicantId).push({
+                                reviewerId: String(review.reviewerId),
+                                rating: review.rating,
+                                initials: review.reviewerInitials || (review.reviewerName ? review.reviewerName.substring(0, 2).toUpperCase() : 'NA'),
+                                name: review.reviewerName,
+                            })
+                        }
+                    })
+                    reviewsMap = reviewsByApplicant
+                }
+
+                // Build interviews map (only the most recent upcoming interview per applicant)
+                if (Array.isArray(interviews)) {
+                    interviews.forEach((interview: any) => {
+                        if (interview && interview.applicantId) {
+                            const applicantId = String(interview.applicantId)
+                            // Only store the first (earliest) interview for each applicant
+                            if (!interviewsMap.has(applicantId)) {
+                                interviewsMap.set(applicantId, {
+                                    id: String(interview._id),
+                                    scheduledDate: interview.scheduledDate,
+                                    scheduledTime: interview.scheduledTime,
+                                    duration: interview.duration,
+                                    meetingLink: interview.meetingLink,
+                                    notes: interview.notes,
+                                    status: interview.status,
+                                })
+                            }
+                        }
+                    })
+                }
+            } catch (relationsError) {
+                // Log error but don't fail the entire request
+                console.error('Error fetching related data:', relationsError)
+                // Continue with empty maps - the applicants will still be returned
+            }
         }
 
         // Remove sensitive data for reviewers
@@ -290,6 +324,7 @@ app.get('/list', authenticate, async (c) => {
             },
         })
     } catch (error) {
+        console.error('Error in /api/applicants/list:', error)
         return c.json(
             {
                 success: false,

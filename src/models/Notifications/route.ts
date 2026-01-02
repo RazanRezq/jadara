@@ -5,10 +5,51 @@ import Notification from './notificationSchema'
 
 const app = new Hono()
 
+// Ensure indexes are created (runs once, idempotent)
+async function ensureIndexes() {
+    try {
+        await Notification.createIndexes()
+        console.log('[Notifications] Indexes created successfully')
+    } catch (error) {
+        console.error('[Notifications] Error creating indexes:', error)
+    }
+}
+
+// GET /api/notifications/health - Health check endpoint
+app.get('/health', async (c) => {
+    try {
+        await dbConnect()
+        const count = await Notification.countDocuments()
+        return c.json({
+            success: true,
+            message: 'Notifications API is healthy',
+            data: { totalNotifications: count }
+        })
+    } catch (error: any) {
+        console.error('[Notifications Health] Error:', error)
+        return c.json({
+            success: false,
+            error: 'Health check failed',
+            details: error.message
+        }, 500)
+    }
+})
+
 // GET /api/notifications - Get all notifications for current user (with pagination, filtering, search)
 app.get('/', async (c) => {
     try {
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Notifications API] Starting request...')
+        }
+
         await dbConnect()
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Notifications API] Database connected')
+        }
+
+        // Ensure indexes are created
+        await ensureIndexes()
 
         const userId = c.req.query('userId')
         const page = parseInt(c.req.query('page') || '1')
@@ -17,6 +58,10 @@ app.get('/', async (c) => {
         const type = c.req.query('type')
         const priority = c.req.query('priority')
         const search = c.req.query('search')
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Notifications API] Query params:', { userId, page, limit, status, type, priority, search })
+        }
 
         if (!userId) {
             return c.json({ success: false, error: 'User ID is required' }, 400)
@@ -60,6 +105,10 @@ app.get('/', async (c) => {
 
         const skip = (page - 1) * limit
 
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Notifications API] Executing queries with:', { query, skip, limit })
+        }
+
         // Execute queries in parallel
         const [notifications, total, unreadCount] = await Promise.all([
             Notification.find(query)
@@ -70,6 +119,14 @@ app.get('/', async (c) => {
             Notification.countDocuments(query),
             Notification.countDocuments({ userId: userIdObjectId, isRead: false }),
         ])
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Notifications API] Query results:', {
+                notificationCount: notifications.length,
+                total,
+                unreadCount
+            })
+        }
 
         return c.json({
             success: true,
