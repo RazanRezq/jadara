@@ -177,18 +177,29 @@ export function formatApplicantsForExport(applicants: any[], includeAISummary = 
 
         // Extract AI evaluation data
         const evaluation = applicant.evaluation
-        const aiSummary = evaluation?.summary || "No AI evaluation available"
 
-        const topStrengths = evaluation?.strengths
-            ?.slice(0, 3)
+        // Handle bilingual fields - prefer English, fallback to Arabic
+        const aiSummary = evaluation?.summary?.en || evaluation?.summary?.ar || evaluation?.summary || "No AI evaluation available"
+
+        const topStrengths = evaluation?.strengths?.en?.slice(0, 3)
             .map((s: string) => `• ${s}`)
-            .join("\n") || "N/A"
+            .join("\n") ||
+            evaluation?.strengths?.ar?.slice(0, 3)
+            .map((s: string) => `• ${s}`)
+            .join("\n") ||
+            (Array.isArray(evaluation?.strengths)
+                ? evaluation.strengths.slice(0, 3).map((s: string) => `• ${s}`).join("\n")
+                : "N/A")
 
-        const redFlags = evaluation?.redFlags && evaluation.redFlags.length > 0
+        const redFlags = (evaluation?.redFlags?.en && evaluation.redFlags.en.length > 0)
+            ? evaluation.redFlags.en.map((r: string) => `⚠️ ${r}`).join("\n")
+            : (evaluation?.redFlags?.ar && evaluation.redFlags.ar.length > 0)
+            ? evaluation.redFlags.ar.map((r: string) => `⚠️ ${r}`).join("\n")
+            : (Array.isArray(evaluation?.redFlags) && evaluation.redFlags.length > 0)
             ? evaluation.redFlags.map((r: string) => `⚠️ ${r}`).join("\n")
             : "None"
 
-        const recommendation = evaluation?.recommendation || "Pending review"
+        const recommendation = evaluation?.recommendation?.en || evaluation?.recommendation?.ar || evaluation?.recommendation || "Pending review"
 
         const aiData = [aiSummary, topStrengths, redFlags, recommendation]
 

@@ -32,6 +32,8 @@ import { ApplicantDashboardWidgets } from "@/components/dashboard/applicant-widg
 import { ViewApplicantDialog } from "./view-applicant-dialog"
 import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
 import { AIRecommendedSection } from "./ai-recommended-section"
+import { ExportButton } from "@/components/export-button"
+import { formatApplicantsForExport } from "@/lib/export-utils"
 
 // Types
 import type {
@@ -478,6 +480,22 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         return true
     })
 
+    // Prepare export data (includes AI evaluations if available)
+    const exportData = (() => {
+        const applicantsWithEvaluations = filteredApplicants.map(applicant => ({
+            ...applicant,
+            evaluation: evaluations.get(applicant.id)
+        }))
+
+        const { headers, rows } = formatApplicantsForExport(applicantsWithEvaluations, true)
+
+        return {
+            headers,
+            rows,
+            filename: `Applicants_Export_${new Date().toISOString().split('T')[0]}`
+        }
+    })()
+
     return (
         <div className="dashboard-container flex flex-col min-h-screen">
             {/* Page Header */}
@@ -516,6 +534,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                         onFiltersChange={handleFiltersChange}
                         onClearAll={clearAllFilters}
                     />
+                }
+                exportSlot={
+                    <ExportButton data={exportData} variant="outline" size="default" />
                 }
                 totalApplicants={total}
                 onRefresh={fetchApplicants}

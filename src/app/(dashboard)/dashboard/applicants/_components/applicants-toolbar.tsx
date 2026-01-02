@@ -34,6 +34,8 @@ interface ApplicantsToolbarProps {
     onJobFilterChange: (jobId: string) => void
     // Filter component slot (renders the popover)
     filterSlot: ReactNode
+    // Export component slot (renders the export button)
+    exportSlot?: ReactNode
     // Stats
     totalApplicants: number
     // Actions
@@ -50,6 +52,7 @@ export function ApplicantsToolbar({
     jobFilter,
     onJobFilterChange,
     filterSlot,
+    exportSlot,
     totalApplicants,
     onRefresh,
     isLoading,
@@ -90,7 +93,7 @@ export function ApplicantsToolbar({
                         </Select>
                     </div>
 
-                    {/* Right: View Toggle + Filter Button + Refresh */}
+                    {/* Right: View Toggle + Filter Button + Export + Refresh */}
                     <div className="flex items-center gap-2">
                         {/* View Mode Toggle */}
                         <ToggleGroup
@@ -119,6 +122,9 @@ export function ApplicantsToolbar({
 
                         {/* Filter Popover Slot */}
                         {filterSlot}
+
+                        {/* Export Button Slot */}
+                        {exportSlot}
 
                         {/* Refresh Button */}
                         <Button
