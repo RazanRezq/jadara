@@ -14,6 +14,7 @@ import {
     ScrollText,
     UserCog,
     Activity,
+    Settings,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -169,6 +170,14 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         icon: Activity,
                         iconColor: "text-teal-400",
                         isActive: pathname.startsWith("/dashboard/system-health"),
+                        requiredRole: "superadmin" as UserRole,
+                    },
+                    {
+                        title: t("sidebar.settings"),
+                        url: "/dashboard/settings",
+                        icon: Settings,
+                        iconColor: "text-indigo-400",
+                        isActive: pathname.startsWith("/dashboard/settings"),
                         requiredRole: "superadmin" as UserRole,
                     },
                 ],
