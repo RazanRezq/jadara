@@ -718,13 +718,16 @@ ${parsedResume.certifications.length > 0 ? parsedResume.certifications.join(', '
     if (voiceAnalysis.length > 0) {
         profile += `
 ## Voice Interview Responses
-${voiceAnalysis.map(v => `
+${voiceAnalysis.map(v => {
+    const isFailed = v.transcript === '[TRANSCRIPTION_FAILED]' || !v.transcript || v.transcript.trim() === ''
+    return `
 ### Question (Weight: ${v.questionWeight}/10): ${v.questionText}
-**Response:** ${v.transcript}
-${v.analysis?.sentiment ? `**Sentiment:** ${v.analysis.sentiment.label} (${v.analysis.sentiment.score.toFixed(2)})` : ''}
-${v.analysis?.confidence ? `**Confidence Score:** ${v.analysis.confidence.score}%` : ''}
-${v.analysis?.keyPhrases?.length ? `**Key Phrases:** ${v.analysis.keyPhrases.join(', ')}` : ''}
-`).join('')}
+**Response:** ${isFailed ? '⚠️ [AUDIO TRANSCRIPTION FAILED - Unable to process voice response. Manual review required.]' : v.transcript}
+${!isFailed && v.analysis?.sentiment ? `**Sentiment:** ${v.analysis.sentiment.label} (${v.analysis.sentiment.score.toFixed(2)})` : ''}
+${!isFailed && v.analysis?.confidence ? `**Confidence Score:** ${v.analysis.confidence.score}%` : ''}
+${!isFailed && v.analysis?.keyPhrases?.length ? `**Key Phrases:** ${v.analysis.keyPhrases.join(', ')}` : ''}
+`
+}).join('')}
 `
     }
 
@@ -1059,13 +1062,38 @@ export async function buildAIAnalysisBreakdown(
         // Analyze each voice response with AI
         const enhancedResponses = await Promise.all(
             candidateData.voiceAnalysis.map(async (v) => {
+                // Check if transcription failed
+                const isFailed = v.transcript === '[TRANSCRIPTION_FAILED]' || !v.transcript || v.transcript.trim() === ''
+
                 const baseAnalysis = {
                     questionText: v.questionText,
                     weight: v.questionWeight,
-                    transcriptLength: v.transcript.length,
-                    transcript: v.transcript.substring(0, 500), // Include first 500 chars for context
-                    sentiment: v.analysis?.sentiment?.label || 'neutral',
-                    confidence: v.analysis?.confidence?.score || 0,
+                    transcriptLength: isFailed ? 0 : v.transcript.length,
+                    transcript: isFailed ? '[TRANSCRIPTION_FAILED]' : v.transcript.substring(0, 500),
+                    sentiment: isFailed ? 'failed' : (v.analysis?.sentiment?.label || 'neutral'),
+                    confidence: isFailed ? 0 : (v.analysis?.confidence?.score || 0),
+                    transcriptionFailed: isFailed,
+                }
+
+                // If transcription failed, return failure analysis
+                if (isFailed) {
+                    return {
+                        ...baseAnalysis,
+                        relevanceScore: 0,
+                        communicationScore: 0,
+                        keyPointsMentioned: { en: [], ar: [] },
+                        strengthsInResponse: { en: [], ar: [] },
+                        areasForImprovement: { en: ['Voice response could not be processed'], ar: ['لم يتم معالجة الرد الصوتي'] },
+                        redFlagsInResponse: { en: ['Audio transcription failed'], ar: ['فشل نسخ الصوت'] },
+                        specificFeedback: {
+                            en: 'Voice response could not be transcribed. The audio file may be corrupted, too short, or have poor quality. Manual review of the original audio is required.',
+                            ar: 'لم يتم نسخ الرد الصوتي. قد يكون ملف الصوت تالفًا أو قصيرًا جدًا أو ذا جودة رديئة. يلزم مراجعة يدوية للصوت الأصلي.'
+                        },
+                        aiReasoning: {
+                            en: '⚠️ TRANSCRIPTION FAILED - Audio could not be processed. Requires manual review.',
+                            ar: '⚠️ فشل النسخ - لم يتم معالجة الصوت. يتطلب مراجعة يدوية.'
+                        }
+                    }
                 }
 
                 // Get AI-enhanced analysis if available

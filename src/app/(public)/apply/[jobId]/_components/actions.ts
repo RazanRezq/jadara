@@ -217,30 +217,30 @@ export async function submitApplication(
                 }
             }
 
-            // Build job criteria from job document
+            // Build job criteria from job document (with null safety)
             const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
-                title: job.title,
-                description: job.description,
-                skills: job.skills.map((s: any) => ({
+                title: job.title || '',
+                description: job.description || '',
+                skills: (job.skills || []).map((s: any) => ({
                     name: s.name,
-                    importance: s.importance,
+                    importance: s.importance || 'preferred',
                     type: s.type,
                 })),
                 minExperience: job.minExperience || 0,
-                languages: job.languages.map((l: any) => ({
+                languages: (job.languages || []).map((l: any) => ({
                     language: l.language,
-                    level: l.level,
+                    level: l.level || 'intermediate',
                 })),
-                criteria: job.criteria.map((c: any) => ({
+                criteria: (job.criteria || []).map((c: any) => ({
                     name: c.name,
-                    description: c.description,
-                    weight: c.weight,
-                    required: c.required,
+                    description: c.description || '',
+                    weight: c.weight || 5,
+                    required: c.required || false,
                 })),
-                screeningQuestions: job.screeningQuestions?.map((sq: any) => ({
+                screeningQuestions: (job.screeningQuestions || []).map((sq: any) => ({
                     question: sq.question,
-                    idealAnswer: sq.idealAnswer || false,
-                    disqualify: sq.disqualify,
+                    idealAnswer: sq.idealAnswer ?? true,
+                    disqualify: sq.disqualify || false,
                 })),
                 salaryMin: job.salaryMin,
                 salaryMax: job.salaryMax,
@@ -273,9 +273,20 @@ export async function submitApplication(
             console.log('[Submission] Calling evaluateCandidate...')
             console.log('[Submission] Voice responses:', voiceResponses.length)
             console.log('[Submission] Text responses:', textResponses.length)
+            console.log('[Submission] Job title:', jobCriteria.title)
+            console.log('[Submission] Skills count:', jobCriteria.skills.length)
+            console.log('[Submission] Languages count:', jobCriteria.languages.length)
+            console.log('[Submission] Criteria count:', jobCriteria.criteria.length)
+            console.log('[Submission] CV URL:', payload.fileUploads.cvUrl ? 'provided' : 'not provided')
 
             // Call the evaluation directly
             const result = await evaluateCandidate(candidateInput)
+
+            console.log('[Submission] evaluateCandidate returned:', {
+                success: result.success,
+                hasEvaluation: !!result.evaluation,
+                error: result.error,
+            })
 
             if (result.success && result.evaluation) {
                 console.log("[Submission] AI evaluation completed successfully")
@@ -358,10 +369,18 @@ export async function submitApplication(
         } catch (evalError) {
             console.error("[Submission] AI evaluation error:", evalError)
 
+            // Log the full error details
+            if (evalError instanceof Error) {
+                console.error("[Submission] Error name:", evalError.name)
+                console.error("[Submission] Error message:", evalError.message)
+                console.error("[Submission] Error stack:", evalError.stack)
+            }
+
             // Update applicant with failed status but still return success
+            const errorMessage = evalError instanceof Error ? evalError.message : 'Evaluation error'
             await Applicant.findByIdAndUpdate(applicantId, {
                 evaluationStatus: 'failed',
-                evaluationError: evalError instanceof Error ? evalError.message : 'Evaluation error',
+                evaluationError: errorMessage,
             })
 
             return {

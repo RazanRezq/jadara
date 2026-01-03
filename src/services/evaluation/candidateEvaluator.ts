@@ -119,6 +119,13 @@ export async function evaluateCandidate(
             analysis?: VoiceAnalysisResult
         }> = []
 
+        // Track failed transcriptions to add as red flags
+        const failedTranscriptions: Array<{
+            questionId: string
+            questionText: string
+            error: string
+        }> = []
+
         if (input.voiceResponses.length > 0) {
             console.log('🎯 [Evaluator] ============================================')
             console.log('🎯 [Evaluator] Processing', input.voiceResponses.length, 'voice responses')
@@ -173,19 +180,36 @@ export async function evaluateCandidate(
                     console.error(`   ❌ Transcription FAILED for question: ${voiceResponse.questionId}`)
                     console.error(`   - Error: ${result?.error || 'Unknown error'}`)
                     console.error(`   - Audio URL was: ${voiceResponse.audioUrl}`)
-                    
+
+                    // Track failed transcription for red flags
+                    failedTranscriptions.push({
+                        questionId: voiceResponse.questionId,
+                        questionText: voiceResponse.questionText,
+                        error: result?.error || 'Audio transcription failed',
+                    })
+
+                    // Still push empty transcript but mark as failed
                     transcripts.push({
                         questionId: voiceResponse.questionId,
-                        rawTranscript: '',
-                        cleanTranscript: '',
+                        rawTranscript: '[TRANSCRIPTION_FAILED]',
+                        cleanTranscript: '[TRANSCRIPTION_FAILED]',
+                    })
+
+                    // Add to voice analysis with failed marker
+                    voiceAnalysisResults.push({
+                        questionId: voiceResponse.questionId,
+                        questionText: voiceResponse.questionText,
+                        questionWeight: voiceResponse.questionWeight,
+                        transcript: '[TRANSCRIPTION_FAILED]',
+                        analysis: undefined,
                     })
                 }
             }
             
             console.log('🎯 [Evaluator] Voice processing summary:')
             console.log(`   - Total voice responses: ${input.voiceResponses.length}`)
-            console.log(`   - Successful transcriptions: ${transcripts.filter(t => t.rawTranscript).length}`)
-            console.log(`   - Failed transcriptions: ${transcripts.filter(t => !t.rawTranscript).length}`)
+            console.log(`   - Successful transcriptions: ${transcripts.filter(t => t.rawTranscript && t.rawTranscript !== '[TRANSCRIPTION_FAILED]').length}`)
+            console.log(`   - Failed transcriptions: ${failedTranscriptions.length}`)
             console.log('🎯 [Evaluator] ============================================')
         } else {
             console.log('ℹ️ [Evaluator] No voice responses to process')
@@ -210,26 +234,41 @@ export async function evaluateCandidate(
         })
 
         let parsedResume = undefined
+        let resumeParsingFailed = false
 
         if (input.cvUrl) {
-            const resumeResult = await parseResume(input.cvUrl)
+            console.log('[Evaluator] 📄 Parsing resume from:', input.cvUrl)
+            try {
+                const resumeResult = await parseResume(input.cvUrl)
 
-            if (resumeResult.success && resumeResult.profile) {
-                let portfolioProfile = undefined
+                if (resumeResult.success && resumeResult.profile) {
+                    console.log('[Evaluator] ✅ Resume parsed successfully')
+                    let portfolioProfile = undefined
 
-                if (input.personalData.portfolioUrl || input.personalData.behanceUrl) {
-                    const portfolioUrl = input.personalData.portfolioUrl || input.personalData.behanceUrl
-                    if (portfolioUrl) {
-                        const portfolioResult = await parsePortfolioProfile(portfolioUrl)
-                        if (portfolioResult.success) {
-                            portfolioProfile = portfolioResult.profile
+                    if (input.personalData.portfolioUrl || input.personalData.behanceUrl) {
+                        const portfolioUrl = input.personalData.portfolioUrl || input.personalData.behanceUrl
+                        if (portfolioUrl) {
+                            const portfolioResult = await parsePortfolioProfile(portfolioUrl)
+                            if (portfolioResult.success) {
+                                portfolioProfile = portfolioResult.profile
+                            }
                         }
                     }
-                }
 
-                parsedResume = await mergeProfiles(resumeResult.profile, undefined, portfolioProfile)
+                    parsedResume = await mergeProfiles(resumeResult.profile, undefined, portfolioProfile)
+                } else {
+                    console.error('[Evaluator] ❌ Resume parsing failed:', resumeResult.error)
+                    resumeParsingFailed = true
+                }
+            } catch (resumeError) {
+                console.error('[Evaluator] ❌ Resume parsing error:', resumeError)
+                resumeParsingFailed = true
             }
+        } else {
+            console.log('[Evaluator] ℹ️ No CV URL provided')
         }
+
+        // Note: Resume parsing failure will be added to red flags after preEvaluationRedFlags is declared
 
         onProgress?.({
             stage: 'parsing_resume',
@@ -423,6 +462,22 @@ export async function evaluateCandidate(
 
         // Pre-evaluation checks for critical HR requirements
         const preEvaluationRedFlags: { en: string[], ar: string[] } = { en: [], ar: [] }
+
+        // Check for failed voice transcriptions (critical red flag)
+        if (failedTranscriptions.length > 0) {
+            for (const failed of failedTranscriptions) {
+                preEvaluationRedFlags.en.push(`Voice response failed to process: "${failed.questionText}" - ${failed.error}`)
+                preEvaluationRedFlags.ar.push(`فشل معالجة الرد الصوتي: "${failed.questionText}" - ${failed.error}`)
+            }
+            console.log(`⚠️ [Evaluator] Added ${failedTranscriptions.length} failed transcription red flags`)
+        }
+
+        // Add red flag if resume parsing failed (declared earlier, now we can add to red flags)
+        if (resumeParsingFailed) {
+            preEvaluationRedFlags.en.push('Resume/CV could not be parsed - manual review recommended')
+            preEvaluationRedFlags.ar.push('لم يتم تحليل السيرة الذاتية - يُنصح بالمراجعة اليدوية')
+            console.log('⚠️ [Evaluator] Added resume parsing failure red flag')
+        }
 
         // Check knockout questions
         if (input.personalData.screeningAnswers && input.jobCriteria.screeningQuestions) {
