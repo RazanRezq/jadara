@@ -129,6 +129,8 @@ export function VoiceQuestion({
     const isStartingRecordingRef = useRef<boolean>(false) // Guard against multiple startRecording calls
     const usedTimesliceRef = useRef<boolean>(false) // Track if timeslice was used for start()
     const dataRequestIntervalRef = useRef<NodeJS.Timeout | null>(null) // For manual data requests on Safari
+    const audioDetectedRef = useRef<boolean>(false) // Track if we've detected any audio input
+    const noAudioWarningShownRef = useRef<boolean>(false) // Prevent showing warning multiple times
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
@@ -314,6 +316,52 @@ export function VoiceQuestion({
             analyserRef.current = analyser
 
             console.log('[Voice Permission] Audio context and analyser setup complete')
+
+            // Test microphone for audio input (check if any sound is detected in first 2 seconds)
+            let audioTestPassed = false
+            const testStartTime = Date.now()
+            const testDuration = 2000 // 2 seconds
+
+            const testMicrophone = () => {
+                if (Date.now() - testStartTime > testDuration) {
+                    // Test complete
+                    if (!audioTestPassed) {
+                        console.warn('[Voice Permission] ⚠️ Microphone test: No audio detected during test period')
+                        console.warn('[Voice Permission] The microphone may be muted or not receiving audio')
+                        // Don't block - just warn
+                        toast.warning(
+                            isRTL
+                                ? "⚠️ لم يتم اكتشاف صوت من الميكروفون. تأكد من أن الميكروفون يعمل."
+                                : "⚠️ No sound detected from microphone. Please verify it's working correctly.",
+                            { duration: 6000 }
+                        )
+                    } else {
+                        console.log('[Voice Permission] ✅ Microphone test passed - audio input detected')
+                    }
+                    return
+                }
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount)
+                analyser.getByteFrequencyData(dataArray)
+
+                // Calculate average level
+                let total = 0
+                for (let i = 0; i < dataArray.length; i++) {
+                    total += dataArray[i]
+                }
+                const avgLevel = total / dataArray.length
+
+                // If we detect any audio above noise floor
+                if (avgLevel > 3) {
+                    audioTestPassed = true
+                }
+
+                // Continue testing
+                requestAnimationFrame(testMicrophone)
+            }
+
+            // Start microphone test
+            requestAnimationFrame(testMicrophone)
         } catch (error: any) {
             console.error('[Voice Permission] ❌ Error:', error)
 
@@ -383,6 +431,18 @@ export function VoiceQuestion({
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
         analyserRef.current.getByteFrequencyData(dataArray)
 
+        // Calculate average audio level to detect if any audio is present
+        let totalLevel = 0
+        for (let i = 0; i < dataArray.length; i++) {
+            totalLevel += dataArray[i]
+        }
+        const avgLevel = totalLevel / dataArray.length
+
+        // If we detect significant audio (above noise floor), mark as detected
+        if (avgLevel > 5) {
+            audioDetectedRef.current = true
+        }
+
         // Convert to levels for visualization
         const levels = Array.from({ length: 20 }, (_, i) => {
             const start = Math.floor((i / 20) * dataArray.length)
@@ -421,13 +481,39 @@ export function VoiceQuestion({
 
         // Check if stream is active and all tracks are live
         const tracks = streamRef.current.getTracks()
+        const audioTracks = streamRef.current.getAudioTracks()
         const hasActiveTracks = tracks.length > 0 && tracks.every(track => track.readyState === 'live' && track.enabled)
+
+        // Check if any audio track is muted (this is different from 'enabled' - muted means no audio is flowing)
+        const hasMutedTracks = audioTracks.some(track => track.muted)
 
         console.log('[Voice Recording] Stream check:', {
             trackCount: tracks.length,
-            tracks: tracks.map(t => ({ kind: t.kind, readyState: t.readyState, enabled: t.enabled })),
+            audioTrackCount: audioTracks.length,
+            tracks: tracks.map(t => ({
+                kind: t.kind,
+                label: t.label,
+                readyState: t.readyState,
+                enabled: t.enabled,
+                muted: (t as MediaStreamTrack).muted,
+            })),
             hasActiveTracks,
+            hasMutedTracks,
         })
+
+        // Warn if tracks appear muted
+        if (hasMutedTracks) {
+            console.warn('[Voice Recording] ⚠️ Audio track is muted! This usually means:')
+            console.warn('  - Another app is using the microphone')
+            console.warn('  - The microphone is physically muted')
+            console.warn('  - No audio input device is connected')
+            toast.warning(
+                isRTL
+                    ? "⚠️ الميكروفون مكتوم. تأكد من عدم وجود تطبيق آخر يستخدمه."
+                    : "⚠️ Microphone appears muted. Make sure no other app is using it.",
+                { duration: 6000 }
+            )
+        }
 
         if (!hasActiveTracks) {
             console.warn('[Voice Recording] Stream is stale, requesting new permission')
@@ -565,7 +651,20 @@ export function VoiceQuestion({
 
                     if (validChunks.length === 0) {
                         console.error('[Voice Recording] All chunks are empty!')
-                        toast.error(t("apply.recordingFailed") || "Recording failed - no valid audio data")
+                        console.error('[Voice Recording] Troubleshooting suggestions:')
+                        console.error('  1. Check system sound settings - is the correct microphone selected?')
+                        console.error('  2. Check microphone volume level in system settings')
+                        console.error('  3. Ensure no other application is using the microphone')
+                        console.error('  4. Try using a different browser (Chrome, Firefox, Safari)')
+                        console.error('  5. Check if microphone has a physical mute button')
+
+                        // Provide more helpful error message to user
+                        toast.error(
+                            isRTL
+                                ? "فشل التسجيل - لم يتم التقاط أي صوت. تحقق من إعدادات الميكروفون في النظام."
+                                : "Recording failed - no audio captured. Please check your system microphone settings.",
+                            { duration: 8000 }
+                        )
                         setStage("ready")
                         return
                     }
@@ -719,7 +818,7 @@ export function VoiceQuestion({
             setStage("ready")
             isStartingRecordingRef.current = false
         }
-    }, [timeLimitSeconds, t, updateAudioLevels])
+    }, [timeLimitSeconds, t, updateAudioLevels, isRTL])
 
     /**
      * Converts a Blob to a File object with proper naming
@@ -843,6 +942,48 @@ export function VoiceQuestion({
             stopRecording(true)
         }
     }, [stage, timeRemaining, stopRecording, t])
+
+    // Check for audio input after recording starts
+    useEffect(() => {
+        if (stage !== "recording") {
+            // Reset flags when not recording
+            audioDetectedRef.current = false
+            noAudioWarningShownRef.current = false
+            return
+        }
+
+        // Check if audio has been detected after 3 seconds
+        const checkAudioTimeout = setTimeout(() => {
+            if (!audioDetectedRef.current && !noAudioWarningShownRef.current) {
+                noAudioWarningShownRef.current = true
+                console.warn('[Voice Recording] ⚠️ No audio input detected after 3 seconds!')
+
+                // Log diagnostic info
+                if (streamRef.current) {
+                    const tracks = streamRef.current.getAudioTracks()
+                    console.warn('[Voice Recording] Stream diagnostic:', {
+                        streamActive: streamRef.current.active,
+                        tracks: tracks.map(t => ({
+                            label: t.label,
+                            enabled: t.enabled,
+                            muted: t.muted,
+                            readyState: t.readyState,
+                            settings: t.getSettings(),
+                        })),
+                    })
+                }
+
+                toast.warning(
+                    isRTL
+                        ? "⚠️ لم يتم اكتشاف صوت. تحقق من إعدادات الميكروفون وتأكد من أنه غير مكتوم."
+                        : "⚠️ No audio detected. Check your microphone settings and ensure it's not muted.",
+                    { duration: 8000 }
+                )
+            }
+        }, 3000)
+
+        return () => clearTimeout(checkAudioTimeout)
+    }, [stage, isRTL])
 
     // Cleanup on unmount
     useEffect(() => {
