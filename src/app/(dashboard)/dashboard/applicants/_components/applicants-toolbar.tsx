@@ -36,6 +36,8 @@ interface ApplicantsToolbarProps {
     filterSlot: ReactNode
     // Export component slot (renders the export button)
     exportSlot?: ReactNode
+    // AI Evaluation slot (renders the run AI evaluation button)
+    aiEvaluationSlot?: ReactNode
     // Stats
     totalApplicants: number
     // Actions
@@ -53,6 +55,7 @@ export function ApplicantsToolbar({
     onJobFilterChange,
     filterSlot,
     exportSlot,
+    aiEvaluationSlot,
     totalApplicants,
     onRefresh,
     isLoading,
@@ -122,6 +125,9 @@ export function ApplicantsToolbar({
 
                         {/* Filter Popover Slot */}
                         {filterSlot}
+
+                        {/* AI Evaluation Button Slot */}
+                        {aiEvaluationSlot}
 
                         {/* Export Button Slot */}
                         {exportSlot}

@@ -20,7 +20,7 @@ import { type UserRole } from "@/lib/auth"
 import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
-import { X, Archive, Trash2, Users } from "lucide-react"
+import { X, Archive, Trash2, Users, Sparkles, Loader2 } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 
 // Components
@@ -122,6 +122,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         onConfirm: () => void
         variant?: 'default' | 'destructive'
     } | null>(null)
+
+    // AI Evaluation state
+    const [isRunningEvaluation, setIsRunningEvaluation] = useState(false)
 
     // Request deduplication refs
     const isFetchingApplicants = useRef(false)
@@ -461,6 +464,53 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
         }
     }
 
+    // Handle running AI evaluation for pending applicants
+    const handleRunAIEvaluation = async () => {
+        setIsRunningEvaluation(true)
+        try {
+            // Determine endpoint based on job filter
+            const endpoint = filters.jobFilter && filters.jobFilter !== 'all'
+                ? `/api/ai/evaluate/process-pending/${filters.jobFilter}`
+                : '/api/ai/evaluate/process-all-pending'
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+
+            if (data.success) {
+                if (data.results?.total > 0) {
+                    toast.success(
+                        t("applicants.evaluation.processSuccess")
+                            .replace("{count}", data.results.successful.toString())
+                    )
+                } else {
+                    toast.info(t("applicants.evaluation.noPending"))
+                }
+                // Refresh the applicant list to show updated scores
+                fetchApplicants()
+            } else {
+                toast.error(data.error || t("common.error"))
+            }
+        } catch (error) {
+            console.error("Failed to run AI evaluation:", error)
+            toast.error(t("common.error"))
+        } finally {
+            setIsRunningEvaluation(false)
+        }
+    }
+
+    // Count pending evaluations for button badge
+    const pendingEvaluationCount = applicants.filter(
+        a => a.evaluationStatus === 'pending'
+    ).length
+
     // Filter applicants client-side for additional filters
     const filteredApplicants = applicants.filter(applicant => {
         // Experience filter
@@ -544,6 +594,27 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                         size="default"
                         language={locale as 'en' | 'ar'}
                     />
+                }
+                aiEvaluationSlot={
+                    pendingEvaluationCount > 0 && (
+                        <Button
+                            variant="default"
+                            size="default"
+                            onClick={handleRunAIEvaluation}
+                            disabled={isRunningEvaluation}
+                            className="gap-2"
+                        >
+                            {isRunningEvaluation ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="h-4 w-4" />
+                            )}
+                            {t("applicants.evaluation.runAI")}
+                            <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs font-medium">
+                                {pendingEvaluationCount}
+                            </span>
+                        </Button>
+                    )
                 }
                 totalApplicants={total}
                 onRefresh={fetchApplicants}

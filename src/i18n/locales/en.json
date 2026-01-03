@@ -611,7 +611,10 @@
             "pending": "Pending",
             "processing": "Analyzing...",
             "completed": "Completed",
-            "failed": "Failed"
+            "failed": "Failed",
+            "runAI": "Run AI Evaluation",
+            "processSuccess": "Successfully evaluated {count} applicants",
+            "noPending": "No pending evaluations found"
         },
         "redFlags": "Red Flags",
         "redFlagPatterns": {

@@ -611,7 +611,10 @@
             "pending": "قيد الانتظار",
             "processing": "جاري التحليل...",
             "completed": "مكتمل",
-            "failed": "فشل"
+            "failed": "فشل",
+            "runAI": "تشغيل تقييم الذكاء الاصطناعي",
+            "processSuccess": "تم تقييم {count} متقدم بنجاح",
+            "noPending": "لا يوجد تقييمات معلقة"
         },
         "redFlags": "علامات تحذيرية",
         "redFlagPatterns": {

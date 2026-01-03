@@ -617,6 +617,132 @@ app.post('/re-evaluate/:applicantId', async (c) => {
 })
 
 /**
+ * Process all applicants with pending evaluation status for a job
+ * POST /process-pending/:jobId
+ */
+app.post('/process-pending/:jobId', async (c) => {
+    try {
+        await dbConnect()
+        const jobId = c.req.param('jobId')
+
+        // Find all applicants for this job with pending evaluation status
+        const pendingApplicants = await Applicant.find({
+            jobId,
+            evaluationStatus: 'pending',
+            isComplete: true,
+        }).select('_id')
+
+        if (pendingApplicants.length === 0) {
+            return c.json({
+                success: true,
+                message: 'No pending applicants to evaluate',
+                count: 0,
+            })
+        }
+
+        const applicantIds = pendingApplicants.map(a => a._id.toString())
+
+        console.log('[API] Processing', applicantIds.length, 'pending applicants for job:', jobId)
+
+        // Run batch evaluation
+        const result = await batchEvaluateCandidates(
+            { jobId, applicantIds },
+            buildCandidateData
+        )
+
+        return c.json({
+            success: true,
+            message: `Processed ${result.totalProcessed} candidates`,
+            results: {
+                total: result.totalProcessed,
+                successful: result.totalProcessed - result.totalFailed,
+                failed: result.totalFailed,
+            },
+        })
+    } catch (error) {
+        console.error('[API] Process pending error:', error)
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+/**
+ * Process all applicants with pending evaluation status (all jobs)
+ * POST /process-all-pending
+ */
+app.post('/process-all-pending', async (c) => {
+    try {
+        await dbConnect()
+
+        // Find all applicants with pending evaluation status
+        const pendingApplicants = await Applicant.find({
+            evaluationStatus: 'pending',
+            isComplete: true,
+        }).select('_id jobId')
+
+        if (pendingApplicants.length === 0) {
+            return c.json({
+                success: true,
+                message: 'No pending applicants to evaluate',
+                count: 0,
+            })
+        }
+
+        console.log('[API] Processing', pendingApplicants.length, 'pending applicants across all jobs')
+
+        // Group by jobId for efficient batch processing
+        const byJob = new Map<string, string[]>()
+        for (const applicant of pendingApplicants) {
+            const jobId = applicant.jobId.toString()
+            if (!byJob.has(jobId)) {
+                byJob.set(jobId, [])
+            }
+            byJob.get(jobId)!.push(applicant._id.toString())
+        }
+
+        let totalProcessed = 0
+        let totalFailed = 0
+
+        // Process each job's applicants
+        for (const [jobId, applicantIds] of byJob) {
+            const result = await batchEvaluateCandidates(
+                { jobId, applicantIds },
+                buildCandidateData
+            )
+            totalProcessed += result.totalProcessed
+            totalFailed += result.totalFailed
+        }
+
+        return c.json({
+            success: true,
+            message: `Processed ${totalProcessed} candidates`,
+            results: {
+                total: totalProcessed,
+                successful: totalProcessed - totalFailed,
+                failed: totalFailed,
+                jobsProcessed: byJob.size,
+            },
+        })
+    } catch (error) {
+        console.error('[API] Process all pending error:', error)
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+/**
  * Get evaluation status for an applicant
  * GET /status/:applicantId
  */
