@@ -100,7 +100,7 @@ export function CalendarMonthView({
                 !day.isCurrentMonth && "bg-muted/20",
                 day.isToday && "bg-primary/5",
                 isHighlighted && "bg-amber-50 dark:bg-amber-950/20 ring-2 ring-amber-400 dark:ring-amber-600 animate-pulse-glow",
-                canCreateInterview && "cursor-pointer hover:bg-accent/50",
+                canCreateInterview && "cursor-pointer hover:bg-muted",
                 (index + 1) % 7 === 0 && "border-r-0"
               )}
               onClick={() => {

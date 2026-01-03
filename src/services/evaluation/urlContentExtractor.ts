@@ -11,7 +11,7 @@ import axios from 'axios'
 const GEMINI_MODEL = 'gemini-2.5-flash-lite'
 
 // ScrapingDog API Configuration
-const SCRAPINGDOG_API_KEY = process.env.SCRAPINGDOG_API_KEY || '69490bf1d46e913011598893'
+const SCRAPINGDOG_API_KEY = process.env.SCRAPINGDOG_API_KEY
 const SCRAPINGDOG_API_URL = 'https://api.scrapingdog.com/profile'
 
 // Rate limiting configuration

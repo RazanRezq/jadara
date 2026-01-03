@@ -8,7 +8,7 @@ const detectTextDirection = (text: string): "rtl" | "ltr" => {
     if (!text) return "ltr"
     // Arabic Unicode range: \u0600-\u06FF
     const arabicRegex = /[\u0600-\u06FF]/
-    return arabicRegex.test(text.charAt(0)) ? "rtl" : "ltr"
+    return arabicRegex.test(text) ? "rtl" : "ltr"
 }
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -286,7 +286,7 @@ export function FileUploadStep({
                         }}
                         placeholder={t("apply.notesPlaceholder")}
                         className="min-h-[120px] resize-none"
-                        dir={notes ? detectTextDirection(notes) : (isRTL ? "rtl" : "ltr")}
+                        dir={notes ? detectTextDirection(notes) : detectTextDirection(t("apply.notesPlaceholder"))}
                         maxLength={500}
                     />
                     <p className={cn(

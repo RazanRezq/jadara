@@ -205,7 +205,7 @@ export function EditUserDialog({
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all"
+                            className="gradient-lovable text-white shadow-md hover:shadow-lg hover:opacity-90 transition-all"
                         >
                             {loading ? (
                                 <>

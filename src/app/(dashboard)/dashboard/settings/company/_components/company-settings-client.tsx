@@ -299,7 +299,7 @@ export function CompanySettingsClient({ userRole }: CompanySettingsClientProps) 
                                     <Button
                                         type="submit"
                                         disabled={saving}
-                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all"
+                                        className="gradient-lovable text-white shadow-md hover:shadow-lg hover:opacity-90 transition-all"
                                     >
                                         {saving ? (
                                             <>

@@ -203,7 +203,7 @@ export function AddUserDialog({
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
+                            className="gradient-lovable text-white hover:opacity-90 transition-all"
                         >
                             {loading ? (
                                 <>

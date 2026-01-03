@@ -156,7 +156,7 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
     const getLocalizedErrorMessage = (field: string, errors: string | string[]): string => {
         const errorArray = Array.isArray(errors) ? errors : [errors]
         const firstError = errorArray[0]?.toLowerCase() || ''
-        
+
         // Map field names to localized labels
         const fieldLabels: Record<string, string> = {
             title: t("jobWizard.validationErrors.title"),
@@ -170,34 +170,34 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
             candidateDataConfig: t("jobWizard.validationErrors.candidateDataConfig"),
             retakePolicy: t("jobWizard.validationErrors.retakePolicy"),
         }
-        
+
         const fieldLabel = fieldLabels[field] || field
-        
+
         // Check for specific error patterns and return user-friendly messages
         if (field === 'languages' && firstError.includes('language')) {
             return t("jobWizard.validation.emptyLanguageEntry")
         }
-        
+
         if (field === 'skills' && (firstError.includes('skill') || firstError.includes('name'))) {
             return t("jobWizard.validation.emptySkillEntry")
         }
-        
+
         if (field === 'questions' && (firstError.includes('question') || firstError.includes('text'))) {
             return t("jobWizard.validation.emptyQuestionEntry")
         }
-        
+
         if (firstError.includes('required')) {
             return `${fieldLabel}: ${t("jobWizard.validation.fieldRequired")}`
         }
-        
+
         if (firstError.includes('at least 3')) {
             return t("jobWizard.validation.titleMin")
         }
-        
+
         if (firstError.includes('at least 10')) {
             return t("jobWizard.validation.descriptionMin")
         }
-        
+
         // Default: return the field with the original error
         return `${fieldLabel}: ${errorArray.join(', ')}`
     }
@@ -206,7 +206,7 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
         setLoading(true)
         try {
             const values = form.getValues()
-            
+
             // Debug: uncomment to see submitted data
             // console.log('[Job Submit] Submitting job data:', JSON.stringify(values, null, 2))
 
@@ -234,13 +234,13 @@ export function JobWizardDialog({ open, onOpenChange, onSuccess, userId }: JobWi
             } else {
                 // Debug: uncomment to see validation errors
                 // console.error('[Job Submit] Validation failed:', data.details)
-                
+
                 // Display user-friendly localized validation errors
                 if (data.details && Object.keys(data.details).length > 0) {
                     const errorMessages = Object.entries(data.details)
                         .map(([field, errors]) => getLocalizedErrorMessage(field, errors as string | string[]))
                         .filter(Boolean)
-                    
+
                     // Show toast with localized error messages
                     toast.error(
                         <div className="space-y-2" dir={isRTL ? "rtl" : "ltr"}>

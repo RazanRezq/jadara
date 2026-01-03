@@ -272,6 +272,8 @@ app.post('/process', async (c) => {
             voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
             socialProfileInsights: result.evaluation.socialProfileInsights,
             textResponseAnalysis: result.evaluation.textResponseAnalysis,
+            // AI Analysis Breakdown - Enhanced detailed analysis per response
+            aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
             isProcessed: true,
             processedAt: new Date(),
         }
@@ -564,6 +566,12 @@ app.post('/re-evaluate/:applicantId', async (c) => {
                 suggestedQuestions: result.evaluation.suggestedQuestions,
                 sentimentScore: result.evaluation.sentimentScore,
                 confidenceScore: result.evaluation.confidenceScore,
+                // Detailed analysis sections
+                voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+                socialProfileInsights: result.evaluation.socialProfileInsights,
+                textResponseAnalysis: result.evaluation.textResponseAnalysis,
+                // AI Analysis Breakdown - Enhanced detailed analysis per response
+                aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
                 isProcessed: true,
                 processedAt: new Date(),
             },

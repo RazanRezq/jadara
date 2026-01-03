@@ -40,7 +40,7 @@ const detectTextDirection = (text: string): "rtl" | "ltr" => {
     if (!text) return "ltr"
     // Arabic Unicode range: \u0600-\u06FF
     const arabicRegex = /[\u0600-\u06FF]/
-    return arabicRegex.test(text.charAt(0)) ? "rtl" : "ltr"
+    return arabicRegex.test(text) ? "rtl" : "ltr"
 }
 
 interface Job {
@@ -225,7 +225,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.namePlaceholder")}
-                                                dir={detectTextDirection(field.value || "")}
+                                                dir={detectTextDirection(t("apply.namePlaceholder"))}
                                                 className="h-10"
                                                 {...field}
                                             />
@@ -347,7 +347,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                         <FormControl>
                                             <Input
                                                 placeholder={t("apply.majorPlaceholder")}
-                                                dir={detectTextDirection(field.value || "")}
+                                                dir={detectTextDirection(t("apply.majorPlaceholder"))}
                                                 className="h-10 w-full"
                                                 {...field}
                                             />
@@ -628,6 +628,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
         </Card>
     )
 }
+
 
 
 
