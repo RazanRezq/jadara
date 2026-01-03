@@ -110,7 +110,7 @@ app.get('/list', authenticate, async (c) => {
         let applicants
         try {
             applicants = await Applicant.find(query)
-                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
+                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags evaluationStatus evaluationError isSuspicious isComplete submittedAt createdAt jobId')
                 .populate('jobId', 'title currency')
                 .skip(skip)
                 .limit(limit)
@@ -120,7 +120,7 @@ app.get('/list', authenticate, async (c) => {
             // If populate fails, try without populate
             console.error('Error populating jobId, fetching without populate:', populateError)
             applicants = await Applicant.find(query)
-                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags isSuspicious isComplete submittedAt createdAt jobId')
+                .select('personalData cvUrl status tags notes aiScore aiSummary aiRedFlags evaluationStatus evaluationError isSuspicious isComplete submittedAt createdAt jobId')
                 .skip(skip)
                 .limit(limit)
                 .sort({ createdAt: -1 })
@@ -304,6 +304,8 @@ app.get('/list', authenticate, async (c) => {
                     aiScore: a.aiScore,
                     aiSummary: a.aiSummary,
                     aiRedFlags: isReviewer ? undefined : a.aiRedFlags, // Hide from reviewers
+                    evaluationStatus: a.evaluationStatus,
+                    evaluationError: a.evaluationError,
                     isSuspicious: a.isSuspicious,
                     isComplete: a.isComplete,
                     submittedAt: a.submittedAt,

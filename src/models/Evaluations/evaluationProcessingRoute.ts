@@ -625,11 +625,18 @@ app.post('/process-pending/:jobId', async (c) => {
         await dbConnect()
         const jobId = c.req.param('jobId')
 
-        // Find all applicants for this job with pending evaluation status
+        // Find all applicants for this job that need evaluation
+        // Skip: already completed, currently processing, or has aiScore
         const pendingApplicants = await Applicant.find({
             jobId,
-            evaluationStatus: 'pending',
             isComplete: true,
+            evaluationStatus: { $nin: ['completed', 'processing'] },
+            $or: [
+                { evaluationStatus: 'pending' },
+                { evaluationStatus: 'failed' }, // Retry failed ones
+                { evaluationStatus: { $exists: false }, aiScore: { $exists: false } },
+                { evaluationStatus: null, aiScore: { $exists: false } },
+            ]
         }).select('_id')
 
         if (pendingApplicants.length === 0) {
@@ -680,10 +687,17 @@ app.post('/process-all-pending', async (c) => {
     try {
         await dbConnect()
 
-        // Find all applicants with pending evaluation status
+        // Find all applicants that need evaluation
+        // Skip: already completed, currently processing, or has aiScore
         const pendingApplicants = await Applicant.find({
-            evaluationStatus: 'pending',
             isComplete: true,
+            evaluationStatus: { $nin: ['completed', 'processing'] },
+            $or: [
+                { evaluationStatus: 'pending' },
+                { evaluationStatus: 'failed' }, // Retry failed ones
+                { evaluationStatus: { $exists: false }, aiScore: { $exists: false } },
+                { evaluationStatus: null, aiScore: { $exists: false } },
+            ]
         }).select('_id jobId')
 
         if (pendingApplicants.length === 0) {

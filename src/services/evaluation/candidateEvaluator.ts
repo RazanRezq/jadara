@@ -669,7 +669,8 @@ export async function evaluateCandidate(
 }
 
 /**
- * Batch evaluate multiple candidates
+ * Batch evaluate multiple candidates sequentially
+ * Processes one at a time to respect API rate limits (especially for free tier)
  */
 export async function batchEvaluateCandidates(
     input: BatchEvaluationInput,
@@ -679,7 +680,11 @@ export async function batchEvaluateCandidates(
     const results: BatchEvaluationResult['results'] = []
     let totalFailed = 0
 
-    for (const applicantId of input.applicantIds) {
+    // Process one at a time to avoid rate limiting
+    for (let i = 0; i < input.applicantIds.length; i++) {
+        const applicantId = input.applicantIds[i]
+        console.log(`[Batch] Processing applicant ${i + 1}/${input.applicantIds.length}: ${applicantId}`)
+
         try {
             const candidateInput = await getCandidateData(applicantId, input.jobId)
 
@@ -697,14 +702,25 @@ export async function batchEvaluateCandidates(
             results.push({ applicantId, success: result.success, error: result.error })
             if (!result.success) totalFailed++
 
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Check if we hit rate limit and need to wait
+            if (result.error?.includes('429') || result.error?.includes('quota')) {
+                console.log('[Batch] Rate limit detected, waiting 60 seconds before next applicant...')
+                await new Promise(resolve => setTimeout(resolve, 60000))
+            } else if (i < input.applicantIds.length - 1) {
+                // Normal delay between applicants (10 seconds to be safe with rate limits)
+                console.log('[Batch] Waiting 10 seconds before next applicant...')
+                await new Promise(resolve => setTimeout(resolve, 10000))
+            }
         } catch (error) {
-            results.push({
-                applicantId,
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            })
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            results.push({ applicantId, success: false, error: errorMessage })
             totalFailed++
+
+            // If rate limited, wait before continuing
+            if (errorMessage.includes('429') || errorMessage.includes('quota')) {
+                console.log('[Batch] Rate limit detected, waiting 60 seconds...')
+                await new Promise(resolve => setTimeout(resolve, 60000))
+            }
         }
     }
 

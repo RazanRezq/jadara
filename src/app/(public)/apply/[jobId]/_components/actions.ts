@@ -62,8 +62,10 @@ export interface SubmitApplicationResult {
     success: boolean
     error?: string
     applicantId?: string
-    // AI Evaluation runs in background - no longer blocking
-    evaluationStatus?: 'pending' | 'processing'
+    // AI Evaluation result
+    evaluationStatus?: 'pending' | 'processing' | 'completed' | 'failed'
+    aiScore?: number
+    aiSummary?: string
 }
 
 // ============================================
@@ -166,13 +168,76 @@ export async function submitApplication(
 
         const applicantId = applicant._id.toString()
 
-        console.log("[Submission] Application saved successfully with evaluationStatus: 'pending'")
-        console.log("[Submission] AI evaluation will be triggered manually from dashboard")
+        console.log("[Submission] Application saved successfully")
+        console.log("[Submission] Starting AI evaluation synchronously...")
 
-        return {
-            success: true,
-            applicantId,
-            evaluationStatus: 'pending',
+        // Run AI evaluation synchronously (blocking)
+        try {
+            // Mark as processing
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'processing',
+            })
+
+            // Call the internal evaluation API
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+            const evaluationResponse = await fetch(`${baseUrl}/api/ai/evaluate/process`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    applicantId,
+                    jobId: payload.jobId,
+                }),
+            })
+
+            const evaluationResult = await evaluationResponse.json()
+
+            if (evaluationResult.success) {
+                console.log("[Submission] AI evaluation completed successfully")
+                console.log("[Submission] Score:", evaluationResult.evaluation?.overallScore)
+
+                // Fetch the updated applicant to get the AI results
+                const updatedApplicant = await Applicant.findById(applicantId).select('aiScore aiSummary evaluationStatus')
+
+                return {
+                    success: true,
+                    applicantId,
+                    evaluationStatus: 'completed',
+                    aiScore: updatedApplicant?.aiScore,
+                    aiSummary: updatedApplicant?.aiSummary,
+                }
+            } else {
+                console.error("[Submission] AI evaluation failed:", evaluationResult.error)
+
+                // Update applicant with failed status
+                await Applicant.findByIdAndUpdate(applicantId, {
+                    evaluationStatus: 'failed',
+                    evaluationError: evaluationResult.error || 'Evaluation failed',
+                })
+
+                // Still return success for the application, just note evaluation failed
+                return {
+                    success: true,
+                    applicantId,
+                    evaluationStatus: 'failed',
+                }
+            }
+        } catch (evalError) {
+            console.error("[Submission] AI evaluation error:", evalError)
+
+            // Update applicant with failed status
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: evalError instanceof Error ? evalError.message : 'Evaluation error',
+            })
+
+            // Still return success for the application
+            return {
+                success: true,
+                applicantId,
+                evaluationStatus: 'failed',
+            }
         }
     } catch (error) {
         console.error("Submit application error:", error)

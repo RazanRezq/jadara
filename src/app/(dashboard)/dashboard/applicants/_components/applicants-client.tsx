@@ -493,7 +493,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 } else {
                     toast.info(t("applicants.evaluation.noPending"))
                 }
-                // Refresh the applicant list to show updated scores
+                // Refresh to show updated data
                 fetchApplicants()
             } else {
                 toast.error(data.error || t("common.error"))
@@ -507,8 +507,9 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
     }
 
     // Count pending evaluations for button badge
+    // Include applicants with explicit 'pending' status OR no evaluationStatus and no aiScore (legacy data)
     const pendingEvaluationCount = applicants.filter(
-        a => a.evaluationStatus === 'pending'
+        a => a.evaluationStatus === 'pending' || (!a.evaluationStatus && !a.aiScore)
     ).length
 
     // Filter applicants client-side for additional filters
