@@ -121,6 +121,7 @@ export function VoiceQuestion({
     const audioChunksRef = useRef<Blob[]>([])
     const startTimeRef = useRef<string | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
+    const audioContextRef = useRef<AudioContext | null>(null) // Store AudioContext to prevent GC
     const animationFrameRef = useRef<number | null>(null)
     const streamRef = useRef<MediaStream | null>(null)
     const recordingStreamRef = useRef<MediaStream | null>(null) // Separate stream for recording (Safari fix)
@@ -268,17 +269,42 @@ export function VoiceQuestion({
             const stream = await navigator.mediaDevices.getUserMedia(constraints)
             console.log('[Voice Permission] ✅ Microphone access granted')
 
+            // Log detailed stream info
+            const audioTracks = stream.getAudioTracks()
+            console.log('[Voice Permission] Stream details:', {
+                id: stream.id,
+                active: stream.active,
+                audioTrackCount: audioTracks.length,
+                audioTracks: audioTracks.map(t => ({
+                    id: t.id,
+                    label: t.label,
+                    kind: t.kind,
+                    enabled: t.enabled,
+                    muted: t.muted,
+                    readyState: t.readyState,
+                    settings: t.getSettings(),
+                })),
+            })
+
             streamRef.current = stream
             setHasPermission(true)
             setStage("ready")
 
             // Setup audio analyser for visualization
+            // Store in ref to prevent garbage collection
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+            audioContextRef.current = audioContext
+
+            console.log('[Voice Permission] AudioContext created:', {
+                state: audioContext.state,
+                sampleRate: audioContext.sampleRate,
+            })
 
             // iOS Safari requires AudioContext to be resumed after user interaction
             if (audioContext.state === 'suspended') {
-                console.log('[Voice Permission] Resuming suspended AudioContext (iOS fix)')
+                console.log('[Voice Permission] Resuming suspended AudioContext')
                 await audioContext.resume()
+                console.log('[Voice Permission] AudioContext state after resume:', audioContext.state)
             }
 
             const source = audioContext.createMediaStreamSource(stream)
@@ -477,9 +503,11 @@ export function VoiceQuestion({
             console.log('[Voice Recording] MediaRecorder state:', mediaRecorder.state)
 
             audioChunksRef.current = []
+            let dataAvailableCallCount = 0
 
             mediaRecorder.ondataavailable = (event) => {
-                console.log('[Voice Recording] 📦 ondataavailable fired:', {
+                dataAvailableCallCount++
+                console.log('[Voice Recording] 📦 ondataavailable fired (#' + dataAvailableCallCount + '):', {
                     size: event.data.size,
                     type: event.data.type,
                     timecode: event.timecode,
@@ -494,7 +522,7 @@ export function VoiceQuestion({
                 } else if (event.data) {
                     // Try to add anyway - size might be reported incorrectly
                     audioChunksRef.current.push(event.data)
-                    console.log('[Voice Recording] ⚠️ Added 0-byte chunk (Safari quirk?), total chunks:', audioChunksRef.current.length)
+                    console.log('[Voice Recording] ⚠️ Added 0-byte chunk, total chunks:', audioChunksRef.current.length)
                 }
             }
 
@@ -504,6 +532,7 @@ export function VoiceQuestion({
 
             mediaRecorder.onstop = () => {
                 console.log('[Voice Recording] onstop fired, chunks so far:', audioChunksRef.current.length)
+                console.log('[Voice Recording] ondataavailable was called', dataAvailableCallCount, 'times during recording')
                 console.log('[Voice Recording] usedTimeslice:', usedTimesliceRef.current)
                 console.log('[Voice Recording] hasReceivedFinalData:', hasReceivedFinalData)
 
@@ -823,6 +852,9 @@ export function VoiceQuestion({
             }
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach((track) => track.stop())
+            }
+            if (audioContextRef.current) {
+                audioContextRef.current.close()
             }
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current)
