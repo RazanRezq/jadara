@@ -60,7 +60,6 @@ export const ActiveApplicantsWidget: React.FC<ActiveApplicantsWidgetProps> = ({ 
             }}
             icon={Users}
             iconVariant="success"
-            chartData={data.chartData}
         />
     )
 }

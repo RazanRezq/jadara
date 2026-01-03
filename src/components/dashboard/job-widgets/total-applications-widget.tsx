@@ -57,7 +57,6 @@ export const TotalApplicationsWidget: React.FC<TotalApplicationsWidgetProps> = (
             }}
             icon={FileText}
             iconVariant="primary"
-            chartData={data.chartData}
         />
     )
 }
