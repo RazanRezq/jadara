@@ -174,7 +174,7 @@ export async function submitApplication(
         console.log("[Submission] Application saved successfully")
         console.log("[Submission] Starting AI evaluation synchronously...")
 
-        // Run AI evaluation synchronously (blocking)
+        // Run AI evaluation synchronously (blocking) - applicant waits
         try {
             // Mark as processing
             await Applicant.findByIdAndUpdate(applicantId, {
@@ -270,7 +270,7 @@ export async function submitApplication(
                 jobCriteria,
             }
 
-            console.log('[Submission] Calling evaluateCandidate directly...')
+            console.log('[Submission] Calling evaluateCandidate...')
             console.log('[Submission] Voice responses:', voiceResponses.length)
             console.log('[Submission] Text responses:', textResponses.length)
 
@@ -339,19 +339,16 @@ export async function submitApplication(
                     success: true,
                     applicantId,
                     evaluationStatus: 'completed',
-                    aiScore: result.evaluation.overallScore,
-                    aiSummary: result.evaluation.summary.en,
                 }
             } else {
                 console.error("[Submission] AI evaluation failed:", result.error)
 
-                // Update applicant with failed status
+                // Update applicant with failed status but still return success
                 await Applicant.findByIdAndUpdate(applicantId, {
                     evaluationStatus: 'failed',
                     evaluationError: result.error || 'Evaluation failed',
                 })
 
-                // Still return success for the application, just note evaluation failed
                 return {
                     success: true,
                     applicantId,
@@ -361,13 +358,12 @@ export async function submitApplication(
         } catch (evalError) {
             console.error("[Submission] AI evaluation error:", evalError)
 
-            // Update applicant with failed status
+            // Update applicant with failed status but still return success
             await Applicant.findByIdAndUpdate(applicantId, {
                 evaluationStatus: 'failed',
                 evaluationError: evalError instanceof Error ? evalError.message : 'Evaluation error',
             })
 
-            // Still return success for the application
             return {
                 success: true,
                 applicantId,
