@@ -64,9 +64,9 @@ export function ViewJobDialog({ open, onOpenChange, job }: ViewJobDialogProps) {
 
     const formatSalary = (min?: number, max?: number) => {
         if (!min && !max) return "-"
-        if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`
-        if (min) return `$${min.toLocaleString()}+`
-        return `Up to $${max?.toLocaleString()}`
+        if (min && max) return `$${min.toLocaleString('en-US')} - $${max.toLocaleString('en-US')}`
+        if (min) return `$${min.toLocaleString('en-US')}+`
+        return `Up to $${max?.toLocaleString('en-US')}`
     }
 
     return (

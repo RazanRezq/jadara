@@ -206,89 +206,194 @@ export async function submitApplication(
 // ============================================
 
 /**
- * Triggers AI evaluation via internal API endpoint.
- * This is a true fire-and-forget - the API handles the evaluation independently.
+ * Triggers AI evaluation by directly calling the evaluation service.
+ * This runs after the form submission has already returned success to the user.
+ * Note: In Next.js server actions, fire-and-forget HTTP requests are unreliable,
+ * so we call the evaluation function directly.
  */
 async function triggerBackgroundEvaluation(
     applicantId: string,
     jobId: string
 ): Promise<void> {
+    // Import dynamically to avoid circular dependencies
+    const { evaluateCandidate } = await import("@/services/evaluation")
+    const Job = (await import("@/models/Jobs/jobSchema")).default
+    const Evaluation = (await import("@/models/Evaluations/evaluationSchema")).default
+
     try {
-        // Get the base URL for internal API calls
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-                        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                        'http://localhost:3000'
+        console.log("[Background Evaluation] Starting for applicant:", applicantId)
 
-        console.log("[Background Evaluation] Triggering API for applicant:", applicantId)
-
-        // Mark as processing first
         await dbConnect()
+
+        // Mark as processing
         await Applicant.findByIdAndUpdate(applicantId, {
             evaluationStatus: 'processing',
         })
 
-        // Call the evaluation API endpoint
-        // Note: We don't await the full response - just fire and let it run
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 min timeout
+        // Fetch applicant and job data
+        const applicant = await Applicant.findById(applicantId)
+        const job = await Job.findById(jobId)
 
-        fetch(`${baseUrl}/api/ai/evaluate/process`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        if (!applicant || !job) {
+            console.error("[Background Evaluation] Applicant or job not found")
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: 'Applicant or job not found',
+            })
+            return
+        }
+
+        // Fetch responses for this applicant
+        const responses = await Response.find({ applicantId })
+
+        // Build voice and text responses
+        const voiceResponses: Array<{ questionId: string; questionText: string; questionWeight: number; audioUrl: string }> = []
+        const textResponses: Array<{ questionId: string; questionText: string; questionWeight: number; answer: string }> = []
+        const questions = job.questions || []
+
+        for (const response of responses) {
+            const questionIndex = questions.findIndex((_q: unknown, index: number) =>
+                response.questionId === `q_${index}`
+            )
+            const question = questionIndex >= 0 ? questions[questionIndex] : null
+
+            if (response.type === 'voice' && response.audioUrl) {
+                voiceResponses.push({
+                    questionId: response.questionId,
+                    questionText: question?.text || response.questionId,
+                    questionWeight: question?.weight || 5,
+                    audioUrl: response.audioUrl,
+                })
+            } else if (response.type === 'text' && response.textAnswer) {
+                textResponses.push({
+                    questionId: response.questionId,
+                    questionText: question?.text || response.questionId,
+                    questionWeight: question?.weight || 5,
+                    answer: response.textAnswer,
+                })
+            }
+        }
+
+        // Build job criteria
+        const jobCriteria = {
+            title: job.title,
+            description: job.description,
+            skills: (job.skills || []).map((s: { name: string; importance: string; type?: string }) => ({
+                name: s.name,
+                importance: s.importance as 'required' | 'preferred',
+                type: (s.type || undefined) as 'technical' | 'soft' | undefined,
+            })),
+            minExperience: job.minExperience || 0,
+            languages: (job.languages || []).map((l: { language: string; level: string }) => ({
+                language: l.language,
+                level: l.level as 'beginner' | 'intermediate' | 'advanced' | 'native',
+            })),
+            criteria: (job.criteria || []).map((c: { name: string; description: string; weight: number; required: boolean }) => ({
+                name: c.name,
+                description: c.description,
+                weight: c.weight,
+                required: c.required,
+            })),
+            screeningQuestions: (job.screeningQuestions || []).map((sq: { question: string; idealAnswer?: boolean; disqualify: boolean }) => ({
+                question: sq.question,
+                idealAnswer: sq.idealAnswer ?? true,
+                disqualify: sq.disqualify,
+            })),
+            salaryMin: job.salaryMin,
+            salaryMax: job.salaryMax,
+            autoRejectThreshold: job.autoRejectThreshold || 35,
+        }
+
+        // Build candidate input
+        const candidateInput = {
+            applicantId,
+            jobId,
+            personalData: {
+                name: applicant.personalData.name,
+                email: applicant.personalData.email,
+                phone: applicant.personalData.phone,
+                age: applicant.personalData.age,
+                yearsOfExperience: applicant.personalData.yearsOfExperience,
+                salaryExpectation: applicant.personalData.salaryExpectation,
+                linkedinUrl: applicant.personalData.linkedinUrl,
+                portfolioUrl: applicant.personalData.portfolioUrl,
+                screeningAnswers: applicant.personalData.screeningAnswers,
+                languageProficiency: applicant.personalData.languageProficiency,
             },
-            body: JSON.stringify({
+            voiceResponses,
+            textResponses,
+            cvUrl: applicant.cvUrl,
+            additionalNotes: applicant.notes || undefined,
+            jobCriteria,
+        }
+
+        console.log("[Background Evaluation] Starting AI analysis...")
+
+        // Run the evaluation
+        const result = await evaluateCandidate(candidateInput)
+
+        if (result.success && result.evaluation) {
+            console.log("[Background Evaluation] Completed successfully, score:", result.evaluation.overallScore)
+
+            // Save evaluation to database
+            await Evaluation.create({
                 applicantId,
                 jobId,
-            }),
-            signal: controller.signal,
-        })
-            .then(async (response) => {
-                clearTimeout(timeoutId)
-                const result = await response.json()
-
-                if (result.success) {
-                    console.log("[Background Evaluation] API completed successfully, score:", result.evaluation?.overallScore)
-                    // Update evaluation status to completed
-                    await dbConnect()
-                    await Applicant.findByIdAndUpdate(applicantId, {
-                        evaluationStatus: 'completed',
-                        evaluationError: undefined,
-                    })
-                } else {
-                    console.error("[Background Evaluation] API returned error:", result.error)
-                    await dbConnect()
-                    await Applicant.findByIdAndUpdate(applicantId, {
-                        evaluationStatus: 'failed',
-                        evaluationError: result.error || 'Evaluation failed',
-                    })
-                }
-            })
-            .catch(async (error) => {
-                clearTimeout(timeoutId)
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-                console.error("[Background Evaluation] API call failed:", errorMessage)
-
-                try {
-                    await dbConnect()
-                    await Applicant.findByIdAndUpdate(applicantId, {
-                        evaluationStatus: 'failed',
-                        evaluationError: errorMessage,
-                    })
-                } catch (updateError) {
-                    console.error("[Background Evaluation] Failed to update error status:", updateError)
-                }
+                overallScore: result.evaluation.overallScore,
+                criteriaMatches: result.evaluation.criteriaMatches,
+                strengths: result.evaluation.strengths,
+                weaknesses: result.evaluation.weaknesses,
+                redFlags: result.evaluation.redFlags,
+                summary: result.evaluation.summary,
+                recommendation: result.evaluation.recommendation,
+                recommendationReason: result.evaluation.recommendationReason,
+                suggestedQuestions: result.evaluation.suggestedQuestions,
+                sentimentScore: result.evaluation.sentimentScore,
+                confidenceScore: result.evaluation.confidenceScore,
+                voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+                socialProfileInsights: result.evaluation.socialProfileInsights,
+                textResponseAnalysis: result.evaluation.textResponseAnalysis,
+                aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
+                isProcessed: true,
+                processedAt: new Date(),
             })
 
-        // Don't await - let it run in background
-        console.log("[Background Evaluation] API call initiated, continuing...")
+            // Update applicant with AI results
+            await Applicant.findByIdAndUpdate(applicantId, {
+                aiScore: result.evaluation.overallScore,
+                aiSummary: result.evaluation.summary.en,
+                aiRedFlags: result.evaluation.redFlags.en,
+                cvParsedData: result.evaluation.parsedResume,
+                evaluationStatus: 'completed',
+                evaluationError: undefined,
+            })
+
+            // Update voice response transcripts
+            for (const transcript of result.evaluation.transcripts) {
+                await Response.findOneAndUpdate(
+                    { applicantId, questionId: transcript.questionId },
+                    {
+                        rawTranscript: transcript.rawTranscript,
+                        cleanTranscript: transcript.cleanTranscript,
+                    }
+                )
+            }
+
+            console.log("[Background Evaluation] All data saved successfully")
+
+        } else {
+            console.error("[Background Evaluation] Failed:", result.error)
+            await Applicant.findByIdAndUpdate(applicantId, {
+                evaluationStatus: 'failed',
+                evaluationError: result.error || 'Evaluation failed',
+            })
+        }
 
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.error("[Background Evaluation] Trigger failed:", errorMessage)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown evaluation error'
+        console.error("[Background Evaluation] Error:", errorMessage)
 
         try {
-            await dbConnect()
             await Applicant.findByIdAndUpdate(applicantId, {
                 evaluationStatus: 'failed',
                 evaluationError: errorMessage,

@@ -58,19 +58,19 @@ const CURRENCY_MAP: Record<string, { code: string; symbol: string; locale: strin
     EGP: { code: 'EGP', symbol: 'ج.م', locale: 'ar-EG' },
 }
 
-function formatCurrency(amount: number | undefined, currencyCode: string = 'SAR', uiLocale: string = 'ar'): string {
+function formatCurrency(amount: number | undefined, currencyCode: string = 'SAR'): string {
     if (!amount) return "-"
     const currency = CURRENCY_MAP[currencyCode] || CURRENCY_MAP.SAR
-    const locale = uiLocale === 'ar' ? currency.locale : 'en-US'
     try {
-        return new Intl.NumberFormat(locale, {
+        // Always use English numerals (latn) regardless of currency
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currency.code,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(amount)
     } catch {
-        return `${amount.toLocaleString()} ${currencyCode}`
+        return `${amount.toLocaleString('en-US')} ${currencyCode}`
     }
 }
 
@@ -323,7 +323,7 @@ export function ApplicantList({
 
                                         {!hideSensitiveData && (
                                             <TableCell className="hidden xl:table-cell px-6 py-4 text-start font-semibold">
-                                                {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency, locale)}
+                                                {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency)}
                                             </TableCell>
                                         )}
 
@@ -435,7 +435,7 @@ export function ApplicantList({
                                                 <p className="text-xs text-muted-foreground mb-1">{t("applicants.expectedSalary")}</p>
                                                 <p className="text-sm font-semibold flex items-center gap-1">
                                                     <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency, locale)}
+                                                    {formatCurrency(applicant.personalData?.salaryExpectation, jobCurrency)}
                                                 </p>
                                             </div>
                                         )}

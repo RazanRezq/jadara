@@ -245,7 +245,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                         </div>
                         {salaryMin && salaryMax && (
                             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
-                                {salaryMin.toLocaleString()} - {salaryMax.toLocaleString()}
+                                {salaryMin.toLocaleString('en-US')} - {salaryMax.toLocaleString('en-US')}
                             </Badge>
                         )}
                     </div>
@@ -465,7 +465,7 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                                     {salaryMin && salaryMax && (
                                         <Badge className="gap-1.5 py-1 px-3 bg-gradient-to-r from-emerald-500 to-emerald-600 border-0">
                                             <DollarSign className="h-3.5 w-3.5" />
-                                            {salaryMin.toLocaleString()} - {salaryMax.toLocaleString()}
+                                            {salaryMin.toLocaleString('en-US')} - {salaryMax.toLocaleString('en-US')}
                                         </Badge>
                                     )}
                                 </div>
