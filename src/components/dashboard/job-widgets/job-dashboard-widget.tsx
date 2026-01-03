@@ -6,13 +6,6 @@ import { LucideIcon } from 'lucide-react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Helper to check if chart data has meaningful variation (not all same values)
-const hasVariation = (data: number[]): boolean => {
-    if (data.length < 2) return false
-    const first = data[0]
-    return data.some(value => value !== first)
-}
-
 interface JobDashboardWidgetProps {
     title: string
     value: string | number
@@ -24,7 +17,6 @@ interface JobDashboardWidgetProps {
     }
     icon?: LucideIcon
     iconVariant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
-    chartData?: number[]
     className?: string
     children?: React.ReactNode
 }
@@ -36,7 +28,6 @@ export const JobDashboardWidget: React.FC<JobDashboardWidgetProps> = ({
     trend,
     icon,
     iconVariant = 'primary',
-    chartData,
     className,
     children,
 }) => {
@@ -102,43 +93,9 @@ export const JobDashboardWidget: React.FC<JobDashboardWidgetProps> = ({
                             </span>
                         </div>
                     )}
-                    {chartData && chartData.length > 0 && hasVariation(chartData) && (
-                        <div className="mt-2">
-                            <MiniLineChart data={chartData} />
-                        </div>
-                    )}
                     {children}
                 </div>
             </CardContent>
         </MagicCard>
-    )
-}
-
-// Simple mini line chart component
-const MiniLineChart: React.FC<{ data: number[] }> = ({ data }) => {
-    const max = Math.max(...data)
-    const min = Math.min(...data)
-    const range = max - min || 1
-
-    const points = data.map((value, index) => {
-        const x = (index / (data.length - 1)) * 100
-        const y = 100 - ((value - min) / range) * 100
-        return `${x},${y}`
-    })
-
-    return (
-        <svg
-            className="h-12 w-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-        >
-            <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                points={points.join(' ')}
-                className="text-primary opacity-70"
-            />
-        </svg>
     )
 }

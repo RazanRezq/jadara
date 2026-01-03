@@ -185,6 +185,11 @@ app.post('/process', async (c) => {
         // Candidate remains in their current status - only reviewers move candidates
         console.log('[API] Silent Scorer mode: AI will not update candidate status')
 
+        // Mark evaluation as processing
+        await Applicant.findByIdAndUpdate(applicantId, {
+            evaluationStatus: 'processing',
+        })
+
         // Build candidate data
         console.log('📋 [API] Building candidate data for applicant:', applicantId)
         const candidateData = await buildCandidateData(applicantId, jobId)
@@ -229,6 +234,8 @@ app.post('/process', async (c) => {
             await Applicant.findByIdAndUpdate(applicantId, {
                 // status: 'new', // REMOVED: AI does not update status
                 notes: `Evaluation failed: ${result.error}`,
+                evaluationStatus: 'failed',
+                evaluationError: result.error || 'Evaluation failed',
             })
 
             return c.json(
@@ -301,6 +308,8 @@ app.post('/process', async (c) => {
             aiSummary: result.evaluation.summary.en, // Use English for legacy field
             aiRedFlags: result.evaluation.redFlags.en, // Use English for legacy field
             cvParsedData: result.evaluation.parsedResume,
+            evaluationStatus: 'completed', // Mark background evaluation as done
+            evaluationError: undefined,
         })
 
         // Update voice response transcripts
