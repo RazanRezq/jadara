@@ -3,8 +3,11 @@
 import dbConnect from "@/lib/mongodb"
 import Applicant from "@/models/Applicants/applicantSchema"
 import Response from "@/models/Responses/responseSchema"
+import Job from "@/models/Jobs/jobSchema"
+import Evaluation from "@/models/Evaluations/evaluationSchema"
 import { v4 as uuidv4 } from "uuid"
 import { uploadFile as uploadToSpaces } from "@/lib/s3"
+import { evaluateCandidate, type CandidateEvaluationInput } from "@/services/evaluation"
 
 // ============================================
 // TYPES
@@ -178,42 +181,174 @@ export async function submitApplication(
                 evaluationStatus: 'processing',
             })
 
-            // Call the internal evaluation API
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-            const evaluationResponse = await fetch(`${baseUrl}/api/ai/evaluate/process`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            // Fetch the job to build evaluation input
+            const job = await Job.findById(payload.jobId)
+            if (!job) {
+                throw new Error('Job not found for evaluation')
+            }
+
+            // Fetch all responses for this applicant
+            const responses = await Response.find({ applicantId })
+
+            // Build voice and text responses
+            const voiceResponses: CandidateEvaluationInput['voiceResponses'] = []
+            const textResponses: CandidateEvaluationInput['textResponses'] = []
+            const questions = job.questions || []
+
+            for (const response of responses) {
+                const question = questions.find((q: any, index: number) =>
+                    response.questionId === `q_${index}` || response.questionId === q.text
+                )
+
+                if (response.type === 'voice' && response.audioUrl) {
+                    voiceResponses.push({
+                        questionId: response.questionId,
+                        questionText: question?.text || response.questionId,
+                        questionWeight: question?.weight || 5,
+                        audioUrl: response.audioUrl,
+                    })
+                } else if (response.type === 'text' && response.textAnswer) {
+                    textResponses.push({
+                        questionId: response.questionId,
+                        questionText: question?.text || response.questionId,
+                        questionWeight: question?.weight || 5,
+                        answer: response.textAnswer,
+                    })
+                }
+            }
+
+            // Build job criteria from job document
+            const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
+                title: job.title,
+                description: job.description,
+                skills: job.skills.map((s: any) => ({
+                    name: s.name,
+                    importance: s.importance,
+                    type: s.type,
+                })),
+                minExperience: job.minExperience || 0,
+                languages: job.languages.map((l: any) => ({
+                    language: l.language,
+                    level: l.level,
+                })),
+                criteria: job.criteria.map((c: any) => ({
+                    name: c.name,
+                    description: c.description,
+                    weight: c.weight,
+                    required: c.required,
+                })),
+                screeningQuestions: job.screeningQuestions?.map((sq: any) => ({
+                    question: sq.question,
+                    idealAnswer: sq.idealAnswer || false,
+                    disqualify: sq.disqualify,
+                })),
+                salaryMin: job.salaryMin,
+                salaryMax: job.salaryMax,
+                autoRejectThreshold: job.autoRejectThreshold || 35,
+            }
+
+            // Build candidate evaluation input
+            const candidateInput: CandidateEvaluationInput = {
+                applicantId,
+                jobId: payload.jobId,
+                personalData: {
+                    name: payload.personalData.name,
+                    email: payload.personalData.email,
+                    phone: payload.personalData.phone,
+                    age: payload.personalData.age,
+                    yearsOfExperience: payload.personalData.yearsOfExperience,
+                    salaryExpectation: payload.personalData.salaryExpectation,
+                    linkedinUrl: payload.personalData.linkedinUrl,
+                    portfolioUrl: payload.personalData.portfolioUrl,
+                    screeningAnswers: payload.personalData.screeningAnswers,
+                    languageProficiency: payload.personalData.languageProficiency,
                 },
-                body: JSON.stringify({
-                    applicantId,
-                    jobId: payload.jobId,
-                }),
-            })
+                voiceResponses,
+                textResponses,
+                cvUrl: payload.fileUploads.cvUrl,
+                additionalNotes: payload.notes || undefined,
+                jobCriteria,
+            }
 
-            const evaluationResult = await evaluationResponse.json()
+            console.log('[Submission] Calling evaluateCandidate directly...')
+            console.log('[Submission] Voice responses:', voiceResponses.length)
+            console.log('[Submission] Text responses:', textResponses.length)
 
-            if (evaluationResult.success) {
+            // Call the evaluation directly
+            const result = await evaluateCandidate(candidateInput)
+
+            if (result.success && result.evaluation) {
                 console.log("[Submission] AI evaluation completed successfully")
-                console.log("[Submission] Score:", evaluationResult.evaluation?.overallScore)
+                console.log("[Submission] Score:", result.evaluation.overallScore)
 
-                // Fetch the updated applicant to get the AI results
-                const updatedApplicant = await Applicant.findById(applicantId).select('aiScore aiSummary evaluationStatus')
+                // Save evaluation to database
+                const existingEval = await Evaluation.findOne({ applicantId })
+                const evaluationData = {
+                    overallScore: result.evaluation.overallScore,
+                    criteriaMatches: result.evaluation.criteriaMatches,
+                    strengths: result.evaluation.strengths,
+                    weaknesses: result.evaluation.weaknesses,
+                    redFlags: result.evaluation.redFlags,
+                    summary: result.evaluation.summary,
+                    recommendation: result.evaluation.recommendation,
+                    recommendationReason: result.evaluation.recommendationReason,
+                    suggestedQuestions: result.evaluation.suggestedQuestions,
+                    sentimentScore: result.evaluation.sentimentScore,
+                    confidenceScore: result.evaluation.confidenceScore,
+                    voiceAnalysisDetails: result.evaluation.voiceAnalysisDetails,
+                    socialProfileInsights: result.evaluation.socialProfileInsights,
+                    textResponseAnalysis: result.evaluation.textResponseAnalysis,
+                    aiAnalysisBreakdown: result.evaluation.aiAnalysisBreakdown,
+                    isProcessed: true,
+                    processedAt: new Date(),
+                }
+
+                if (existingEval) {
+                    Object.assign(existingEval, evaluationData)
+                    await existingEval.save()
+                } else {
+                    await Evaluation.create({
+                        applicantId,
+                        jobId: payload.jobId,
+                        ...evaluationData,
+                    })
+                }
+
+                // Update applicant with evaluation results
+                await Applicant.findByIdAndUpdate(applicantId, {
+                    aiScore: result.evaluation.overallScore,
+                    aiSummary: result.evaluation.summary.en,
+                    aiRedFlags: result.evaluation.redFlags.en,
+                    cvParsedData: result.evaluation.parsedResume,
+                    evaluationStatus: 'completed',
+                    evaluationError: undefined,
+                })
+
+                // Update voice response transcripts
+                for (const transcript of result.evaluation.transcripts) {
+                    await Response.findOneAndUpdate(
+                        { applicantId, questionId: transcript.questionId },
+                        {
+                            rawTranscript: transcript.rawTranscript,
+                            cleanTranscript: transcript.cleanTranscript,
+                        }
+                    )
+                }
 
                 return {
                     success: true,
                     applicantId,
                     evaluationStatus: 'completed',
-                    aiScore: updatedApplicant?.aiScore,
-                    aiSummary: updatedApplicant?.aiSummary,
+                    aiScore: result.evaluation.overallScore,
+                    aiSummary: result.evaluation.summary.en,
                 }
             } else {
-                console.error("[Submission] AI evaluation failed:", evaluationResult.error)
+                console.error("[Submission] AI evaluation failed:", result.error)
 
                 // Update applicant with failed status
                 await Applicant.findByIdAndUpdate(applicantId, {
                     evaluationStatus: 'failed',
-                    evaluationError: evaluationResult.error || 'Evaluation failed',
+                    evaluationError: result.error || 'Evaluation failed',
                 })
 
                 // Still return success for the application, just note evaluation failed

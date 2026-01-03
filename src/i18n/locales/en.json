@@ -1091,7 +1091,16 @@
         "cvUploaded": "CV uploaded successfully",
         "portfolioUploaded": "Portfolio uploaded successfully",
         "fileTooLarge": "File is too large",
-        "invalidFileType": "Invalid file type"
+        "invalidFileType": "Invalid file type",
+        "processing": {
+            "title": "Submitting Your Application",
+            "subtitle": "Please wait while we process your application",
+            "step1": "Saving your application...",
+            "step2": "Analyzing your responses...",
+            "step3": "Running AI evaluation...",
+            "step4": "Finalizing your profile...",
+            "doNotClose": "Please don't close this page. This may take up to a minute."
+        }
     },
     "jobWizard": {
         "title": "Smart Job Creation Wizard",

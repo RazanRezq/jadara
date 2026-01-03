@@ -22,6 +22,10 @@ import {
     Check,
     Info,
     MapPin,
+    Loader2,
+    Brain,
+    FileSearch,
+    Award,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -63,9 +67,18 @@ interface AssessmentWizardProps {
 
 type WizardStep = "personalInfo" | "instructions" | "questions" | "upload" | "complete"
 
+// Processing steps for the evaluation
+const PROCESSING_STEPS = [
+    { id: 'saving', duration: 2000 },
+    { id: 'analyzing', duration: 8000 },
+    { id: 'evaluating', duration: 15000 },
+    { id: 'finalizing', duration: 5000 },
+] as const
+
 export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps) {
     const { t, locale } = useTranslate()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [processingStep, setProcessingStep] = useState(0)
     const hasVisibilityListenerRef = useRef(false)
 
     // Zustand store
@@ -287,12 +300,25 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
      */
     const handleFinalSubmit = async () => {
         setIsSubmitting(true)
+        setProcessingStep(0)
+
+        // Start processing step animation
+        let currentStep = 0
+        const stepInterval = setInterval(() => {
+            currentStep++
+            if (currentStep < PROCESSING_STEPS.length) {
+                setProcessingStep(currentStep)
+            }
+        }, 3000) // Advance every 3 seconds
+
         try {
             // Get the complete payload from Zustand
             const payload = getSubmissionPayload()
 
             // Submit to database (atomic operation)
             const result = await submitApplication(payload)
+
+            clearInterval(stepInterval)
 
             if (!result.success) {
                 throw new Error(result.error || "Submission failed")
@@ -303,11 +329,13 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
 
             // No toast needed - the Thank You page is sufficient feedback
         } catch (error) {
+            clearInterval(stepInterval)
             toast.error(
                 error instanceof Error ? error.message : t("common.error")
             )
         } finally {
             setIsSubmitting(false)
+            setProcessingStep(0)
         }
     }
 
@@ -658,6 +686,85 @@ export function AssessmentWizard({ job, onBackToLanding }: AssessmentWizardProps
                     )}
                 </div>
             </main>
+
+            {/* Processing Overlay */}
+            {isSubmitting && (
+                <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">
+                    <div className="max-w-md w-full mx-4">
+                        <Card className="border-2 border-primary/20 shadow-2xl">
+                            <CardContent className="pt-8 pb-6 px-6">
+                                <div className="text-center space-y-6">
+                                    {/* Animated Icon */}
+                                    <div className="relative mx-auto w-20 h-20">
+                                        <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
+                                        <div className="relative flex items-center justify-center w-full h-full rounded-full bg-primary/10">
+                                            {processingStep === 0 && <FileSearch className="size-10 text-primary animate-pulse" />}
+                                            {processingStep === 1 && <Brain className="size-10 text-primary animate-pulse" />}
+                                            {processingStep === 2 && <Sparkles className="size-10 text-primary animate-pulse" />}
+                                            {processingStep === 3 && <Award className="size-10 text-primary animate-pulse" />}
+                                        </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <div>
+                                        <h2 className="text-xl font-bold mb-2">
+                                            {t("apply.processing.title")}
+                                        </h2>
+                                        <p className="text-muted-foreground text-sm">
+                                            {t("apply.processing.subtitle")}
+                                        </p>
+                                    </div>
+
+                                    {/* Processing Steps */}
+                                    <div className="space-y-3 text-start">
+                                        {PROCESSING_STEPS.map((step, index) => (
+                                            <div
+                                                key={step.id}
+                                                className={cn(
+                                                    "flex items-center gap-3 p-3 rounded-lg transition-all duration-500",
+                                                    index < processingStep && "bg-green-500/10",
+                                                    index === processingStep && "bg-primary/10",
+                                                    index > processingStep && "opacity-50"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "size-6 rounded-full flex items-center justify-center shrink-0",
+                                                    index < processingStep && "bg-green-500 text-white",
+                                                    index === processingStep && "bg-primary text-primary-foreground",
+                                                    index > processingStep && "bg-muted text-muted-foreground"
+                                                )}>
+                                                    {index < processingStep ? (
+                                                        <Check className="size-3.5" />
+                                                    ) : index === processingStep ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <span className="text-xs font-medium">{index + 1}</span>
+                                                    )}
+                                                </div>
+                                                <span className={cn(
+                                                    "text-sm font-medium",
+                                                    index < processingStep && "text-green-600 dark:text-green-400",
+                                                    index === processingStep && "text-foreground",
+                                                    index > processingStep && "text-muted-foreground"
+                                                )}>
+                                                    {t(`apply.processing.step${index + 1}`)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Info Message */}
+                                    <div className="pt-2 border-t">
+                                        <p className="text-xs text-muted-foreground">
+                                            {t("apply.processing.doNotClose")}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
