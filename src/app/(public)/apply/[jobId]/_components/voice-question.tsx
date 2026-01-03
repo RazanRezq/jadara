@@ -124,6 +124,7 @@ export function VoiceQuestion({
     const animationFrameRef = useRef<number | null>(null)
     const streamRef = useRef<MediaStream | null>(null)
     const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
+    const isStartingRecordingRef = useRef<boolean>(false) // Guard against multiple startRecording calls
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
@@ -313,24 +314,37 @@ export function VoiceQuestion({
     }
 
     // Get supported MIME type for recording
-    const getSupportedMimeType = () => {
+    const getSupportedMimeType = (): string | undefined => {
+        // Check if MediaRecorder.isTypeSupported exists (it doesn't on older Safari)
+        if (typeof MediaRecorder.isTypeSupported !== 'function') {
+            console.log('[Voice Recording] isTypeSupported not available, using browser default')
+            return undefined
+        }
+
+        // Order matters - try formats most likely to work across browsers
+        // Safari prefers mp4, Chrome/Firefox prefer webm
         const types = [
             'audio/webm;codecs=opus',
             'audio/webm',
-            'audio/ogg;codecs=opus',
             'audio/mp4',
+            'audio/ogg;codecs=opus',
             'audio/mpeg',
         ]
 
         for (const type of types) {
-            if (MediaRecorder.isTypeSupported(type)) {
-                console.log('[Voice Recording] Using MIME type:', type)
-                return type
+            try {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    console.log('[Voice Recording] Using MIME type:', type)
+                    return type
+                }
+            } catch (e) {
+                // isTypeSupported can throw on some browsers
+                console.warn('[Voice Recording] isTypeSupported threw for', type, e)
             }
         }
 
-        console.warn('[Voice Recording] No preferred MIME type supported, using default')
-        return ''
+        console.warn('[Voice Recording] No preferred MIME type supported, using browser default')
+        return undefined
     }
 
     // Update audio visualization
@@ -357,18 +371,45 @@ export function VoiceQuestion({
     }, [])
 
     // Start actual recording
-    const startRecording = useCallback(() => {
+    const startRecording = useCallback(async () => {
+        console.log('[Voice Recording] startRecording called')
+
+        // Guard against multiple simultaneous calls
+        if (isStartingRecordingRef.current) {
+            console.log('[Voice Recording] ⚠️ Already starting recording, ignoring duplicate call')
+            return
+        }
+        isStartingRecordingRef.current = true
+
+        // Check if we have a stream
         if (!streamRef.current) {
             console.error('[Voice Recording] No stream available')
             toast.error(t("apply.microphoneError") || "Microphone not available")
+            setStage("permission") // Go back to permission stage
+            isStartingRecordingRef.current = false
             return
         }
 
-        // Check if stream is active
+        // Check if stream is active and all tracks are live
         const tracks = streamRef.current.getTracks()
-        if (tracks.length === 0 || !tracks[0].enabled) {
-            console.error('[Voice Recording] Stream is not active')
-            toast.error(t("apply.microphoneError") || "Microphone not available")
+        const hasActiveTracks = tracks.length > 0 && tracks.every(track => track.readyState === 'live' && track.enabled)
+
+        console.log('[Voice Recording] Stream check:', {
+            trackCount: tracks.length,
+            tracks: tracks.map(t => ({ kind: t.kind, readyState: t.readyState, enabled: t.enabled })),
+            hasActiveTracks,
+        })
+
+        if (!hasActiveTracks) {
+            console.warn('[Voice Recording] Stream is stale, requesting new permission')
+            // Stream is stale, need to request new permission
+            toast.error(t("apply.microphoneError") || "Microphone access lost. Please allow access again.")
+            setStage("permission")
+            setHasPermission(false)
+            // Clean up old stream
+            tracks.forEach(track => track.stop())
+            streamRef.current = null
+            isStartingRecordingRef.current = false
             return
         }
 
@@ -376,20 +417,34 @@ export function VoiceQuestion({
 
         try {
             const mimeType = getSupportedMimeType()
-            const options = mimeType ? { mimeType } : undefined
 
-            console.log('[Voice Recording] Creating MediaRecorder with options:', options)
+            console.log('[Voice Recording] Creating MediaRecorder...', { mimeType })
 
-            // Try to create MediaRecorder with the supported MIME type
+            // Try to create MediaRecorder - start with no options (most compatible)
+            // Then try with mimeType if the first attempt fails
             try {
-                mediaRecorder = new MediaRecorder(streamRef.current, options)
-                console.log('[Voice Recording] ✅ MediaRecorder created with MIME type:', mimeType || 'default')
-            } catch (mimeError) {
-                console.warn('[Voice Recording] Failed with MIME type, trying without options:', mimeError)
-                // Fallback: Let the browser choose the MIME type
-                mediaRecorder = new MediaRecorder(streamRef.current)
-                console.log('[Voice Recording] ✅ MediaRecorder created with browser default')
+                if (mimeType) {
+                    // Try with specific MIME type first
+                    try {
+                        mediaRecorder = new MediaRecorder(streamRef.current, { mimeType })
+                        console.log('[Voice Recording] ✅ MediaRecorder created with MIME type:', mimeType)
+                    } catch (mimeError) {
+                        console.warn('[Voice Recording] Failed with MIME type, trying without options:', mimeError)
+                        mediaRecorder = new MediaRecorder(streamRef.current)
+                        console.log('[Voice Recording] ✅ MediaRecorder created with browser default (fallback)')
+                    }
+                } else {
+                    // No MIME type detected as supported, let browser choose
+                    mediaRecorder = new MediaRecorder(streamRef.current)
+                    console.log('[Voice Recording] ✅ MediaRecorder created with browser default')
+                }
+            } catch (createError) {
+                console.error('[Voice Recording] Failed to create MediaRecorder:', createError)
+                throw createError
             }
+
+            console.log('[Voice Recording] MediaRecorder mimeType:', mediaRecorder.mimeType)
+            console.log('[Voice Recording] MediaRecorder state:', mediaRecorder.state)
 
             audioChunksRef.current = []
 
@@ -430,14 +485,32 @@ export function VoiceQuestion({
             // Try to start recording
             try {
                 console.log('[Voice Recording] Starting MediaRecorder...')
-                mediaRecorder.start(100) // Collect data every 100ms
-                console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully')
+                console.log('[Voice Recording] Current state before start:', mediaRecorder.state)
+
+                // Check if already recording (shouldn't happen but defensive check)
+                if (mediaRecorder.state === 'recording') {
+                    console.log('[Voice Recording] ⚠️ Already recording, skipping start()')
+                } else {
+                    // Try with timeslice first (not supported on all browsers like Safari)
+                    try {
+                        mediaRecorder.start(100) // Collect data every 100ms
+                        console.log('[Voice Recording] ✅ MediaRecorder.start(100) called successfully')
+                    } catch (timesliceError) {
+                        console.warn('[Voice Recording] start(100) failed, trying without timeslice:', timesliceError)
+                        // Only retry if not already recording
+                        // Note: Cast needed because some browsers may set state to 'recording' despite throwing
+                        const currentState = mediaRecorder.state as string
+                        if (currentState !== 'recording') {
+                            mediaRecorder.start()
+                            console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully (no timeslice)')
+                        } else {
+                            console.log('[Voice Recording] ⚠️ Already recording after timeslice error, continuing')
+                        }
+                    }
+                }
             } catch (startError) {
                 console.error('[Voice Recording] Failed to start MediaRecorder:', startError)
-                // Try again without timeslice parameter
-                console.log('[Voice Recording] Retrying without timeslice...')
-                mediaRecorder.start()
-                console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully (no timeslice)')
+                throw startError // Re-throw to be caught by outer try-catch
             }
 
             mediaRecorderRef.current = mediaRecorder
@@ -447,6 +520,9 @@ export function VoiceQuestion({
 
             // Start audio visualization
             updateAudioLevels()
+
+            // Recording started successfully, reset the guard
+            isStartingRecordingRef.current = false
         } catch (error) {
             console.error('[Voice Recording] Failed to start recording:', error)
             const errorMessage = error instanceof Error ? error.message : String(error)
@@ -455,6 +531,7 @@ export function VoiceQuestion({
                 `Failed to start recording: ${errorMessage}`
             )
             setStage("ready")
+            isStartingRecordingRef.current = false
         }
     }, [timeLimitSeconds, t, updateAudioLevels])
 
