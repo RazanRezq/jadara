@@ -7,8 +7,8 @@ import CompanyProfile from "@/models/CompanyProfile/companyProfileSchema"
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "")
 
-// Use gemini-2.5-flash-lite model
-const MODEL_NAME = "gemini-2.5-flash-lite"
+// Use gemini-2.0-flash model (1500 requests/day free tier vs 20 for 2.5-flash-lite)
+const MODEL_NAME = "gemini-2.0-flash"
 
 interface GenerateJobDescriptionInput {
     jobTitle: string

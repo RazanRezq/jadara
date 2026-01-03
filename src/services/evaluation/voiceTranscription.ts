@@ -8,8 +8,8 @@ import axios from 'axios'
 import { GoogleGenerativeAI, Part } from '@google/generative-ai'
 import { TranscriptionResult, VoiceAnalysisResult } from './types'
 
-// Gemini 2.5 Flash Lite for audio processing
-const GEMINI_MODEL = 'gemini-2.5-flash-lite'
+// Gemini 2.0 Flash for audio processing (1500 requests/day free tier vs 20 for 2.5-flash-lite)
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 /**
  * Combined result type for transcription + analysis in one go

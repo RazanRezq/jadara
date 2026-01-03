@@ -5,11 +5,13 @@ import Notification from './notificationSchema'
 
 const app = new Hono()
 
-// Ensure indexes are created (runs once, idempotent)
+// Ensure indexes are created (runs once)
+let indexesCreated = false
 async function ensureIndexes() {
+    if (indexesCreated) return
     try {
         await Notification.createIndexes()
-        console.log('[Notifications] Indexes created successfully')
+        indexesCreated = true
     } catch (error) {
         console.error('[Notifications] Error creating indexes:', error)
     }
@@ -38,17 +40,7 @@ app.get('/health', async (c) => {
 // GET /api/notifications - Get all notifications for current user (with pagination, filtering, search)
 app.get('/', async (c) => {
     try {
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[Notifications API] Starting request...')
-        }
-
         await dbConnect()
-
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[Notifications API] Database connected')
-        }
-
-        // Ensure indexes are created
         await ensureIndexes()
 
         const userId = c.req.query('userId')
@@ -58,10 +50,6 @@ app.get('/', async (c) => {
         const type = c.req.query('type')
         const priority = c.req.query('priority')
         const search = c.req.query('search')
-
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[Notifications API] Query params:', { userId, page, limit, status, type, priority, search })
-        }
 
         if (!userId) {
             return c.json({ success: false, error: 'User ID is required' }, 400)
@@ -105,10 +93,6 @@ app.get('/', async (c) => {
 
         const skip = (page - 1) * limit
 
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[Notifications API] Executing queries with:', { query, skip, limit })
-        }
-
         // Execute queries in parallel
         const [notifications, total, unreadCount] = await Promise.all([
             Notification.find(query)
@@ -119,14 +103,6 @@ app.get('/', async (c) => {
             Notification.countDocuments(query),
             Notification.countDocuments({ userId: userIdObjectId, isRead: false }),
         ])
-
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[Notifications API] Query results:', {
-                notificationCount: notifications.length,
-                total,
-                unreadCount
-            })
-        }
 
         return c.json({
             success: true,
@@ -139,8 +115,7 @@ app.get('/', async (c) => {
             },
         })
     } catch (error: any) {
-        console.error('Error fetching notifications:', error)
-        console.error('Error stack:', error.stack)
+        console.error('[Notifications] Error:', error.message)
         return c.json(
             {
                 success: false,

@@ -17,7 +17,7 @@ IELTS exam preparation web application (goielts) - a bilingual (Arabic/English) 
 - **Forms**: React Hook Form + Zod validation
 - **API Framework**: Hono
 - **Database**: MongoDB with Mongoose
-- **AI**: Google Gemini (gemini-2.5-flash-lite)
+- **AI**: Google Gemini (gemini-2.0-flash)
 - **Storage**: DigitalOcean Spaces (S3-compatible)
 
 ## Development Commands
@@ -119,7 +119,7 @@ const routes = app
 4. Generates score + detailed analysis with recommendations
 5. Stores in Evaluations collection
 
-**AI Model**: Uses Google Gemini (gemini-2.5-flash-lite) configured in `.env.local`
+**AI Model**: Uses Google Gemini (gemini-2.0-flash) configured in `.env.local`
 
 ### Job Wizard System
 

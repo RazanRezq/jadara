@@ -6,7 +6,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ParsedResume, ExtractedSkill, WorkExperience, Education, LanguageSkill } from './types'
 
-const GEMINI_MODEL = 'gemini-2.5-flash-lite'
+// Gemini 2.0 Flash (1500 requests/day free tier vs 20 for 2.5-flash-lite)
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 /**
  * Parse resume from PDF URL
