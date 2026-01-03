@@ -123,8 +123,11 @@ export function VoiceQuestion({
     const analyserRef = useRef<AnalyserNode | null>(null)
     const animationFrameRef = useRef<number | null>(null)
     const streamRef = useRef<MediaStream | null>(null)
+    const recordingStreamRef = useRef<MediaStream | null>(null) // Separate stream for recording (Safari fix)
     const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
     const isStartingRecordingRef = useRef<boolean>(false) // Guard against multiple startRecording calls
+    const usedTimesliceRef = useRef<boolean>(false) // Track if timeslice was used for start()
+    const dataRequestIntervalRef = useRef<NodeJS.Timeout | null>(null) // For manual data requests on Safari
 
     const isRTL = locale === "ar"
     const ArrowIcon = isRTL ? ArrowLeft : ArrowRight
@@ -420,22 +423,49 @@ export function VoiceQuestion({
 
             console.log('[Voice Recording] Creating MediaRecorder...', { mimeType })
 
+            // On Safari, the AudioContext (used for visualization) can interfere with MediaRecorder
+            // when they share the same stream. Create a fresh stream for MediaRecorder.
+            let recordingStream = streamRef.current
+
+            // Check if we should get a fresh stream (Safari/iOS workaround)
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+                            /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+            if (isSafari) {
+                console.log('[Voice Recording] Safari detected, requesting fresh stream for MediaRecorder')
+                try {
+                    // Request a new stream specifically for recording
+                    recordingStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                        }
+                    })
+                    recordingStreamRef.current = recordingStream // Store for cleanup
+                    console.log('[Voice Recording] ✅ Fresh stream obtained for Safari')
+                } catch (streamError) {
+                    console.warn('[Voice Recording] Could not get fresh stream, using existing:', streamError)
+                    recordingStream = streamRef.current
+                }
+            }
+
             // Try to create MediaRecorder - start with no options (most compatible)
             // Then try with mimeType if the first attempt fails
             try {
                 if (mimeType) {
                     // Try with specific MIME type first
                     try {
-                        mediaRecorder = new MediaRecorder(streamRef.current, { mimeType })
+                        mediaRecorder = new MediaRecorder(recordingStream, { mimeType })
                         console.log('[Voice Recording] ✅ MediaRecorder created with MIME type:', mimeType)
                     } catch (mimeError) {
                         console.warn('[Voice Recording] Failed with MIME type, trying without options:', mimeError)
-                        mediaRecorder = new MediaRecorder(streamRef.current)
+                        mediaRecorder = new MediaRecorder(recordingStream)
                         console.log('[Voice Recording] ✅ MediaRecorder created with browser default (fallback)')
                     }
                 } else {
                     // No MIME type detected as supported, let browser choose
-                    mediaRecorder = new MediaRecorder(streamRef.current)
+                    mediaRecorder = new MediaRecorder(recordingStream)
                     console.log('[Voice Recording] ✅ MediaRecorder created with browser default')
                 }
             } catch (createError) {
@@ -449,27 +479,116 @@ export function VoiceQuestion({
             audioChunksRef.current = []
 
             mediaRecorder.ondataavailable = (event) => {
-                console.log('[Voice Recording] Data available:', event.data.size, 'bytes')
-                if (event.data.size > 0) {
+                console.log('[Voice Recording] 📦 ondataavailable fired:', {
+                    size: event.data.size,
+                    type: event.data.type,
+                    timecode: event.timecode,
+                    chunksBeforeAdd: audioChunksRef.current.length,
+                })
+
+                // Always push the chunk, even if size is 0 (we'll filter later)
+                // Safari sometimes reports size incorrectly
+                if (event.data && event.data.size > 0) {
                     audioChunksRef.current.push(event.data)
+                    console.log('[Voice Recording] ✅ Chunk added, total chunks:', audioChunksRef.current.length)
+                } else if (event.data) {
+                    // Try to add anyway - size might be reported incorrectly
+                    audioChunksRef.current.push(event.data)
+                    console.log('[Voice Recording] ⚠️ Added 0-byte chunk (Safari quirk?), total chunks:', audioChunksRef.current.length)
                 }
             }
 
+            // Track if we've received the final data event
+            let hasReceivedFinalData = false
+            let processDataTimeout: NodeJS.Timeout | null = null
+
             mediaRecorder.onstop = () => {
-                console.log('[Voice Recording] Recording stopped, chunks:', audioChunksRef.current.length)
-                if (audioChunksRef.current.length === 0) {
-                    console.error('[Voice Recording] No audio data captured!')
-                    toast.error(t("apply.recordingFailed") || "Recording failed - no audio captured")
-                    setStage("ready")
-                    return
+                console.log('[Voice Recording] onstop fired, chunks so far:', audioChunksRef.current.length)
+                console.log('[Voice Recording] usedTimeslice:', usedTimesliceRef.current)
+                console.log('[Voice Recording] hasReceivedFinalData:', hasReceivedFinalData)
+
+                // Function to process the audio data
+                const processAudioData = () => {
+                    // Prevent double processing
+                    if (processDataTimeout) {
+                        clearTimeout(processDataTimeout)
+                        processDataTimeout = null
+                    }
+
+                    console.log('[Voice Recording] Processing audio data, chunks:', audioChunksRef.current.length)
+
+                    if (audioChunksRef.current.length === 0) {
+                        console.error('[Voice Recording] No audio data captured!')
+                        console.error('[Voice Recording] Debug info:', {
+                            usedTimeslice: usedTimesliceRef.current,
+                            hasReceivedFinalData,
+                            mediaRecorderMimeType: mediaRecorder?.mimeType,
+                            mediaRecorderState: mediaRecorder?.state,
+                        })
+                        toast.error(t("apply.recordingFailed") || "Recording failed - no audio captured")
+                        setStage("ready")
+                        return
+                    }
+
+                    // Filter out any 0-byte chunks before creating blob
+                    const validChunks = audioChunksRef.current.filter(chunk => chunk.size > 0)
+                    console.log('[Voice Recording] Valid chunks:', validChunks.length, 'of', audioChunksRef.current.length)
+
+                    if (validChunks.length === 0) {
+                        console.error('[Voice Recording] All chunks are empty!')
+                        toast.error(t("apply.recordingFailed") || "Recording failed - no valid audio data")
+                        setStage("ready")
+                        return
+                    }
+
+                    const mimeType = mediaRecorder?.mimeType || 'audio/webm'
+                    const blob = new Blob(validChunks, { type: mimeType })
+                    console.log('[Voice Recording] Created blob:', blob.size, 'bytes, type:', blob.type)
+
+                    // Check if blob has actual content
+                    if (blob.size === 0) {
+                        console.error('[Voice Recording] Created blob is empty!')
+                        toast.error(t("apply.recordingFailed") || "Recording failed - empty audio file")
+                        setStage("ready")
+                        return
+                    }
+
+                    // Minimum size check (a few hundred bytes is typical minimum for any audio)
+                    if (blob.size < 100) {
+                        console.warn('[Voice Recording] Blob is suspiciously small:', blob.size, 'bytes')
+                    }
+
+                    setAudioBlob(blob)
+                    const url = URL.createObjectURL(blob)
+                    console.log('[Voice Recording] Created blob URL:', url)
+                    setAudioUrl(url)
+                    setStage("preview")
                 }
 
-                const blob = new Blob(audioChunksRef.current, { type: mediaRecorder?.mimeType || 'audio/webm' })
-                console.log('[Voice Recording] Created blob:', blob.size, 'bytes, type:', blob.type)
-                setAudioBlob(blob)
-                const url = URL.createObjectURL(blob)
-                setAudioUrl(url)
-                setStage("preview")
+                // On Safari without timeslice, ondataavailable fires after onstop
+                // Use a longer wait time to ensure Safari has time to process
+                if (audioChunksRef.current.length === 0 && !usedTimesliceRef.current) {
+                    console.log('[Voice Recording] No chunks yet (Safari mode), waiting for ondataavailable...')
+                    // Wait up to 2 seconds for data to arrive (Safari can be slow)
+                    let attempts = 0
+                    const maxAttempts = 40 // 40 * 50ms = 2 seconds
+                    const checkInterval = setInterval(() => {
+                        attempts++
+                        if (audioChunksRef.current.length > 0) {
+                            console.log('[Voice Recording] ✅ Data arrived after', attempts * 50, 'ms')
+                            clearInterval(checkInterval)
+                            processAudioData()
+                        } else if (attempts >= maxAttempts) {
+                            console.log('[Voice Recording] ❌ Timeout waiting for data after', attempts * 50, 'ms')
+                            clearInterval(checkInterval)
+                            processAudioData() // Will show error message
+                        }
+                    }, 50)
+                } else {
+                    // Either we have chunks or we used timeslice (which means chunks should be available)
+                    // Still wait a tiny bit for any final chunk to arrive
+                    processDataTimeout = setTimeout(processAudioData, 100)
+                }
             }
 
             mediaRecorder.onerror = (event) => {
@@ -490,11 +609,13 @@ export function VoiceQuestion({
                 // Check if already recording (shouldn't happen but defensive check)
                 if (mediaRecorder.state === 'recording') {
                     console.log('[Voice Recording] ⚠️ Already recording, skipping start()')
+                    usedTimesliceRef.current = false // Unknown state
                 } else {
                     // Try with timeslice first (not supported on all browsers like Safari)
                     try {
                         mediaRecorder.start(100) // Collect data every 100ms
-                        console.log('[Voice Recording] ✅ MediaRecorder.start(100) called successfully')
+                        usedTimesliceRef.current = true
+                        console.log('[Voice Recording] ✅ MediaRecorder.start(100) called successfully (with timeslice)')
                     } catch (timesliceError) {
                         console.warn('[Voice Recording] start(100) failed, trying without timeslice:', timesliceError)
                         // Only retry if not already recording
@@ -502,9 +623,45 @@ export function VoiceQuestion({
                         const currentState = mediaRecorder.state as string
                         if (currentState !== 'recording') {
                             mediaRecorder.start()
+                            usedTimesliceRef.current = false
                             console.log('[Voice Recording] ✅ MediaRecorder.start() called successfully (no timeslice)')
+                            console.log('[Voice Recording] MediaRecorder state after start:', mediaRecorder.state)
+
+                            // Store the ref immediately so interval can access it
+                            mediaRecorderRef.current = mediaRecorder
+
+                            // Safari doesn't support timeslice, so we need to manually request data periodically
+                            // This ensures ondataavailable fires during recording, not just at the end
+                            console.log('[Voice Recording] Setting up manual data request interval for Safari')
+
+                            // Request data immediately after a short delay to start capturing
+                            // Capture the recorder reference for the closure
+                            const recorder = mediaRecorder
+                            setTimeout(() => {
+                                if (recorder && recorder.state === 'recording') {
+                                    try {
+                                        console.log('[Voice Recording] Initial requestData() after start')
+                                        recorder.requestData()
+                                    } catch (e) {
+                                        console.warn('[Voice Recording] Initial requestData() failed:', e)
+                                    }
+                                }
+                            }, 500)
+
+                            dataRequestIntervalRef.current = setInterval(() => {
+                                if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                                    try {
+                                        mediaRecorderRef.current.requestData()
+                                        console.log('[Voice Recording] Manual requestData() called, chunks so far:', audioChunksRef.current.length)
+                                    } catch (e) {
+                                        // requestData might not be supported on very old browsers
+                                        console.warn('[Voice Recording] requestData() failed:', e)
+                                    }
+                                }
+                            }, 1000) // Request data every 1 second
                         } else {
                             console.log('[Voice Recording] ⚠️ Already recording after timeslice error, continuing')
+                            usedTimesliceRef.current = false // Assume no timeslice
                         }
                     }
                 }
@@ -549,12 +706,42 @@ export function VoiceQuestion({
     // Stop recording
     const stopRecording = useCallback(
         async (isAutoSubmit = false) => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-                mediaRecorderRef.current.stop()
-            }
+            console.log('[Voice Recording] stopRecording called, isAutoSubmit:', isAutoSubmit)
 
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current)
+            }
+
+            // Clear the manual data request interval (Safari workaround)
+            if (dataRequestIntervalRef.current) {
+                clearInterval(dataRequestIntervalRef.current)
+                dataRequestIntervalRef.current = null
+            }
+
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                // If no timeslice was used, we need to request data before stopping
+                // On Safari/iOS without timeslice, ondataavailable only fires on stop()
+                // and we need to ensure data is collected
+                if (!usedTimesliceRef.current && mediaRecorderRef.current.state === 'recording') {
+                    try {
+                        console.log('[Voice Recording] Requesting final data before stop (no timeslice mode)')
+                        mediaRecorderRef.current.requestData()
+                        // Give Safari a moment to process the request
+                        await new Promise(resolve => setTimeout(resolve, 100))
+                    } catch (e) {
+                        console.warn('[Voice Recording] requestData() failed (may not be supported):', e)
+                    }
+                }
+
+                console.log('[Voice Recording] Calling stop()...')
+                mediaRecorderRef.current.stop()
+
+                // Clean up the separate recording stream if it exists (Safari)
+                if (recordingStreamRef.current && recordingStreamRef.current !== streamRef.current) {
+                    console.log('[Voice Recording] Cleaning up Safari recording stream')
+                    recordingStreamRef.current.getTracks().forEach(track => track.stop())
+                    recordingStreamRef.current = null
+                }
             }
 
             const duration = startTimeRef.current
@@ -634,8 +821,14 @@ export function VoiceQuestion({
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach((track) => track.stop())
             }
+            if (recordingStreamRef.current) {
+                recordingStreamRef.current.getTracks().forEach((track) => track.stop())
+            }
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current)
+            }
+            if (dataRequestIntervalRef.current) {
+                clearInterval(dataRequestIntervalRef.current)
             }
             // Only revoke if it's a blob URL (not a cloud URL)
             if (audioUrl && audioUrl.startsWith("blob:")) {
@@ -750,18 +943,27 @@ export function VoiceQuestion({
             type: s.type,
         }))
 
-        console.error('Audio element error:', {
+        // Get more detailed info about the audio state
+        const audioInfo = {
             audioUrl: audio.src || audioUrl,
             sources,
             errorCode: audio.error?.code,
             errorMessage: audio.error?.message,
             networkState: audio.networkState,
+            networkStateText: ['NETWORK_EMPTY', 'NETWORK_IDLE', 'NETWORK_LOADING', 'NETWORK_NO_SOURCE'][audio.networkState] || 'unknown',
             readyState: audio.readyState,
+            readyStateText: ['HAVE_NOTHING', 'HAVE_METADATA', 'HAVE_CURRENT_DATA', 'HAVE_FUTURE_DATA', 'HAVE_ENOUGH_DATA'][audio.readyState] || 'unknown',
             canPlayType_webm: audio.canPlayType('audio/webm'),
             canPlayType_ogg: audio.canPlayType('audio/ogg'),
             canPlayType_mp4: audio.canPlayType('audio/mp4'),
             canPlayType_mpeg: audio.canPlayType('audio/mpeg'),
-        })
+            currentSrc: audio.currentSrc,
+            duration: audio.duration,
+            paused: audio.paused,
+            audioBlob: audioBlob ? { size: audioBlob.size, type: audioBlob.type } : null,
+        }
+
+        console.error('Audio element error:', audioInfo)
 
         if (audio.error) {
             switch (audio.error.code) {
