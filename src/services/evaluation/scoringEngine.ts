@@ -1,9 +1,11 @@
 /**
  * SmartRecruit AI - Smart Scoring Engine
  * The brain that matches candidates against job criteria
+ * Falls back to OpenAI when Gemini quota is exceeded
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import {
     CriteriaMatch,
     ScoringResult,
@@ -16,8 +18,18 @@ import {
     BilingualTextArray,
 } from './types'
 
-// Gemini 2.0 Flash (1500 requests/day free tier vs 20 for 2.5-flash-lite)
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// Gemini 2.5 Flash for candidate scoring
+const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+
+// Initialize OpenAI client (lazy)
+let openaiClient: OpenAI | null = null
+function getOpenAIClient(): OpenAI | null {
+    if (openaiClient) return openaiClient
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) return null
+    openaiClient = new OpenAI({ apiKey })
+    return openaiClient
+}
 
 interface CandidateData {
     personalData: CandidateEvaluationInput['personalData']
@@ -320,7 +332,29 @@ Return ONLY valid JSON. No explanations, no markdown, just pure JSON.`
             aiAnalysisBreakdown,
         }
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error('[Scoring Engine] Error:', error)
+
+        // Check if this is a quota exceeded error (429)
+        const is429Error = errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('Too Many Requests')
+
+        if (is429Error) {
+            console.log('🔄 [Scoring Engine] Gemini quota exceeded, trying OpenAI fallback...')
+            const openaiResult = await scoreCandidateWithOpenAI(candidateData, jobCriteria)
+            if (openaiResult.success) {
+                console.log('✅ [Scoring Engine] OpenAI fallback successful!')
+                // Build AI Analysis Breakdown for OpenAI fallback as well (skip Gemini calls)
+                console.log('[Scoring Engine] Building AI Analysis Breakdown for OpenAI fallback...')
+                const aiAnalysisBreakdown = await buildAIAnalysisBreakdown(candidateData, jobCriteria, openaiResult, true)
+                console.log('[Scoring Engine] AI Analysis Breakdown complete for OpenAI fallback')
+                return {
+                    ...openaiResult,
+                    aiAnalysisBreakdown,
+                }
+            }
+            console.error('❌ [Scoring Engine] OpenAI fallback also failed:', openaiResult.error)
+        }
+
         return {
             success: false,
             overallScore: 0,
@@ -330,7 +364,120 @@ Return ONLY valid JSON. No explanations, no markdown, just pure JSON.`
             redFlags: { en: [], ar: [] },
             summary: { en: '', ar: '' },
             whySection: { en: '', ar: '' },
-            error: error instanceof Error ? error.message : 'Unknown scoring error',
+            error: errorMessage,
+        }
+    }
+}
+
+/**
+ * OpenAI fallback for candidate scoring
+ * Used when Gemini quota is exceeded (429 errors)
+ */
+async function scoreCandidateWithOpenAI(
+    candidateData: CandidateData,
+    jobCriteria: CandidateEvaluationInput['jobCriteria']
+): Promise<ScoringResult> {
+    const openai = getOpenAIClient()
+    if (!openai) {
+        return {
+            success: false,
+            overallScore: 0,
+            criteriaMatches: [],
+            strengths: { en: [], ar: [] },
+            weaknesses: { en: [], ar: [] },
+            redFlags: { en: [], ar: [] },
+            summary: { en: '', ar: '' },
+            whySection: { en: '', ar: '' },
+            error: 'OpenAI API key not configured for fallback',
+        }
+    }
+
+    try {
+        console.log('🔄 [OpenAI Scoring] Evaluating candidate:', candidateData.personalData.name)
+
+        // Check budget first
+        const budgetCheck = checkBudget(
+            candidateData.personalData.salaryExpectation,
+            jobCriteria.salaryMin,
+            jobCriteria.salaryMax
+        )
+
+        // Build candidate profile and criteria
+        const candidateProfile = buildCandidateProfile(candidateData, jobCriteria)
+        const criteriaList = buildCriteriaList(jobCriteria)
+
+        const prompt = `You are an expert HR evaluator. Evaluate this candidate against job criteria.
+
+**JOB:** ${jobCriteria.title}
+**CRITERIA:** ${criteriaList}
+**CANDIDATE:** ${candidateProfile}
+
+Return JSON with this structure (bilingual EN/AR):
+{
+    "criteriaMatches": [{"name": "<criterion>", "score": <0-100>, "matched": <bool>, "reason": {"en": "<reason>", "ar": "<سبب>"}}],
+    "overallScore": <0-100>,
+    "strengths": {"en": ["<strength>"], "ar": ["<نقطة قوة>"]},
+    "weaknesses": {"en": ["<weakness>"], "ar": ["<نقطة ضعف>"]},
+    "redFlags": {"en": ["<flag>"], "ar": ["<علم أحمر>"]},
+    "summary": {"en": "<2-3 sentence summary>", "ar": "<ملخص من 2-3 جمل>"},
+    "whySection": {"en": "Matched X% because: <brief reason>", "ar": "نسبة التطابق X% لأن: <سبب موجز>"}
+}
+
+Return ONLY valid JSON.`
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: 'You are an expert HR evaluator. Respond ONLY with valid JSON.' },
+                { role: 'user', content: prompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 4000,
+        })
+
+        let responseText = response.choices[0]?.message?.content?.trim() || '{}'
+        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+        const jsonMatch = responseText.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+
+        const evaluation = JSON.parse(responseText)
+
+        // Add budget red flag if applicable
+        if (budgetCheck.redFlag) {
+            evaluation.redFlags = evaluation.redFlags || { en: [], ar: [] }
+            evaluation.redFlags.en = evaluation.redFlags.en || []
+            evaluation.redFlags.ar = evaluation.redFlags.ar || []
+            evaluation.redFlags.en.push(budgetCheck.redFlag)
+            evaluation.redFlags.ar.push('توقعات الراتب خارج نطاق الميزانية')
+        }
+
+        console.log('✅ [OpenAI Scoring] Evaluation complete, score:', evaluation.overallScore)
+
+        return {
+            success: true,
+            overallScore: evaluation.overallScore || 0,
+            criteriaMatches: evaluation.criteriaMatches || [],
+            strengths: evaluation.strengths || { en: [], ar: [] },
+            weaknesses: evaluation.weaknesses || { en: [], ar: [] },
+            redFlags: evaluation.redFlags || { en: [], ar: [] },
+            summary: evaluation.summary || { en: '', ar: '' },
+            whySection: evaluation.whySection || { en: '', ar: '' },
+        }
+    } catch (error) {
+        console.error('❌ [OpenAI Scoring] Error:', error)
+        return {
+            success: false,
+            overallScore: 0,
+            criteriaMatches: [],
+            strengths: { en: [], ar: [] },
+            weaknesses: { en: [], ar: [] },
+            redFlags: { en: [], ar: [] },
+            summary: { en: '', ar: '' },
+            whySection: { en: '', ar: '' },
+            error: error instanceof Error ? error.message : 'OpenAI fallback failed',
         }
     }
 }
@@ -724,7 +871,7 @@ ${voiceAnalysis.map(v => {
     return `
 ### Question (Weight: ${v.questionWeight}/10): ${v.questionText}
 **Response:** ${isFailed ? '⚠️ [AUDIO TRANSCRIPTION FAILED - Unable to process voice response. Manual review required.]' : v.transcript}
-${!isFailed && v.analysis?.sentiment ? `**Sentiment:** ${v.analysis.sentiment.label} (${v.analysis.sentiment.score.toFixed(2)})` : ''}
+${!isFailed && v.analysis?.sentiment ? `**Sentiment:** ${v.analysis.sentiment.label}${v.analysis.sentiment.score ? ` (${v.analysis.sentiment.score.toFixed(2)})` : ''}` : ''}
 ${!isFailed && v.analysis?.confidence ? `**Confidence Score:** ${v.analysis.confidence.score}%` : ''}
 ${!isFailed && v.analysis?.keyPhrases?.length ? `**Key Phrases:** ${v.analysis.keyPhrases.join(', ')}` : ''}
 `
@@ -991,17 +1138,23 @@ Return ONLY valid JSON.`
  * Build AI Analysis Breakdown for transparency
  * Shows WHAT the AI analyzed and WHY it made decisions
  * ENHANCED: Now uses AI to analyze each voice/text response in detail
+ * @param skipGeminiCalls - If true, skip Gemini API calls (used in OpenAI fallback mode)
  */
 export async function buildAIAnalysisBreakdown(
     candidateData: CandidateData,
     jobCriteria: CandidateEvaluationInput['jobCriteria'],
-    scoringResult: ScoringResult
+    scoringResult: ScoringResult,
+    skipGeminiCalls = false
 ): Promise<import('./types').AIAnalysisBreakdown> {
     const breakdown: import('./types').AIAnalysisBreakdown = {}
 
-    // Initialize Gemini for detailed response analysis
+    // Initialize Gemini for detailed response analysis (skip if in fallback mode)
     const googleKey = process.env.GOOGLE_API_KEY
-    const genAI = googleKey ? new GoogleGenerativeAI(googleKey) : null
+    const genAI = skipGeminiCalls ? null : (googleKey ? new GoogleGenerativeAI(googleKey) : null)
+
+    if (skipGeminiCalls) {
+        console.log('[AI Breakdown] Skipping Gemini API calls (fallback mode)')
+    }
 
     // 1. Screening Questions Analysis
     if (candidateData.personalData.screeningAnswers && jobCriteria.screeningQuestions && jobCriteria.screeningQuestions.length > 0) {

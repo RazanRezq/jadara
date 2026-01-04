@@ -994,8 +994,11 @@ export function VoiceQuestion({
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach((track) => track.stop())
             }
-            if (audioContextRef.current) {
-                audioContextRef.current.close()
+            // Only close AudioContext if it's not already closed
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {
+                    // Ignore errors when closing - context may already be closed
+                })
             }
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current)

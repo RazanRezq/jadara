@@ -64,9 +64,17 @@ export function AIRecommendedSection({ applicants, evaluations, onApplicantClick
         return Math.max(0, Math.min(100, baseScore + bonusPoints))
     }
 
-    // Filter applicants with score >= 70 and sort by intelligent score
+    // Filter applicants with score >= 70, "hire" recommendation, and sort by intelligent score
     const topApplicants = applicants
-        .filter(app => app.aiScore !== undefined && app.aiScore !== null && app.aiScore >= 70)
+        .filter(app => {
+            const evaluation = getEvaluation(app.id)
+            return (
+                app.aiScore !== undefined &&
+                app.aiScore !== null &&
+                app.aiScore >= 70 &&
+                evaluation?.recommendation === 'hire'
+            )
+        })
         .map(app => ({
             ...app,
             intelligentScore: calculateIntelligentScore(app),

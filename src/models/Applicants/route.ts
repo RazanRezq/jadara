@@ -140,7 +140,7 @@ app.get('/list', authenticate, async (c) => {
                 const [evaluations, reviews, interviews] = await Promise.all([
                     // Fetch evaluations
                     Evaluation.find({ applicantId: { $in: applicantIds } })
-                        .select('applicantId summary strengths weaknesses recommendation overallScore categoryScores')
+                        .select('applicantId summary strengths weaknesses recommendation overallScore categoryScores aiAnalysisBreakdown')
                         .lean()
                         .catch(() => []), // Return empty array on error
 
@@ -196,6 +196,7 @@ app.get('/list', authenticate, async (c) => {
                                 recommendation: evaluation.recommendation,
                                 overallScore: evaluation.overallScore,
                                 categoryScores: evaluation.categoryScores,
+                                aiAnalysisBreakdown: evaluation.aiAnalysisBreakdown,
                             })
                         }
                     })

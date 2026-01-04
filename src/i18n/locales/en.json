@@ -624,7 +624,13 @@
             "knockoutQuestionFailed": "Failed knockout question",
             "languageGap": "Language gap",
             "salaryMismatch": "Salary mismatch",
-            "screeningMismatch": "Screening question mismatch"
+            "screeningMismatch": "Screening question mismatch",
+            "failedScreeningQuestion": "Failed screening question: {{question}}",
+            "significantExperienceGap": "Significant experience gap: {{reported}} years reported vs {{required}} years required",
+            "missingRequiredSkill": "Missing required skill: {{skill}}",
+            "noRelevantExperience": "No relevant experience",
+            "locationMismatch": "Location mismatch",
+            "educationNotMet": "Education requirement not met"
         },
         "tags": "Tags",
         "notes": "Notes",

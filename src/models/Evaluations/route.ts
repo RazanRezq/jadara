@@ -3,8 +3,11 @@ import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Evaluation from './evaluationSchema'
 import Applicant from '../Applicants/applicantSchema'
+import Job from '../Jobs/jobSchema'
+import Response from '../Responses/responseSchema'
 import mongoose from 'mongoose'
 import { authenticate, getAuthUser } from '@/lib/authMiddleware'
+import { scoreCandidate } from '@/services/evaluation/scoringEngine'
 
 // Bilingual content schemas
 const bilingualTextSchema = z.object({
@@ -278,6 +281,8 @@ app.post('/batch-by-applicants', authenticate, async (c) => {
                 voiceAnalysisDetails: e.voiceAnalysisDetails,
                 socialProfileInsights: e.socialProfileInsights,
                 textResponseAnalysis: e.textResponseAnalysis,
+                // AI Analysis Breakdown - Detailed transparency of AI decisions
+                aiAnalysisBreakdown: e.aiAnalysisBreakdown,
             }
         })
 
@@ -556,6 +561,186 @@ app.delete('/delete/:id', async (c) => {
             message: 'Evaluation deleted successfully',
         })
     } catch (error) {
+        return c.json(
+            {
+                success: false,
+                error: 'Internal server error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
+            500
+        )
+    }
+})
+
+// ============================================================================
+// RE-EVALUATE APPLICANT - Re-run AI evaluation for a specific applicant
+// ============================================================================
+app.post('/re-evaluate/:applicantId', authenticate, async (c) => {
+    try {
+        await dbConnect()
+
+        const applicantId = c.req.param('applicantId')
+
+        // Validate applicant ID
+        if (!mongoose.Types.ObjectId.isValid(applicantId)) {
+            return c.json({ success: false, error: 'Invalid applicant ID' }, 400)
+        }
+
+        // Get applicant
+        const applicant = await Applicant.findById(applicantId).lean()
+        if (!applicant) {
+            return c.json({ success: false, error: 'Applicant not found' }, 404)
+        }
+
+        // Get job
+        const job = await Job.findById(applicant.jobId).lean()
+        if (!job) {
+            return c.json({ success: false, error: 'Job not found' }, 404)
+        }
+
+        // Get responses
+        const responses = await Response.find({ applicantId }).lean()
+        const voiceResponses = responses.filter((r: any) => r.type === 'voice')
+        const textResponses = responses.filter((r: any) => r.type === 'text')
+
+        // Build question map from job data
+        const questionMap: Record<string, { text: string; weight: number }> = {}
+        if ((job as any).voiceQuestions) {
+            ;(job as any).voiceQuestions.forEach((q: any, idx: number) => {
+                questionMap[q.id || `voice_${idx}`] = {
+                    text: typeof q.question === 'object' ? q.question.en || q.question.ar || '' : q.question || '',
+                    weight: q.weight || 5
+                }
+            })
+        }
+        if ((job as any).textQuestions) {
+            ;(job as any).textQuestions.forEach((q: any, idx: number) => {
+                questionMap[q.id || `text_${idx}`] = {
+                    text: typeof q.question === 'object' ? q.question.en || q.question.ar || '' : q.question || '',
+                    weight: q.weight || 5
+                }
+            })
+        }
+
+        // Prepare candidate data
+        const candidateData = {
+            personalData: (applicant as any).personalData || {},
+            voiceAnalysis: voiceResponses.map((vr: any) => {
+                const questionInfo = questionMap[vr.questionId] || { text: `Question ${vr.questionId}`, weight: 5 }
+                return {
+                    questionId: vr.questionId,
+                    questionText: questionInfo.text,
+                    questionWeight: questionInfo.weight,
+                    transcript: vr.cleanTranscript || vr.rawTranscript || '',
+                    analysis: {
+                        sentiment: { label: 'neutral' },
+                        confidence: { score: 70 }
+                    },
+                }
+            }),
+            textResponses: textResponses.map((tr: any) => {
+                const questionInfo = questionMap[tr.questionId] || { text: `Question ${tr.questionId}`, weight: 5 }
+                return {
+                    questionId: tr.questionId,
+                    questionText: questionInfo.text,
+                    questionWeight: questionInfo.weight,
+                    answer: tr.textAnswer || '',
+                    weight: questionInfo.weight,
+                }
+            }),
+            additionalNotes: (applicant as any).notes || (applicant as any).additionalNotes || '',
+            externalProfiles: {
+                linkedinUrl: (applicant as any).personalData?.linkedinUrl,
+                githubUrl: (applicant as any).personalData?.githubUrl,
+                portfolioUrl: (applicant as any).personalData?.portfolioUrl,
+            },
+        }
+
+        // Prepare job criteria
+        const jobCriteria = {
+            title: (job as any).title || '',
+            description: (job as any).description || '',
+            criteria: (job as any).criteria?.map((c: any) => ({
+                name: c.name,
+                weight: c.weight || 5,
+                required: c.required || false,
+            })) || [],
+            screeningQuestions: (job as any).screeningQuestions?.map((sq: any) => ({
+                question: sq.question,
+                idealAnswer: sq.idealAnswer,
+                disqualify: sq.disqualify || false,
+            })) || [],
+            languages: (job as any).languages || [],
+            skills: (job as any).skills || [],
+            experience: {
+                minYears: (job as any).minExperience || 0,
+                maxYears: (job as any).maxExperience || 99,
+            },
+            salaryMin: (job as any).salaryMin || 0,
+            salaryMax: (job as any).salaryMax || 999999,
+            autoRejectThreshold: (job as any).autoRejectThreshold || 40,
+        }
+
+        // Run AI evaluation
+        const result = await scoreCandidate(candidateData as any, jobCriteria as any)
+
+        if (!result.success) {
+            // Check if it's a quota error
+            const isQuotaError = result.error?.includes('quota') || result.error?.includes('429')
+
+            return c.json({
+                success: false,
+                error: isQuotaError ? 'AI quota exceeded' : 'AI evaluation failed',
+                details: result.error,
+                isQuotaError
+            }, 500)
+        }
+
+        // Generate recommendation
+        const recommendation = result.overallScore >= 80 ? 'hire' :
+                              result.overallScore >= 60 ? 'hold' : 'reject'
+
+        // Update or create evaluation
+        await Evaluation.findOneAndUpdate(
+            { applicantId },
+            {
+                $set: {
+                    aiAnalysisBreakdown: result.aiAnalysisBreakdown,
+                    overallScore: result.overallScore,
+                    recommendation: recommendation,
+                    summary: result.summary,
+                    strengths: result.strengths,
+                    weaknesses: result.weaknesses,
+                    redFlags: result.redFlags,
+                    criteriaMatches: result.criteriaMatches,
+                    updatedAt: new Date(),
+                }
+            },
+            { upsert: true }
+        )
+
+        // Update applicant's AI score
+        await Applicant.findByIdAndUpdate(applicantId, {
+            $set: {
+                aiScore: result.overallScore,
+                aiRecommendation: recommendation,
+                aiSummary: typeof result.summary === 'string'
+                    ? result.summary
+                    : result.summary?.en || '',
+            }
+        })
+
+        return c.json({
+            success: true,
+            data: {
+                overallScore: result.overallScore,
+                recommendation,
+                hasBreakdown: !!result.aiAnalysisBreakdown
+            }
+        })
+
+    } catch (error) {
+        console.error('[Re-evaluate] Error:', error)
         return c.json(
             {
                 success: false,

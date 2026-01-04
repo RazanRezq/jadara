@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import {
@@ -53,6 +54,11 @@ import {
     Brain,
     TrendingUp,
     Target,
+    ChevronDown,
+    Award,
+    BarChart3,
+    RefreshCw,
+    Loader2,
 } from "lucide-react"
 import type { Applicant, ApplicantStatus, EvaluationData, BilingualText, BilingualTextArray } from "./applicants-client"
 import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
@@ -137,6 +143,7 @@ export function ViewApplicantDialog({
         languages?: Array<{ language: string; level: string }>
     } | null>(null)
     const [showScheduleDialog, setShowScheduleDialog] = useState(false)
+    const [isReEvaluating, setIsReEvaluating] = useState(false)
 
     // HOISTED DATA: Fetch reviews and comments at parent level to prevent tab flickering
     const [reviews, setReviews] = useState<any[]>([])
@@ -148,46 +155,87 @@ export function ViewApplicantDialog({
     const isAdmin = userRole === 'admin' || userRole === 'superadmin'
 
     // Helper to get bilingual text based on current locale
+    // Falls back to other language if preferred is empty
     const getLocalizedText = (text: BilingualText | string | undefined): string => {
         if (!text) return ''
         if (typeof text === 'string') return text // Legacy format
-        return locale === 'ar' ? (text.ar || text.en) : (text.en || text.ar)
+        const arText = text.ar || ''
+        const enText = text.en || ''
+        return locale === 'ar'
+            ? (arText.length > 0 ? arText : enText)
+            : (enText.length > 0 ? enText : arText)
     }
 
     // Helper to get bilingual array based on current locale
+    // Falls back to other language if preferred array is empty
     const getLocalizedArray = (arr: BilingualTextArray | string[] | undefined): string[] => {
         if (!arr) return []
         if (Array.isArray(arr)) return arr // Legacy format
-        return locale === 'ar' ? (arr.ar || arr.en || []) : (arr.en || arr.ar || [])
+        const arArray = arr.ar || []
+        const enArray = arr.en || []
+        return locale === 'ar'
+            ? (arArray.length > 0 ? arArray : enArray)
+            : (enArray.length > 0 ? enArray : arArray)
     }
 
     // Alias for getLocalizedArray (used in enhanced AI evaluation display)
     const getLocalizedTextArray = getLocalizedArray
 
-    // Helper to translate red flags
+    // Helper to detect if text is primarily English (for fallback translation)
+    const isEnglishText = (text: string): boolean => {
+        // Check if text contains mostly English characters
+        const englishChars = text.match(/[a-zA-Z]/g)?.length || 0
+        const arabicChars = text.match(/[\u0600-\u06FF]/g)?.length || 0
+        return englishChars > arabicChars
+    }
+
+    // Helper to translate red flags from English to Arabic
     const translateRedFlag = (flag: string): string => {
         if (locale !== 'ar') return flag // Only translate for Arabic
+        if (!isEnglishText(flag)) return flag // Already in Arabic
 
         // Pattern matching for common red flag messages
         const patterns = [
+            // Experience gap patterns (multiple formats)
             {
-                pattern: /Experience gap: (\d+) years? below minimum \(Has (\d+), requires (\d+)\)/i,
+                pattern: /Experience gap[:\s]*(\d+)\s*years?\s*below\s*minimum\s*\((?:Has|has)\s*(\d+),?\s*(?:requires|needs)\s*(\d+)\)/i,
                 replace: (match: RegExpMatchArray) => {
-                    const gap = match[1]
-                    const has = match[2]
-                    const requires = match[3]
                     return t('applicants.redFlagPatterns.experienceGap')
-                        .replace('{{gap}}', gap)
-                        .replace('{{has}}', has)
-                        .replace('{{requires}}', requires)
+                        .replace('{{gap}}', match[1])
+                        .replace('{{has}}', match[2])
+                        .replace('{{requires}}', match[3])
                 }
             },
+            {
+                pattern: /Significant experience gap[:\s]*(\d+)\s*years?\s*(?:reported|actual)\s*(?:vs\.?|versus)\s*(\d+)\s*years?\s*(?:required|needed)/i,
+                replace: (match: RegExpMatchArray) => {
+                    return t('applicants.redFlagPatterns.significantExperienceGap')
+                        .replace('{{reported}}', match[1])
+                        .replace('{{required}}', match[2])
+                }
+            },
+            // Screening question failures (multiple formats)
+            {
+                pattern: /Failed\s*(?:screening|knockout)\s*question[:\s]*(.+?)\s*\((?:NO|YES|No|Yes|no|yes)\)/i,
+                replace: (match: RegExpMatchArray) => {
+                    return t('applicants.redFlagPatterns.failedScreeningQuestion')
+                        .replace('{{question}}', match[1].trim().replace(/[.،]+$/, ''))
+                }
+            },
+            {
+                pattern: /Screening\s*question\s*(?:failed|mismatch)[:\s]*(.+)/i,
+                replace: (match: RegExpMatchArray) => {
+                    return t('applicants.redFlagPatterns.failedScreeningQuestion')
+                        .replace('{{question}}', match[1].trim().replace(/[.،]+$/, ''))
+                }
+            },
+            // Generic patterns
             {
                 pattern: /Minimum experience requirement not met/i,
                 replace: () => t('applicants.redFlagPatterns.minExperienceNotMet')
             },
             {
-                pattern: /Cannot start immediately, a key screening question mismatch/i,
+                pattern: /Cannot start immediately/i,
                 replace: () => t('applicants.redFlagPatterns.cannotStartImmediately')
             },
             {
@@ -195,16 +243,43 @@ export function ViewApplicantDialog({
                 replace: () => t('applicants.redFlagPatterns.knockoutQuestionFailed')
             },
             {
-                pattern: /Language gap/i,
+                pattern: /Language gap|Language proficiency.*(?:below|insufficient|not met)/i,
                 replace: () => t('applicants.redFlagPatterns.languageGap')
             },
             {
-                pattern: /Salary.*(?:mismatch|expectation)/i,
+                pattern: /Salary.*(?:mismatch|expectation|exceeds|outside|beyond)/i,
                 replace: () => t('applicants.redFlagPatterns.salaryMismatch')
             },
             {
                 pattern: /screening question mismatch/i,
                 replace: () => t('applicants.redFlagPatterns.screeningMismatch')
+            },
+            {
+                pattern: /Missing required skill[:\s]*(.+)/i,
+                replace: (match: RegExpMatchArray) => {
+                    return t('applicants.redFlagPatterns.missingRequiredSkill')
+                        .replace('{{skill}}', match[1].trim().replace(/[.،]+$/, ''))
+                }
+            },
+            {
+                pattern: /No relevant experience/i,
+                replace: () => t('applicants.redFlagPatterns.noRelevantExperience')
+            },
+            {
+                pattern: /Location mismatch|Location.*(?:not suitable|incompatible)/i,
+                replace: () => t('applicants.redFlagPatterns.locationMismatch')
+            },
+            {
+                pattern: /Education requirement not met|Education.*(?:below|insufficient)/i,
+                replace: () => t('applicants.redFlagPatterns.educationNotMet')
+            },
+            // Catch-all for "requirement not met" patterns
+            {
+                pattern: /(.+)\s*requirement\s*not\s*met/i,
+                replace: (match: RegExpMatchArray) => {
+                    const requirement = match[1].trim()
+                    return `${requirement} - ${t('applicants.redFlagPatterns.minExperienceNotMet').replace('الخبرة الأدنى', 'المتطلب')}`
+                }
             }
         ]
 
@@ -385,6 +460,54 @@ export function ViewApplicantDialog({
             toast.error(t("common.error"))
         } finally {
             setUpdating(false)
+        }
+    }
+
+    const handleReEvaluate = async () => {
+        setIsReEvaluating(true)
+        try {
+            const response = await fetch(`/api/evaluations/re-evaluate/${applicant.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                toast.success(locale === 'ar' ? 'تم إعادة التقييم بنجاح' : 'Re-evaluation completed successfully')
+                // Refresh the page to show updated data
+                onStatusChange()
+            } else {
+                // Better error messaging for quota issues
+                const errorMsg = data.error || ''
+                const isQuotaError = errorMsg.includes('quota') || errorMsg.includes('429') || data.details?.includes('quota')
+
+                if (isQuotaError) {
+                    toast.error(
+                        locale === 'ar'
+                            ? 'تم تجاوز حد استخدام الذكاء الاصطناعي. يرجى المحاولة لاحقًا أو التحقق من خطة الفوترة الخاصة بك.'
+                            : 'AI quota exceeded. Please try again later or check your billing plan.',
+                        { duration: 5000 }
+                    )
+                } else {
+                    toast.error(data.error || (locale === 'ar' ? 'فشل إعادة التقييم' : 'Re-evaluation failed'))
+                }
+
+                // Show details in console for debugging
+                if (data.details) {
+                    console.error('Re-evaluation error details:', data.details)
+                }
+            }
+        } catch (error) {
+            console.error("Re-evaluate error:", error)
+            toast.error(
+                locale === 'ar'
+                    ? 'حدث خطأ أثناء إعادة التقييم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'
+                    : 'An error occurred during re-evaluation. Please check your internet connection and try again.',
+                { duration: 5000 }
+            )
+        } finally {
+            setIsReEvaluating(false)
         }
     }
 
@@ -932,501 +1055,325 @@ export function ViewApplicantDialog({
                     </TabsContent>
 
                     {/* AI Evaluation Tab */}
-                    <TabsContent value="evaluation" className="p-4 sm:p-6 space-y-8 mt-0">
-                        {/* Strengths & Weaknesses */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Strengths */}
-                            <Card className="bg-gradient-to-br from-teal-50/80 via-emerald-50/60 to-teal-50/80 dark:from-teal-950/20 dark:via-emerald-950/15 dark:to-teal-950/20 border border-teal-200/60 dark:border-teal-800/50 shadow-sm hover:shadow-md transition-all">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
-                                        <CheckCircle className="h-5 w-5 text-primary" />
-                                        {t("applicants.strengths")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3 pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {getLocalizedArray(evaluation?.strengths).length > 0 ? (
-                                        <div className="space-y-3">
-                                            {getLocalizedArray(evaluation?.strengths).map((strength, index) => (
-                                                <div
-                                                    key={`strength-${index}`}
-                                                    className="group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all"
-                                                >
-                                                    <div className="mt-0.5 shrink-0">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                    </div>
-                                                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-line flex-1 text-start">
-                                                        {strength}
-                                                    </p>
-                                                </div>
-                                            ))}
+                    <TabsContent value="evaluation" className="p-4 sm:p-6 space-y-6 mt-0">
+                        {/* ═══════════════════════════════════════════════════════════════════════════════
+                            AI SUMMARY CARD - Quick overview with score, recommendation, and key insights
+                        ═══════════════════════════════════════════════════════════════════════════════ */}
+                        <Card className="bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950/50 dark:via-slate-900/30 dark:to-slate-950/50 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
+                            <CardContent className="p-6">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    {/* Score Gauge */}
+                                    <div className="flex flex-col items-center justify-center lg:border-e lg:border-slate-200 dark:lg:border-slate-700 lg:pe-6">
+                                        <div className="relative w-32 h-32">
+                                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                <circle
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="42"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    className="text-slate-200 dark:text-slate-700"
+                                                />
+                                                <circle
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="42"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    strokeLinecap="round"
+                                                    strokeDasharray={`${(evaluation?.overallScore || applicant.aiScore || 0) * 2.64} 264`}
+                                                    className={cn(
+                                                        (evaluation?.overallScore || applicant.aiScore || 0) >= 80 ? "text-emerald-500" :
+                                                        (evaluation?.overallScore || applicant.aiScore || 0) >= 60 ? "text-amber-500" : "text-red-500"
+                                                    )}
+                                                />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <span className={cn(
+                                                    "text-3xl font-bold",
+                                                    (evaluation?.overallScore || applicant.aiScore || 0) >= 80 ? "text-emerald-600 dark:text-emerald-400" :
+                                                    (evaluation?.overallScore || applicant.aiScore || 0) >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                                                )}>
+                                                    {evaluation?.overallScore || applicant.aiScore || 0}%
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">{locale === 'ar' ? 'التوافق' : 'Match'}</span>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground py-4 text-center">{t("applicants.noStrengths")}</p>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                        {/* Recommendation Badge */}
+                                        <Badge className={cn(
+                                            "mt-3 text-sm px-4 py-1",
+                                            evaluation?.recommendation === 'hire' ? "bg-emerald-500 hover:bg-emerald-600" :
+                                            evaluation?.recommendation === 'hold' ? "bg-amber-500 hover:bg-amber-600" :
+                                            "bg-red-500 hover:bg-red-600"
+                                        )}>
+                                            <Award className="h-4 w-4 me-1.5" />
+                                            {evaluation?.recommendation === 'hire' ? (locale === 'ar' ? 'توظيف' : 'Hire') :
+                                             evaluation?.recommendation === 'hold' ? (locale === 'ar' ? 'انتظار' : 'Hold') :
+                                             (locale === 'ar' ? 'رفض' : 'Reject')}
+                                        </Badge>
+                                    </div>
 
-                            {/* Weaknesses */}
-                            <Card className="bg-gradient-to-br from-rose-50/80 via-pink-50/60 to-rose-50/80 dark:from-rose-950/20 dark:via-pink-950/15 dark:to-rose-950/20 border border-rose-200/60 dark:border-rose-800/50 shadow-sm hover:shadow-md transition-all">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-muted-foreground">
-                                        <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-                                        {t("applicants.weaknesses")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3 pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {getLocalizedArray(evaluation?.weaknesses).length > 0 ? (
-                                        <div className="space-y-3">
-                                            {getLocalizedArray(evaluation?.weaknesses).map((weakness, index) => (
-                                                <div
-                                                    key={`weakness-${index}`}
-                                                    className="group flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 hover:border-red-400 dark:hover:border-red-600 transition-all"
-                                                >
-                                                    <div className="mt-0.5 shrink-0">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                                    </div>
-                                                    <p className="text-sm leading-relaxed text-red-900 dark:text-red-100 whitespace-pre-line flex-1 text-start">
-                                                        {weakness}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                    {/* Summary & Key Insights */}
+                                    <div className="flex-1 space-y-4">
+                                        {/* AI Summary */}
+                                        <div>
+                                            <p className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                                                <Brain className="h-4 w-4" />
+                                                {locale === 'ar' ? 'ملخص الذكاء الاصطناعي' : 'AI Summary'}
+                                            </p>
+                                            <p className="text-sm text-foreground leading-relaxed text-start" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                                {getLocalizedText(evaluation?.summary) || applicant.aiSummary || (locale === 'ar' ? 'لا يوجد ملخص متاح' : 'No summary available')}
+                                            </p>
                                         </div>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground py-4 text-center">{t("applicants.noWeaknesses")}</p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
 
-                        {/* Missing Requirements */}
-                        <Card className="bg-card border-border shadow-sm">
-                            <CardHeader className="pb-4">
-                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                    <XCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                    {t("applicants.missingRequirements")}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-2" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                {evaluation?.criteriaMatches?.filter(c => !c.matched).length ? (
-                                    <div className="space-y-3">
-                                        {evaluation.criteriaMatches
-                                            .filter(c => !c.matched)
-                                            .map((criteria, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50"
-                                                >
-                                                    <div className="mt-0.5 shrink-0">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                                    </div>
-                                                    <div className="flex-1 space-y-1 text-start">
-                                                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                                                            {criteria.criteriaName}
-                                                        </p>
-                                                        <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed whitespace-pre-line">
-                                                            {getLocalizedText(criteria.reason)}
-                                                        </p>
-                                                    </div>
+                                        {/* Quick Stats Row */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            {/* Strengths Count */}
+                                            <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400">{locale === 'ar' ? 'نقاط القوة' : 'Strengths'}</p>
+                                                <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                                                    {getLocalizedArray(evaluation?.strengths).length}
+                                                </p>
+                                            </div>
+                                            {/* Weaknesses Count */}
+                                            <div className="text-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                                <p className="text-xs text-amber-600 dark:text-amber-400">{locale === 'ar' ? 'نقاط الضعف' : 'Weaknesses'}</p>
+                                                <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                                                    {getLocalizedArray(evaluation?.weaknesses).length}
+                                                </p>
+                                            </div>
+                                            {/* Red Flags Count */}
+                                            <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                                <p className="text-xs text-red-600 dark:text-red-400">{locale === 'ar' ? 'تنبيهات' : 'Red Flags'}</p>
+                                                <p className="text-lg font-bold text-red-700 dark:text-red-300">
+                                                    {getLocalizedArray(evaluation?.redFlags).length}
+                                                </p>
+                                            </div>
+                                            {/* Criteria Matched */}
+                                            <div className="text-center p-2 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/20">
+                                                <p className="text-xs text-primary">{locale === 'ar' ? 'المعايير' : 'Criteria Met'}</p>
+                                                <p className="text-lg font-bold text-primary">
+                                                    {evaluation?.criteriaMatches?.filter(c => c.matched).length || 0}/{evaluation?.criteriaMatches?.length || 0}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Top Strengths (max 3) */}
+                                        {getLocalizedArray(evaluation?.strengths).length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                                                    <CheckCircle className="h-3.5 w-3.5" />
+                                                    {locale === 'ar' ? 'أبرز نقاط القوة' : 'Top Strengths'}
+                                                </p>
+                                                <div className="flex flex-wrap gap-1.5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                                    {getLocalizedArray(evaluation?.strengths).slice(0, 3).map((s, i) => (
+                                                        <Badge key={i} variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 text-xs">
+                                                            {s.length > 50 ? s.slice(0, 50) + '...' : s}
+                                                        </Badge>
+                                                    ))}
                                                 </div>
-                                            ))
-                                        }
+                                            </div>
+                                        )}
+
+                                        {/* Red Flags (if any) */}
+                                        {!isReviewer && getLocalizedArray(evaluation?.redFlags).length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                                    {locale === 'ar' ? 'تنبيهات هامة' : 'Red Flags'}
+                                                </p>
+                                                <div className="flex flex-wrap gap-1.5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+                                                    {getLocalizedArray(evaluation?.redFlags).slice(0, 2).map((f, i) => (
+                                                        <Badge key={i} variant="secondary" className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-xs">
+                                                            {f.length > 50 ? f.slice(0, 50) + '...' : f}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 rounded-lg">
-                                        <CheckCircle className="h-6 w-6 shrink-0" />
-                                        <span className="text-sm font-medium">{t("applicants.noMissingRequirements")}</span>
-                                    </div>
-                                )}
+                                </div>
                             </CardContent>
                         </Card>
 
-                        {/* AI Recommendation */}
-                        <Card className="bg-card border-border shadow-sm">
-                            <CardHeader className="pb-4 border-b">
-                                <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                    <Sparkles className="h-5 w-5 text-primary" />
-                                    {t("applicants.aiRecommendation")}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                {/* Main Summary */}
-                                <div className="p-4 bg-white dark:bg-primary/5 rounded-lg border border-primary/20">
-                                    <p className="text-base leading-relaxed text-foreground whitespace-pre-line text-start">
-                                        {getLocalizedText(evaluation?.summary) || applicant.aiSummary || t("applicants.noAIRecommendation")}
-                                    </p>
+                        {/* Re-evaluate Button - Show if evaluation failed or incomplete */}
+                        {(!evaluation || !evaluation.aiAnalysisBreakdown) && (
+                            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                                <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                        <div>
+                                            <p className="font-semibold text-amber-900 dark:text-amber-100">
+                                                {locale === 'ar' ? 'التقييم الذكي غير متوفر' : 'AI Evaluation Unavailable'}
+                                            </p>
+                                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                                                {locale === 'ar' ? 'يمكنك إعادة تشغيل التقييم الذكي للحصول على تحليل شامل' : 'Re-run AI evaluation to get comprehensive analysis'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        onClick={handleReEvaluate}
+                                        disabled={isReEvaluating}
+                                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                                    >
+                                        {isReEvaluating ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                                                {locale === 'ar' ? 'جارٍ إعادة التقييم...' : 'Re-evaluating...'}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <RefreshCw className="h-4 w-4 me-2" />
+                                                {locale === 'ar' ? 'إعادة التقييم' : 'Re-evaluate'}
+                                            </>
+                                        )}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* ═══════════════════════════════════════════════════════════════════════════════
+                            COLLAPSIBLE AI TRANSPARENCY SECTIONS
+                        ═══════════════════════════════════════════════════════════════════════════════ */}
+                        {/* AI Analysis Breakdown - Collapsible Transparency Sections */}
+                        {evaluation?.aiAnalysisBreakdown && (
+                            <div className="space-y-3">
+                                {/* Section Header */}
+                                <div className="flex items-center gap-2 px-1 mb-4">
+                                    <Brain className="h-5 w-5 text-primary" />
+                                    <h3 className="text-base font-semibold text-foreground">
+                                        {t("applicants.aiTransparency")}
+                                    </h3>
+                                    <span className="text-xs text-muted-foreground">
+                                        {locale === 'ar' ? '(انقر للتوسيع)' : '(click to expand)'}
+                                    </span>
                                 </div>
 
-                                {/* Recommendation Reason */}
-                                {getLocalizedText(evaluation?.recommendationReason) && (
-                                    <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                                        <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line text-start">
-                                            {getLocalizedText(evaluation?.recommendationReason)}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Suggested Interview Questions */}
-                                {getLocalizedArray(evaluation?.suggestedQuestions).length > 0 && (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-px flex-1 bg-border" />
-                                            <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-                                                {t("applicants.suggestedQuestions")}
-                                            </p>
-                                            <div className="h-px flex-1 bg-border" />
-                                        </div>
-                                        <div className="space-y-3">
-                                            {getLocalizedArray(evaluation?.suggestedQuestions).map((q, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-primary/5 border border-primary/20 hover:border-primary/40 transition-colors"
-                                                >
-                                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold shrink-0">
-                                                        {i + 1}
+                                {/* 1. Screening Questions Analysis - Collapsible */}
+                                {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis && (
+                                    <Collapsible>
+                                        <CollapsibleTrigger className="w-full">
+                                            <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-muted rounded-md">
+                                                        <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                                                     </div>
-                                                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-line flex-1 text-start">
-                                                        {q}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Voice Analysis Details */}
-                        {evaluation?.voiceAnalysisDetails && evaluation.voiceAnalysisDetails.length > 0 && (
-                            <Card className="bg-card border-border shadow-sm">
-                                <CardHeader className="pb-4 border-b">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                        <Mic className="h-5 w-5 text-primary" />
-                                        {t("applicants.voiceAnalysis")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {/* Overall Metrics */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {evaluation.sentimentScore !== undefined && (
-                                            <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
-                                                <p className="text-xs text-primary font-medium mb-1">
-                                                    {t("applicants.sentiment")}
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    <div className={cn(
-                                                        "text-2xl font-bold",
-                                                        evaluation.sentimentScore > 0.3 ? "text-emerald-600" :
-                                                            evaluation.sentimentScore < -0.3 ? "text-red-600" :
-                                                                "text-amber-600"
-                                                    )}>
-                                                        {evaluation.sentimentScore > 0.3 ? "😊" :
-                                                            evaluation.sentimentScore < -0.3 ? "😞" : "😐"}
+                                                    <div className="text-start">
+                                                        <p className="font-medium text-foreground text-sm">{t("applicants.screeningAnalysis")}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions} {locale === 'ar' ? 'أسئلة' : 'questions'}
+                                                            {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length === 0 && (
+                                                                <span className="text-emerald-600 dark:text-emerald-400 ms-2">✓ {locale === 'ar' ? 'اجتاز الكل' : 'All passed'}</span>
+                                                            )}
+                                                        </p>
                                                     </div>
-                                                    <span className="text-sm">
-                                                        {(evaluation.sentimentScore * 100).toFixed(0)}%
-                                                    </span>
                                                 </div>
+                                                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
                                             </div>
-                                        )}
-
-                                        {evaluation.confidenceScore !== undefined && (
-                                            <div className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200">
-                                                <p className="text-xs text-primary font-medium mb-1">
-                                                    {t("applicants.confidence")}
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    <Progress value={evaluation.confidenceScore} className="flex-1" />
-                                                    <span className="text-sm font-semibold">
-                                                        {evaluation.confidenceScore.toFixed(0)}%
-                                                    </span>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                        <p className="text-xs text-muted-foreground mb-1">{locale === 'ar' ? 'إجمالي' : 'Total'}</p>
+                                                        <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions}</p>
+                                                    </div>
+                                                    <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                        <p className="text-xs text-muted-foreground mb-1">{locale === 'ar' ? 'حاسمة' : 'Knockout'}</p>
+                                                        <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.knockoutQuestions}</p>
+                                                    </div>
+                                                    <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                        <p className="text-xs text-muted-foreground mb-1">{locale === 'ar' ? 'فشل' : 'Failed'}</p>
+                                                        <p className={cn("text-xl font-semibold", evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length > 0 ? "text-red-600 dark:text-red-400" : "text-foreground")}>
+                                                            {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Per-Question Details */}
-                                    <div className="space-y-3">
-                                        {evaluation.voiceAnalysisDetails.map((detail, idx) => (
-                                            <div
-                                                key={detail.questionId}
-                                                className="p-4 bg-white dark:bg-purple-950/20 rounded-lg border border-purple-200"
-                                            >
-                                                <div className="flex items-start justify-between mb-3">
-                                                    <p className="text-sm font-medium text-foreground">
-                                                        {t("applicants.question")} {idx + 1}
-                                                    </p>
-                                                    {detail.fluency && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {t("applicants.fluency")}: {detail.fluency.score}%
-                                                        </Badge>
-                                                    )}
-                                                </div>
-
-                                                {detail.keyPhrases && detail.keyPhrases.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2 mt-2">
-                                                        {detail.keyPhrases.slice(0, 5).map((phrase, i) => (
-                                                            <Badge
-                                                                key={i}
-                                                                variant="secondary"
-                                                                className="bg-primary/10 text-primary dark:bg-primary/20"
-                                                            >
-                                                                {phrase}
-                                                            </Badge>
+                                                {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'الأسئلة الفاشلة:' : 'Failed Questions:'}</p>
+                                                        {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.map((ko, idx) => (
+                                                            <div key={idx} className="p-3 bg-card rounded-lg border border-red-200 dark:border-red-900 flex items-start gap-2">
+                                                                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                                                                <div className="flex-1">
+                                                                    <p className="text-sm font-medium text-foreground">{ko.question}</p>
+                                                                    <p className="text-xs text-muted-foreground mt-1">{ko.impact}</p>
+                                                                </div>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Social Profile Insights */}
-                        {evaluation?.socialProfileInsights && (
-                            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-950/30 dark:to-cyan-950/10 border-2 border-cyan-300 dark:border-cyan-800 shadow-sm">
-                                <CardHeader className="pb-4 border-b border-cyan-200 dark:border-cyan-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
-                                        <div className="p-1.5 bg-cyan-500 dark:bg-cyan-600 rounded-md">
-                                            <Globe className="h-5 w-5 text-white" />
-                                        </div>
-                                        {t("applicants.socialProfiles")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {/* LinkedIn */}
-                                    {evaluation.socialProfileInsights.linkedin && (
-                                        <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Linkedin className="h-5 w-5 text-[#0077B5]" />
-                                                <p className="font-semibold text-foreground">
-                                                    LinkedIn
-                                                </p>
-                                            </div>
-                                            {evaluation.socialProfileInsights.linkedin.highlights.length > 0 && (
-                                                <ul className="space-y-2">
-                                                    {evaluation.socialProfileInsights.linkedin.highlights.slice(0, 5).map((highlight, i) => (
-                                                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                                            <span>{highlight}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* GitHub */}
-                                    {evaluation.socialProfileInsights.github && (
-                                        <div className="p-4 bg-white dark:bg-cyan-950/20 rounded-lg border border-cyan-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Star className="h-5 w-5 text-amber-500" />
-                                                <p className="font-semibold text-foreground">
-                                                    GitHub
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Repos</p>
-                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.repositories}</p>
-                                                </div>
-                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Stars</p>
-                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.stars}</p>
-                                                </div>
-                                                <div className="text-center p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Languages</p>
-                                                    <p className="text-lg font-bold">{evaluation.socialProfileInsights.github.languages.length}</p>
-                                                </div>
-                                            </div>
-                                            {evaluation.socialProfileInsights.github.highlights.length > 0 && (
-                                                <ul className="space-y-2">
-                                                    {evaluation.socialProfileInsights.github.highlights.slice(0, 3).map((highlight, i) => (
-                                                        <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                                            <span>{highlight}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Overall Highlights */}
-                                    {evaluation.socialProfileInsights.overallHighlights.length > 0 && (
-                                        <div className="p-4 bg-gradient-to-r from-cyan-100 to-purple-100 dark:from-cyan-900/20 dark:to-purple-900/20 rounded-lg border border-cyan-300">
-                                            <p className="font-semibold text-foreground mb-3">
-                                                {t("applicants.topHighlights")}
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {evaluation.socialProfileInsights.overallHighlights.slice(0, 8).map((highlight, i) => (
-                                                    <Badge
-                                                        key={i}
-                                                        variant="secondary"
-                                                        className="bg-white dark:bg-cyan-900/30 text-foreground"
-                                                    >
-                                                        ✨ {highlight}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Text Response Analysis */}
-                        {evaluation?.textResponseAnalysis && (
-                            <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/30 dark:to-indigo-950/10 border-2 border-indigo-300 dark:border-indigo-800 shadow-sm">
-                                <CardHeader className="pb-4 border-b border-indigo-200 dark:border-indigo-800">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
-                                        <div className="p-1.5 bg-indigo-500 dark:bg-indigo-600 rounded-md">
-                                            <FileText className="h-5 w-5 text-white" />
-                                        </div>
-                                        {t("applicants.writtenResponses")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {/* Summary */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
-                                            <p className="text-xs text-muted-foreground font-medium mb-1">
-                                                {t("applicants.totalResponses")}
-                                            </p>
-                                            <p className="text-2xl font-bold text-foreground">
-                                                {evaluation.textResponseAnalysis.totalResponses}
-                                            </p>
-                                        </div>
-                                        <div className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200">
-                                            <p className="text-xs text-muted-foreground font-medium mb-1">
-                                                {t("applicants.overallQuality")}
-                                            </p>
-                                            <Badge className={cn(
-                                                "text-sm",
-                                                evaluation.textResponseAnalysis.overallQuality === 'excellent' ? 'bg-emerald-500' :
-                                                    evaluation.textResponseAnalysis.overallQuality === 'good' ? 'bg-cyan-500' :
-                                                        evaluation.textResponseAnalysis.overallQuality === 'average' ? 'bg-amber-500' :
-                                                            'bg-red-500'
-                                            )}>
-                                                {evaluation.textResponseAnalysis.overallQuality.toUpperCase()}
-                                            </Badge>
-                                        </div>
-                                    </div>
-
-                                    {/* Individual Responses */}
-                                    <div className="space-y-3">
-                                        {evaluation.textResponseAnalysis.responses.map((response) => (
-                                            <div
-                                                key={response.questionId}
-                                                className="p-4 bg-white dark:bg-indigo-950/20 rounded-lg border border-indigo-200"
-                                            >
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <p className="text-sm font-medium text-foreground text-start">
-                                                        {response.questionText}
+                                                <div className="p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs font-medium text-muted-foreground mb-2">{locale === 'ar' ? 'تحليل الذكاء الاصطناعي' : 'AI Reasoning'}</p>
+                                                    <p className="text-sm text-foreground leading-relaxed text-start">
+                                                        {getLocalizedText(evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.aiReasoning)}
                                                     </p>
-                                                    <Badge variant="outline" className="text-xs shrink-0 ms-2">
-                                                        {response.wordCount} words
-                                                    </Badge>
                                                 </div>
-                                                <p className="text-sm text-indigo-700 dark:text-indigo-300 line-clamp-3 whitespace-pre-line text-start">
-                                                    {response.answer}
-                                                </p>
                                             </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                )}
 
-                        {/* AI Analysis Breakdown - Transparency of AI Decisions */}
-                        {evaluation?.aiAnalysisBreakdown && (
-                            <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-950/10 border-2 border-violet-300 dark:border-violet-800 shadow-md">
-                                <CardHeader className="pb-4 border-b border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5 text-primary">
-                                        <div className="p-1.5 bg-violet-500 dark:bg-violet-600 rounded-md">
-                                            <Brain className="h-5 w-5 text-white" />
-                                        </div>
-                                        {t("applicants.aiTransparency")}
-                                    </CardTitle>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                        {t("applicants.aiTransparencyDesc")}
-                                    </p>
-                                </CardHeader>
-                                <CardContent className="space-y-6 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {/* 1. Screening Questions Analysis */}
-                                    {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.screeningAnalysis")}
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Total Questions</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.totalQuestions}</p>
-                                                </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Knockout</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.knockoutQuestions}</p>
-                                                </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Failed</p>
-                                                    <p className="text-lg font-bold text-red-600">{evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length}</p>
-                                                </div>
-                                            </div>
-                                            {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.length > 0 && (
-                                                <div className="space-y-2 mb-3">
-                                                    {evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.failedKnockouts.map((ko, idx) => (
-                                                        <div key={idx} className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg flex items-start gap-2">
-                                                            <XCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                                                            <div className="flex-1">
-                                                                <p className="text-sm font-medium text-red-900 dark:text-red-100">{ko.question}</p>
-                                                                <p className="text-xs text-red-700 dark:text-red-300">{ko.impact}</p>
+                                    {/* 2. Voice Responses Analysis - Collapsible */}
+                                    {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis && (
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer text-start">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-muted rounded-md">
+                                                                <Mic className="h-4 w-4 text-muted-foreground" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-foreground text-sm">{t("applicants.voiceResponsesAnalysis")}</p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses} {locale === 'ar' ? 'إجابات' : 'responses'} •
+                                                                    {locale === 'ar' ? ' ملاءمة: ' : ' Avg Relevance: '}{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0}%
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180 shrink-0" />
+                                                    </div>
+                                                    {/* Show top 2 strengths in collapsed state */}
+                                                    {(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
+                                                        <div className="ms-11 mt-2">
+                                                            <p className="text-[10px] font-medium text-muted-foreground mb-1">{locale === 'ar' ? 'نقاط القوة:' : 'Top Strengths:'}</p>
+                                                            <div className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths) || []).slice(0, 2).map((s: string, i: number) => (
+                                                                    <div key={i} className="text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-1">
+                                                                        <CheckCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                        <span className="line-clamp-1">{s}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
-                                                <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
-                                                <p className="text-sm text-foreground leading-relaxed text-start">
-                                                    {getLocalizedText(evaluation.aiAnalysisBreakdown.screeningQuestionsAnalysis.aiReasoning)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* 2. Voice Responses Analysis - ENHANCED */}
-                                    {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Mic className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.voiceResponsesAnalysis")}
-                                                </p>
-                                            </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
                                             {/* Summary Stats */}
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">{t("applicants.responses")}</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.responses")}</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalResponses}</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">{t("applicants.totalWeight")}</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalWeight}/10</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.totalWeight")}</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.totalWeight}/10</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded">
-                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("applicants.avgRelevance")}</p>
-                                                    <p className={cn("text-lg font-bold",
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.avgRelevance")}</p>
+                                                    <p className={cn("text-xl font-semibold",
                                                         (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0) >= 70 ? 'text-emerald-600' :
                                                         (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                     )}>{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageRelevanceScore || 0}%</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                                    <p className="text-xs text-primary">{t("applicants.avgCommunication")}</p>
-                                                    <p className={cn("text-lg font-bold",
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.avgCommunication")}</p>
+                                                    <p className={cn("text-xl font-semibold",
                                                         (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0) >= 70 ? 'text-blue-600' :
                                                         (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                     )}>{evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.averageCommunicationScore || 0}%</p>
@@ -1438,11 +1385,11 @@ export function ViewApplicantDialog({
                                               (evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0) && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                                     {(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
-                                                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">{t("applicants.overallStrengths")}</p>
+                                                        <div className="p-3 bg-card rounded-lg border border-border">
+                                                            <p className="text-xs font-semibold text-muted-foreground mb-2">{t("applicants.overallStrengths")}</p>
                                                             <ul className="space-y-1">
                                                                 {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallStrengths) || []).map((s: string, i: number) => (
-                                                                    <li key={i} className="text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                                                                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
                                                                         <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
                                                                         <span>{s}</span>
                                                                     </li>
@@ -1451,11 +1398,11 @@ export function ViewApplicantDialog({
                                                         </div>
                                                     )}
                                                     {(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0 && (
-                                                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                                                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">{t("applicants.areasForImprovement")}</p>
+                                                        <div className="p-3 bg-card rounded-lg border border-border">
+                                                            <p className="text-xs font-semibold text-muted-foreground mb-2">{t("applicants.areasForImprovement")}</p>
                                                             <ul className="space-y-1">
                                                                 {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallWeaknesses) || []).map((w: string, i: number) => (
-                                                                    <li key={i} className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                                                                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
                                                                         <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
                                                                         <span>{w}</span>
                                                                     </li>
@@ -1469,7 +1416,7 @@ export function ViewApplicantDialog({
                                             {/* Individual Response Details */}
                                             <div className="space-y-3 mb-3">
                                                 {evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.responses.map((resp, idx) => (
-                                                    <div key={idx} className="p-4 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg border border-violet-100">
+                                                    <div key={idx} className="p-4 bg-muted/50 rounded-lg border border-border">
                                                         <div className="flex items-start justify-between mb-3">
                                                             <p className="text-sm font-medium text-foreground flex-1">{resp.questionText}</p>
                                                             <Badge variant="outline" className="text-xs ms-2 shrink-0">Weight: {resp.weight}/10</Badge>
@@ -1477,27 +1424,27 @@ export function ViewApplicantDialog({
 
                                                         {/* Scores Row */}
                                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.relevance")}</p>
-                                                                <p className={cn("text-sm font-bold",
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.relevance")}</p>
+                                                                <p className={cn("text-sm font-semibold",
                                                                     (resp.relevanceScore || 0) >= 70 ? 'text-emerald-600' :
                                                                     (resp.relevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                                 )}>{resp.relevanceScore || 0}%</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.communication")}</p>
-                                                                <p className={cn("text-sm font-bold",
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.communication")}</p>
+                                                                <p className={cn("text-sm font-semibold",
                                                                     (resp.communicationScore || 0) >= 70 ? 'text-blue-600' :
                                                                     (resp.communicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                                 )}>{resp.communicationScore || 0}%</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.sentiment")}</p>
-                                                                <p className="text-sm font-medium capitalize">{resp.sentiment}</p>
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.sentiment")}</p>
+                                                                <p className="text-sm font-medium capitalize text-foreground">{resp.sentiment}</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.confidence")}</p>
-                                                                <p className="text-sm font-medium">{resp.confidence}%</p>
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.confidence")}</p>
+                                                                <p className="text-sm font-medium text-foreground">{resp.confidence}%</p>
                                                             </div>
                                                         </div>
 
@@ -1516,21 +1463,21 @@ export function ViewApplicantDialog({
                                                         {/* Strengths & Areas for Improvement */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                                                             {(resp.strengthsInResponse?.en?.length || 0) > 0 && (
-                                                                <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded">
-                                                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1">{t("applicants.strengths")}:</p>
+                                                                <div className="p-2 bg-card rounded-md border border-border">
+                                                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.strengths")}:</p>
                                                                     <ul className="space-y-0.5">
                                                                         {(getLocalizedTextArray(resp.strengthsInResponse) || []).map((s: string, i: number) => (
-                                                                            <li key={i} className="text-[10px] text-emerald-700 dark:text-emerald-300">• {s}</li>
+                                                                            <li key={i} className="text-[10px] text-foreground">• {s}</li>
                                                                         ))}
                                                                     </ul>
                                                                 </div>
                                                             )}
                                                             {(resp.areasForImprovement?.en?.length || 0) > 0 && (
-                                                                <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded">
-                                                                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-1">{t("applicants.improvement")}:</p>
+                                                                <div className="p-2 bg-card rounded-md border border-border">
+                                                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.improvement")}:</p>
                                                                     <ul className="space-y-0.5">
                                                                         {(getLocalizedTextArray(resp.areasForImprovement) || []).map((w: string, i: number) => (
-                                                                            <li key={i} className="text-[10px] text-amber-700 dark:text-amber-300">• {w}</li>
+                                                                            <li key={i} className="text-[10px] text-foreground">• {w}</li>
                                                                         ))}
                                                                     </ul>
                                                                 </div>
@@ -1539,7 +1486,7 @@ export function ViewApplicantDialog({
 
                                                         {/* Red Flags */}
                                                         {(resp.redFlagsInResponse?.en?.length || 0) > 0 && (
-                                                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded mb-3 border border-red-200">
+                                                            <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded mb-3 border border-red-200 dark:border-red-800">
                                                                 <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1">{t("applicants.redFlags")}:</p>
                                                                 <ul className="space-y-0.5">
                                                                     {(getLocalizedTextArray(resp.redFlagsInResponse) || []).map((rf: string, i: number) => (
@@ -1553,7 +1500,7 @@ export function ViewApplicantDialog({
                                                         )}
 
                                                         {/* Specific Feedback */}
-                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded border border-violet-100">
+                                                        <div className="p-2 bg-card rounded-md border border-border">
                                                             <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.aiFeedback")}:</p>
                                                             <p className="text-xs text-foreground text-start leading-relaxed">
                                                                 {getLocalizedText(resp.specificFeedback) || getLocalizedText(resp.aiReasoning)}
@@ -1564,44 +1511,75 @@ export function ViewApplicantDialog({
                                             </div>
 
                                             {/* Overall Impact */}
-                                            <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">{t("applicants.overallImpact")}:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.voiceResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 3. Text Responses Analysis - ENHANCED */}
+                                    {/* 3. Text Responses Analysis - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.textResponsesAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <FileText className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.textResponsesAnalysis")}
-                                                </p>
-                                            </div>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer text-start">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-muted rounded-md">
+                                                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-foreground text-sm">{t("applicants.textResponsesAnalysis")}</p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses} {locale === 'ar' ? 'إجابات' : 'responses'} •
+                                                                    {locale === 'ar' ? ' جودة: ' : ' Quality: '}{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality || 'N/A'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180 shrink-0" />
+                                                    </div>
+                                                    {/* Show top 2 strengths in collapsed state */}
+                                                    {(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
+                                                        <div className="ms-11 mt-2">
+                                                            <p className="text-[10px] font-medium text-muted-foreground mb-1">{locale === 'ar' ? 'نقاط القوة:' : 'Top Strengths:'}</p>
+                                                            <div className="space-y-1">
+                                                                {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths) || []).slice(0, 2).map((s: string, i: number) => (
+                                                                    <div key={i} className="text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-1">
+                                                                        <CheckCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                        <span className="line-clamp-1">{s}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
                                             {/* Summary Stats */}
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">{t("applicants.responses")}</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.responses")}</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalResponses}</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">{t("applicants.totalWeight")}</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalWeight}/10</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.totalWeight")}</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.totalWeight}/10</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded">
-                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("applicants.avgRelevance")}</p>
-                                                    <p className={cn("text-lg font-bold",
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.avgRelevance")}</p>
+                                                    <p className={cn("text-xl font-semibold",
                                                         (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0) >= 70 ? 'text-emerald-600' :
                                                         (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                     )}>{evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageRelevanceScore || 0}%</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                                    <p className="text-xs text-primary">{t("applicants.contentQuality")}</p>
-                                                    <p className={cn("text-lg font-bold capitalize",
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">{t("applicants.contentQuality")}</p>
+                                                    <p className={cn("text-xl font-semibold capitalize",
                                                         evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'excellent' ? 'text-emerald-600' :
                                                         evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'good' ? 'text-blue-600' :
                                                         evaluation.aiAnalysisBreakdown.textResponsesAnalysis.averageContentQuality === 'average' ? 'text-amber-600' : 'text-red-600'
@@ -1614,11 +1592,11 @@ export function ViewApplicantDialog({
                                               (evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0) && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                                     {(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths?.en?.length || 0) > 0 && (
-                                                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">{t("applicants.overallStrengths")}</p>
+                                                        <div className="p-3 bg-card rounded-lg border border-border">
+                                                            <p className="text-xs font-semibold text-muted-foreground mb-2">{t("applicants.overallStrengths")}</p>
                                                             <ul className="space-y-1">
                                                                 {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallStrengths) || []).map((s: string, i: number) => (
-                                                                    <li key={i} className="text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                                                                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
                                                                         <CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
                                                                         <span>{s}</span>
                                                                     </li>
@@ -1627,11 +1605,11 @@ export function ViewApplicantDialog({
                                                         </div>
                                                     )}
                                                     {(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses?.en?.length || 0) > 0 && (
-                                                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                                                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">{t("applicants.areasForImprovement")}</p>
+                                                        <div className="p-3 bg-card rounded-lg border border-border">
+                                                            <p className="text-xs font-semibold text-muted-foreground mb-2">{t("applicants.areasForImprovement")}</p>
                                                             <ul className="space-y-1">
                                                                 {(getLocalizedTextArray(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallWeaknesses) || []).map((w: string, i: number) => (
-                                                                    <li key={i} className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                                                                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
                                                                         <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
                                                                         <span>{w}</span>
                                                                     </li>
@@ -1645,7 +1623,7 @@ export function ViewApplicantDialog({
                                             {/* Individual Response Details */}
                                             <div className="space-y-3 mb-3">
                                                 {evaluation.aiAnalysisBreakdown.textResponsesAnalysis.responses.map((resp, idx) => (
-                                                    <div key={idx} className="p-4 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg border border-violet-100">
+                                                    <div key={idx} className="p-4 bg-muted/50 rounded-lg border border-border">
                                                         <div className="flex items-start justify-between mb-3">
                                                             <p className="text-sm font-medium text-foreground flex-1">{resp.questionText}</p>
                                                             <Badge variant="outline" className="text-xs ms-2 shrink-0">Weight: {resp.weight}/10</Badge>
@@ -1653,31 +1631,31 @@ export function ViewApplicantDialog({
 
                                                         {/* Scores Row */}
                                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.relevance")}</p>
-                                                                <p className={cn("text-sm font-bold",
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.relevance")}</p>
+                                                                <p className={cn("text-sm font-semibold",
                                                                     (resp.relevanceScore || 0) >= 70 ? 'text-emerald-600' :
                                                                     (resp.relevanceScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                                 )}>{resp.relevanceScore || 0}%</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.writingQuality")}</p>
-                                                                <p className={cn("text-sm font-bold",
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.writingQuality")}</p>
+                                                                <p className={cn("text-sm font-semibold",
                                                                     (resp.communicationScore || 0) >= 70 ? 'text-blue-600' :
                                                                     (resp.communicationScore || 0) >= 50 ? 'text-amber-600' : 'text-red-600'
                                                                 )}>{resp.communicationScore || 0}%</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.quality")}</p>
-                                                                <p className={cn("text-sm font-medium capitalize",
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.quality")}</p>
+                                                                <p className={cn("text-sm font-medium capitalize text-foreground",
                                                                     resp.quality === 'excellent' ? 'text-emerald-600' :
                                                                     resp.quality === 'good' ? 'text-blue-600' :
                                                                     resp.quality === 'average' ? 'text-amber-600' : 'text-red-600'
                                                                 )}>{resp.quality}</p>
                                                             </div>
-                                                            <div className="text-center p-1.5 bg-white dark:bg-violet-950/30 rounded">
-                                                                <p className="text-[10px] text-muted-foreground">{t("applicants.wordCount")}</p>
-                                                                <p className="text-sm font-medium">{resp.wordCount}</p>
+                                                            <div className="text-center p-2 bg-card rounded-md border border-border">
+                                                                <p className="text-[10px] text-muted-foreground mb-0.5">{t("applicants.wordCount")}</p>
+                                                                <p className="text-sm font-medium text-foreground">{resp.wordCount}</p>
                                                             </div>
                                                         </div>
 
@@ -1696,21 +1674,21 @@ export function ViewApplicantDialog({
                                                         {/* Strengths & Areas for Improvement */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                                                             {(resp.strengthsInResponse?.en?.length || 0) > 0 && (
-                                                                <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded">
-                                                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-1">{t("applicants.strengths")}:</p>
+                                                                <div className="p-2 bg-card rounded-md border border-border">
+                                                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.strengths")}:</p>
                                                                     <ul className="space-y-0.5">
                                                                         {(getLocalizedTextArray(resp.strengthsInResponse) || []).map((s: string, i: number) => (
-                                                                            <li key={i} className="text-[10px] text-emerald-700 dark:text-emerald-300">• {s}</li>
+                                                                            <li key={i} className="text-[10px] text-foreground">• {s}</li>
                                                                         ))}
                                                                     </ul>
                                                                 </div>
                                                             )}
                                                             {(resp.areasForImprovement?.en?.length || 0) > 0 && (
-                                                                <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded">
-                                                                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-1">{t("applicants.improvement")}:</p>
+                                                                <div className="p-2 bg-card rounded-md border border-border">
+                                                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.improvement")}:</p>
                                                                     <ul className="space-y-0.5">
                                                                         {(getLocalizedTextArray(resp.areasForImprovement) || []).map((w: string, i: number) => (
-                                                                            <li key={i} className="text-[10px] text-amber-700 dark:text-amber-300">• {w}</li>
+                                                                            <li key={i} className="text-[10px] text-foreground">• {w}</li>
                                                                         ))}
                                                                     </ul>
                                                                 </div>
@@ -1719,7 +1697,7 @@ export function ViewApplicantDialog({
 
                                                         {/* Red Flags */}
                                                         {(resp.redFlagsInResponse?.en?.length || 0) > 0 && (
-                                                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded mb-3 border border-red-200">
+                                                            <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded mb-3 border border-red-200 dark:border-red-800">
                                                                 <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1">{t("applicants.redFlags")}:</p>
                                                                 <ul className="space-y-0.5">
                                                                     {(getLocalizedTextArray(resp.redFlagsInResponse) || []).map((rf: string, i: number) => (
@@ -1733,7 +1711,7 @@ export function ViewApplicantDialog({
                                                         )}
 
                                                         {/* Specific Feedback */}
-                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded border border-violet-100">
+                                                        <div className="p-2 bg-card rounded-md border border-border">
                                                             <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t("applicants.aiFeedback")}:</p>
                                                             <p className="text-xs text-foreground text-start leading-relaxed">
                                                                 {getLocalizedText(resp.specificFeedback) || getLocalizedText(resp.aiReasoning)}
@@ -1744,32 +1722,47 @@ export function ViewApplicantDialog({
                                             </div>
 
                                             {/* Overall Impact */}
-                                            <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">{t("applicants.overallImpact")}:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.textResponsesAnalysis.overallImpact)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 4. Additional Notes Analysis */}
+                                    {/* 4. Additional Notes Analysis - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <MessageSquare className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.additionalNotesAnalysis")}
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Notes Provided</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? 'Yes' : 'No'}</p>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-muted rounded-md">
+                                                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-start">
+                                                            <p className="font-medium text-foreground text-sm">{t("applicants.additionalNotesAnalysis")}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? (locale === 'ar' ? 'متوفرة' : 'Provided') : (locale === 'ar' ? 'غير متوفرة' : 'Not provided')} •
+                                                                {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesLength} {locale === 'ar' ? 'حرف' : 'chars'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Length</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesLength} chars</p>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Notes Provided</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesProvided ? 'Yes' : 'No'}</p>
+                                                </div>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Length</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.notesLength} chars</p>
                                                 </div>
                                             </div>
                                             {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.length > 0 && (
@@ -1778,75 +1771,107 @@ export function ViewApplicantDialog({
                                                     <ul className="space-y-1">
                                                         {evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.keyPointsExtracted.map((point, idx) => (
                                                             <li key={idx} className="text-sm text-foreground flex items-start gap-2">
-                                                                <CheckCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                                                <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
                                                                 <span>{point}</span>
                                                             </li>
                                                         ))}
                                                     </ul>
                                                 </div>
                                             )}
-                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.additionalNotesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 5. External Profiles Analysis */}
+                                    {/* 5. External Profiles Analysis - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.externalProfilesAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Globe className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.externalProfilesAnalysis")}
-                                                </p>
-                                            </div>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-muted rounded-md">
+                                                            <Globe className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-start">
+                                                            <p className="font-medium text-foreground text-sm">{t("applicants.externalProfilesAnalysis")}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.skillsDiscovered} {locale === 'ar' ? 'مهارات' : 'skills'} •
+                                                                {evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.projectsFound} {locale === 'ar' ? 'مشاريع' : 'projects'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">LinkedIn</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.linkedinAnalyzed ? '✓' : '✗'}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">LinkedIn</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.linkedinAnalyzed ? '✓' : '✗'}</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">GitHub</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.githubAnalyzed ? '✓' : '✗'}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">GitHub</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.githubAnalyzed ? '✓' : '✗'}</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Skills</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.skillsDiscovered}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Skills</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.skillsDiscovered}</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Projects</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.projectsFound}</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Projects</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.projectsFound}</p>
                                                 </div>
                                             </div>
-                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.externalProfilesAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 6. Language Requirements Analysis */}
+                                    {/* 6. Language Requirements Analysis - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.languageRequirementsAnalysis")}
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Total Languages</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages}</p>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-muted rounded-md">
+                                                            <Languages className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-start">
+                                                            <p className="font-medium text-foreground text-sm">{t("applicants.languageRequirementsAnalysis")}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages} {locale === 'ar' ? 'لغات' : 'languages'} •
+                                                                {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ?
+                                                                    <span className="text-emerald-600 dark:text-emerald-400"> {locale === 'ar' ? 'يستوفي الكل' : 'Meets all'}</span> :
+                                                                    <span className="text-red-600 dark:text-red-400"> {locale === 'ar' ? 'يوجد فجوات' : 'Has gaps'}</span>}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Meets All</p>
-                                                    <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'text-emerald-600' : 'text-red-600')}>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Total Languages</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.totalLanguages}</p>
+                                                </div>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Meets All</p>
+                                                    <p className={cn("text-xl font-semibold", evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'text-emerald-600' : 'text-red-600')}>
                                                         {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.meetsAllRequirements ? 'Yes' : 'No'}
                                                     </p>
                                                 </div>
@@ -1854,7 +1879,7 @@ export function ViewApplicantDialog({
                                             {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.gaps.length > 0 && (
                                                 <div className="space-y-2 mb-3">
                                                     {evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.gaps.map((gap, idx) => (
-                                                        <div key={idx} className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg">
+                                                        <div key={idx} className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                                                             <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{gap.language}</p>
                                                             <p className="text-xs text-amber-700 dark:text-amber-300">
                                                                 Has: {gap.candidate} | Needs: {gap.required} | Gap: {gap.gapLevel} level(s)
@@ -1863,68 +1888,100 @@ export function ViewApplicantDialog({
                                                     ))}
                                                 </div>
                                             )}
-                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.languageRequirementsAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 7. Experience Analysis */}
+                                    {/* 7. Experience Analysis - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.experienceAnalysis && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Briefcase className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.experienceAnalysis")}
-                                                </p>
-                                            </div>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-muted rounded-md">
+                                                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-start">
+                                                            <p className="font-medium text-foreground text-sm">{t("applicants.experienceAnalysis")}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} {locale === 'ar' ? 'سنوات' : 'years'} •
+                                                                {evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ?
+                                                                    <span className="text-emerald-600 dark:text-emerald-400"> {locale === 'ar' ? 'يستوفي' : 'Meets req'}</span> :
+                                                                    <span className="text-red-600 dark:text-red-400"> {locale === 'ar' ? 'لا يستوفي' : 'Below req'}</span>}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Self-Reported</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} yrs</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Self-Reported</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.experienceAnalysis.selfReported} yrs</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Required</p>
-                                                    <p className="text-lg font-bold">{evaluation.aiAnalysisBreakdown.experienceAnalysis.required} yrs</p>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Required</p>
+                                                    <p className="text-xl font-semibold text-foreground">{evaluation.aiAnalysisBreakdown.experienceAnalysis.required} yrs</p>
                                                 </div>
-                                                <div className="text-center p-2 bg-violet-50 dark:bg-violet-900/20 rounded">
-                                                    <p className="text-xs text-muted-foreground">Meets?</p>
-                                                    <p className={cn("text-lg font-bold", evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'text-emerald-600' : 'text-red-600')}>
+                                                <div className="text-center p-3 bg-card rounded-lg border border-border">
+                                                    <p className="text-xs text-muted-foreground mb-1">Meets?</p>
+                                                    <p className={cn("text-xl font-semibold", evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'text-emerald-600' : 'text-red-600')}>
                                                         {evaluation.aiAnalysisBreakdown.experienceAnalysis.meetsRequirement ? 'Yes' : 'No'}
                                                     </p>
                                                 </div>
                                             </div>
                                             {evaluation.aiAnalysisBreakdown.experienceAnalysis.gap && (
-                                                <div className="p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded text-center mb-3">
+                                                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-center mb-3">
                                                     <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
                                                         Gap: {evaluation.aiAnalysisBreakdown.experienceAnalysis.gap} year(s) below minimum
                                                     </p>
                                                 </div>
                                             )}
-                                            <div className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                            <div className="p-3 bg-card rounded-lg border border-border">
                                                 <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
                                                 <p className="text-sm text-foreground leading-relaxed text-start">
                                                     {getLocalizedText(evaluation.aiAnalysisBreakdown.experienceAnalysis.aiReasoning)}
                                                 </p>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
 
-                                    {/* 8. Scoring Breakdown */}
+                                    {/* 8. Scoring Breakdown - Collapsible */}
                                     {evaluation.aiAnalysisBreakdown.scoringBreakdown && (
-                                        <div className="p-4 bg-white dark:bg-violet-950/20 rounded-lg border border-violet-200">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Target className="h-5 w-5 text-primary" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.criteriaScoring")}
-                                                </p>
-                                            </div>
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full">
+                                                <div className="flex items-center justify-between p-4 bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-muted rounded-md">
+                                                            <Target className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-start">
+                                                            <p className="font-medium text-foreground text-sm">{t("applicants.criteriaScoring")}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {evaluation.aiAnalysisBreakdown.scoringBreakdown.criteriaWeights.length} {locale === 'ar' ? 'معايير' : 'criteria'} •
+                                                                {locale === 'ar' ? ' الدرجة النهائية: ' : ' Final score: '}{evaluation.aiAnalysisBreakdown.scoringBreakdown.totalWeightedScore.toFixed(1)}%
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <div className="p-4 bg-muted/30 rounded-b-lg border-x border-b border-border -mt-2 pt-6 space-y-4">
                                             <div className="space-y-3 mb-3">
                                                 {evaluation.aiAnalysisBreakdown.scoringBreakdown.criteriaWeights.map((cw, idx) => (
-                                                    <div key={idx} className="p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-lg">
+                                                    <div key={idx} className="p-3 bg-muted/50 rounded-lg border border-border">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <p className="text-sm font-medium text-foreground">{cw.criteriaName}</p>
                                                             <div className="flex items-center gap-2">
@@ -1933,8 +1990,8 @@ export function ViewApplicantDialog({
                                                             </div>
                                                         </div>
                                                         <Progress value={cw.score} className="h-2 mb-2" />
-                                                        <p className="text-xs text-primary mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
-                                                        <div className="p-2 bg-white dark:bg-violet-950/20 rounded">
+                                                        <p className="text-xs text-muted-foreground mb-2">Contribution to final score: {cw.contribution.toFixed(1)}</p>
+                                                        <div className="p-2 bg-card rounded-md border border-border">
                                                             <p className="text-xs font-semibold text-muted-foreground mb-1">AI Reasoning:</p>
                                                             <p className="text-xs text-foreground text-start">
                                                                 {getLocalizedText(cw.aiReasoning)}
@@ -1943,177 +2000,23 @@ export function ViewApplicantDialog({
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="p-4 bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 rounded-lg border border-violet-300">
+                                            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                                                 <div className="flex items-center justify-between mb-3">
                                                     <p className="font-bold text-foreground">Final Weighted Score</p>
                                                     <p className="text-2xl font-bold text-primary">{evaluation.aiAnalysisBreakdown.scoringBreakdown.totalWeightedScore.toFixed(1)}%</p>
                                                 </div>
-                                                <div className="p-3 bg-white dark:bg-violet-950/20 rounded">
+                                                <div className="p-3 bg-card rounded-lg border border-border">
                                                     <p className="text-xs font-semibold text-muted-foreground mb-1">AI Summary:</p>
                                                     <p className="text-sm text-foreground leading-relaxed text-start">
                                                         {getLocalizedText(evaluation.aiAnalysisBreakdown.scoringBreakdown.aiSummary)}
                                                     </p>
                                                 </div>
                                             </div>
-                                        </div>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
                                     )}
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* HR Requirements: Screening Questions & Language Proficiency */}
-                        {(applicant.personalData.screeningAnswers || applicant.personalData.languageProficiency) && (
-                            <Card className="bg-card border-border shadow-sm">
-                                <CardHeader className="pb-4 border-b">
-                                    <CardTitle className="text-lg font-semibold flex items-center gap-2.5">
-                                        <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                        {t("applicants.hrRequirements")}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-                                    {/* Screening Questions */}
-                                    {applicant.personalData.screeningAnswers && Object.keys(applicant.personalData.screeningAnswers).length > 0 && (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <ShieldAlert className="h-4 w-4 text-muted-foreground" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.screeningQuestions")}
-                                                </p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                {Object.entries(applicant.personalData.screeningAnswers).map(([question, answer], idx) => {
-                                                    // Check if this is a knockout question
-                                                    const jobQuestion = jobData?.screeningQuestions?.find(sq => sq.question === question)
-                                                    const isKnockout = jobQuestion?.disqualify || false
-                                                    const isFailed = isKnockout && !answer
-
-                                                    return (
-                                                        <div
-                                                            key={idx}
-                                                            className={cn(
-                                                                "p-3 rounded-lg border",
-                                                                isFailed
-                                                                    ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/60 dark:border-red-800/40"
-                                                                    : "bg-muted/50 border-border"
-                                                            )}
-                                                        >
-                                                            <div className="flex-1">
-                                                                <div className="flex items-start justify-between gap-2">
-                                                                    <p className="text-sm font-medium flex-1 text-start">
-                                                                        {question}
-                                                                    </p>
-                                                                    {isKnockout && (
-                                                                        <Badge className={cn(
-                                                                            "text-xs shrink-0",
-                                                                            isFailed
-                                                                                ? "bg-red-600 text-white"
-                                                                                : "bg-gray-400 text-white"
-                                                                        )}>
-                                                                            {t("applicants.knockoutQuestion")}
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className={cn(
-                                                                    "text-xs mt-1 text-start",
-                                                                    isFailed
-                                                                        ? "text-red-800 dark:text-red-300 font-semibold"
-                                                                        : answer
-                                                                            ? "text-emerald-700 dark:text-emerald-300"
-                                                                            : "text-red-700 dark:text-red-300"
-                                                                )}>
-                                                                    {isFailed
-                                                                        ? `❌ ${t("common.no")} - ${t("applicants.knockoutFailed")}`
-                                                                        : answer
-                                                                            ? `✅ ${t("common.yes")}`
-                                                                            : `❌ ${t("common.no")}`}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Language Proficiency */}
-                                    {applicant.personalData.languageProficiency && Object.keys(applicant.personalData.languageProficiency).length > 0 && (
-                                        <div className="space-y-3 pt-6 border-t border-border mt-6">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Languages className="h-4 w-4 text-muted-foreground" />
-                                                <p className="font-semibold text-foreground">
-                                                    {t("applicants.languageProficiency")}
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {Object.entries(applicant.personalData.languageProficiency).map(([language, level], idx) => {
-                                                    // Check if this language is required by the job
-                                                    const jobLanguage = jobData?.languages?.find(l => l.language === language)
-                                                    const requiredLevel = jobLanguage?.level || ''
-                                                    const candidateLevel = (level as string).toLowerCase()
-                                                    const requiredLevelLower = requiredLevel.toLowerCase()
-
-                                                    // Compare levels
-                                                    const levels = ['beginner', 'intermediate', 'advanced', 'native']
-                                                    const candidateIdx = levels.indexOf(candidateLevel)
-                                                    const requiredIdx = levels.indexOf(requiredLevelLower)
-                                                    const meetsRequirement = requiredIdx === -1 || candidateIdx >= requiredIdx
-                                                    const hasGap = requiredIdx !== -1 && candidateIdx < requiredIdx
-
-                                                    return (
-                                                        <div
-                                                            key={idx}
-                                                            className={cn(
-                                                                "p-3 rounded-lg border bg-muted/30",
-                                                                hasGap
-                                                                    ? "border-orange-200/60 dark:border-orange-800/40"
-                                                                    : "border-border"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-start justify-between gap-2 mb-2">
-                                                                <p className="text-sm font-medium text-start text-foreground">
-                                                                    {language}
-                                                                </p>
-                                                                {hasGap && (
-                                                                    <Badge variant="outline" className="text-xs shrink-0 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
-                                                                        {t("applicants.languageGap")}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    {candidateLevel.toUpperCase()}
-                                                                </Badge>
-                                                                {jobLanguage && (
-                                                                    <p className="text-xs mt-1 text-start text-muted-foreground">
-                                                                        {hasGap
-                                                                            ? `${t("applicants.required")}: ${requiredLevel.toUpperCase()}`
-                                                                            : `${t("applicants.meetsRequirement")}`}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Additional Notes */}
-                                    {applicant.notes && applicant.notes.trim() !== '' && (
-                                        <div className="space-y-2 pt-2 border-t border-gray-200">
-                                            <div className="flex items-center gap-2">
-                                                <MessageSquare className="h-4 w-4 text-gray-600" />
-                                                <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                                    {t("apply.additionalNotes")}
-                                                </p>
-                                            </div>
-                                            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line p-3 bg-white dark:bg-gray-800/20 rounded-lg border border-gray-200 text-start">
-                                                {applicant.notes}
-                                            </p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                            </div>
                         )}
 
                         {/* Red Flags - Hidden from reviewers */}

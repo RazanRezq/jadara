@@ -624,7 +624,13 @@
             "knockoutQuestionFailed": "فشل في سؤال فرز حاسم",
             "languageGap": "فجوة في اللغة",
             "salaryMismatch": "عدم تطابق في الراتب",
-            "screeningMismatch": "عدم تطابق في الفرز"
+            "screeningMismatch": "عدم تطابق في الفرز",
+            "failedScreeningQuestion": "فشل في سؤال الفرز: {{question}}",
+            "significantExperienceGap": "فجوة خبرة كبيرة: {{reported}} سنوات مُبلّغة مقابل {{required}} سنوات مطلوبة",
+            "missingRequiredSkill": "مهارة مطلوبة مفقودة: {{skill}}",
+            "noRelevantExperience": "لا توجد خبرة ذات صلة",
+            "locationMismatch": "عدم تطابق في الموقع",
+            "educationNotMet": "لا تستوفي متطلبات التعليم"
         },
         "tags": "العلامات",
         "notes": "الملاحظات",

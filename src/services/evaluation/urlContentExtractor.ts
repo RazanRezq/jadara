@@ -8,8 +8,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import * as cheerio from 'cheerio'
 import axios from 'axios'
 
-// Gemini 2.0 Flash (1500 requests/day free tier vs 20 for 2.5-flash-lite)
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// Gemini 2.0 Flash for URL content extraction
+const GEMINI_MODEL = 'gemini-2.0-flash-lite'
 
 // ScrapingDog API Configuration
 const SCRAPINGDOG_API_KEY = process.env.SCRAPINGDOG_API_KEY

@@ -1,15 +1,27 @@
 /**
  * SmartRecruit AI - Voice Transcription Service
  * Uses Google Gemini 1.5 Flash for Speech-to-Text with Arabic/English support
+ * Falls back to OpenAI Whisper when Gemini quota is exceeded
  * Provides transcription AND analysis in a single API call
  */
 
 import axios from 'axios'
 import { GoogleGenerativeAI, Part } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { TranscriptionResult, VoiceAnalysisResult } from './types'
 
-// Gemini 2.0 Flash for audio processing (1500 requests/day free tier vs 20 for 2.5-flash-lite)
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// Gemini 2.0 Flash for audio processing
+const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+
+// Initialize OpenAI client (lazy)
+let openaiClient: OpenAI | null = null
+function getOpenAIClient(): OpenAI | null {
+    if (openaiClient) return openaiClient
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) return null
+    openaiClient = new OpenAI({ apiKey })
+    return openaiClient
+}
 
 /**
  * Combined result type for transcription + analysis in one go
@@ -82,7 +94,144 @@ async function downloadAudioFile(audioUrl: string): Promise<{ buffer: Buffer; mi
 }
 
 /**
+ * OpenAI Whisper fallback for audio transcription
+ * Used when Gemini quota is exceeded (429 errors)
+ */
+async function transcribeWithOpenAI(
+    audioBuffer: Buffer,
+    mimeType: string,
+    questionText: string
+): Promise<TranscriptionWithAnalysis> {
+    const openai = getOpenAIClient()
+    if (!openai) {
+        return {
+            success: false,
+            error: 'OpenAI API key not configured for fallback',
+        }
+    }
+
+    try {
+        console.log('🔄 [OpenAI Fallback] Using Whisper for transcription...')
+
+        // Determine file extension from mime type
+        const extMap: Record<string, string> = {
+            'audio/webm': 'webm',
+            'audio/mp3': 'mp3',
+            'audio/mpeg': 'mp3',
+            'audio/wav': 'wav',
+            'audio/ogg': 'ogg',
+            'audio/mp4': 'm4a',
+            'audio/m4a': 'm4a',
+        }
+        const ext = extMap[mimeType] || 'webm'
+
+        // Create a File object from the buffer for Whisper API
+        // Convert Buffer to Uint8Array for compatibility
+        const uint8Array = new Uint8Array(audioBuffer)
+        const audioFile = new File([uint8Array], `audio.${ext}`, { type: mimeType })
+
+        // Use Whisper for transcription
+        const transcription = await openai.audio.transcriptions.create({
+            file: audioFile,
+            model: 'whisper-1',
+            response_format: 'text',
+        })
+
+        const rawTranscript = transcription.trim()
+        console.log('✅ [OpenAI Fallback] Whisper transcription complete, length:', rawTranscript.length)
+
+        if (!rawTranscript || rawTranscript.length < 5) {
+            return {
+                success: false,
+                error: 'Transcription returned empty or too short',
+            }
+        }
+
+        // Now use GPT-4 to analyze the transcript
+        console.log('🔄 [OpenAI Fallback] Using GPT-4o-mini for analysis...')
+        const analysisResponse = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are an expert at analyzing interview responses. Respond ONLY with valid JSON.',
+                },
+                {
+                    role: 'user',
+                    content: `Analyze this interview response transcript:
+
+Question asked: "${questionText}"
+Response transcript: "${rawTranscript}"
+
+Provide analysis as JSON:
+{
+    "cleanTranscript": "<cleaned version without fillers, corrected grammar>",
+    "language": "<'ar' for Arabic, 'en' for English, 'mixed' for both>",
+    "sentiment": {
+        "score": <-1 to 1>,
+        "label": "<negative|neutral|positive>"
+    },
+    "confidence": {
+        "score": <0-100>,
+        "indicators": ["<list>"]
+    },
+    "relevance": {
+        "score": <0-100>,
+        "reasoning": "<brief>"
+    },
+    "fluency": {
+        "score": <0-100>,
+        "fillerWordCount": <count>
+    },
+    "keyPhrases": ["<3-5 key phrases>"]
+}`,
+                },
+            ],
+            temperature: 0.3,
+        })
+
+        let analysisText = analysisResponse.choices[0]?.message?.content?.trim() || '{}'
+        analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+        let analysis
+        try {
+            analysis = JSON.parse(analysisText)
+        } catch {
+            console.error('❌ [OpenAI Fallback] Failed to parse analysis JSON')
+            analysis = {}
+        }
+
+        console.log('✅ [OpenAI Fallback] Analysis complete')
+
+        return {
+            success: true,
+            rawTranscript,
+            cleanTranscript: analysis.cleanTranscript || rawTranscript,
+            confidence: 0.90,
+            language: analysis.language || 'en',
+            analysis: {
+                success: true,
+                sentiment: analysis.sentiment,
+                confidence: analysis.confidence,
+                fluency: {
+                    score: analysis.fluency?.score || 75,
+                    fillerWordCount: analysis.fluency?.fillerWordCount || 0,
+                },
+                keyPhrases: analysis.keyPhrases || [],
+            },
+        }
+    } catch (error) {
+        console.error('❌ [OpenAI Fallback] Error:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'OpenAI fallback failed',
+        }
+    }
+}
+
+/**
  * Transcribe AND analyze audio using Google Gemini 1.5 Flash
+ * Falls back to OpenAI Whisper if Gemini quota is exceeded
  * Performs both operations in a single API call for efficiency
  */
 export async function transcribeAndAnalyzeAudio(
@@ -248,13 +397,32 @@ Question asked: "${questionText}"
             },
         }
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error('❌ [Transcription] EXCEPTION CAUGHT:', error)
         console.error('❌ [Transcription] Error name:', error instanceof Error ? error.name : 'Unknown')
-        console.error('❌ [Transcription] Error message:', error instanceof Error ? error.message : 'Unknown')
-        
+        console.error('❌ [Transcription] Error message:', errorMessage)
+
+        // Check if this is a quota exceeded error (429)
+        const is429Error = errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('Too Many Requests')
+
+        if (is429Error) {
+            console.log('🔄 [Transcription] Gemini quota exceeded, trying OpenAI fallback...')
+
+            // Re-download audio for OpenAI fallback
+            const audioData = await downloadAudioFile(audioUrl)
+            if (audioData) {
+                const openaiResult = await transcribeWithOpenAI(audioData.buffer, audioData.mimeType, questionText)
+                if (openaiResult.success) {
+                    console.log('✅ [Transcription] OpenAI fallback successful!')
+                    return openaiResult
+                }
+                console.error('❌ [Transcription] OpenAI fallback also failed:', openaiResult.error)
+            }
+        }
+
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown transcription error',
+            error: errorMessage,
         }
     }
 }

@@ -1,13 +1,25 @@
 /**
  * SmartRecruit AI - Resume Parser Service
  * Extracts structured data from PDF resumes and external profile links
+ * Falls back to OpenAI when Gemini quota is exceeded
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { ParsedResume, ExtractedSkill, WorkExperience, Education, LanguageSkill } from './types'
 
-// Gemini 2.0 Flash (1500 requests/day free tier vs 20 for 2.5-flash-lite)
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// Gemini 2.0 Flash for resume parsing
+const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+
+// Initialize OpenAI client (lazy)
+let openaiClient: OpenAI | null = null
+function getOpenAIClient(): OpenAI | null {
+    if (openaiClient) return openaiClient
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) return null
+    openaiClient = new OpenAI({ apiKey })
+    return openaiClient
+}
 
 /**
  * Parse resume from PDF URL
@@ -187,10 +199,129 @@ ${rawText}
             rawText,
         }
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error('[Resume Parser] Error:', error)
+
+        // Check if this is a quota exceeded error (429)
+        const is429Error = errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('Too Many Requests')
+
+        if (is429Error) {
+            console.log('🔄 [Resume Parser] Gemini quota exceeded, trying OpenAI fallback...')
+            const openaiResult = await parseResumeWithOpenAI(cvUrl)
+            if (openaiResult.success) {
+                console.log('✅ [Resume Parser] OpenAI fallback successful!')
+                return openaiResult
+            }
+            console.error('❌ [Resume Parser] OpenAI fallback also failed:', openaiResult.error)
+        }
+
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown parsing error',
+            error: errorMessage,
+        }
+    }
+}
+
+/**
+ * OpenAI fallback for resume parsing
+ * Used when Gemini quota is exceeded (429 errors)
+ */
+async function parseResumeWithOpenAI(cvUrl: string): Promise<ParsedResume> {
+    const openai = getOpenAIClient()
+    if (!openai) {
+        return {
+            success: false,
+            error: 'OpenAI API key not configured for fallback',
+        }
+    }
+
+    try {
+        console.log('🔄 [OpenAI Resume] Parsing resume from:', cvUrl)
+
+        // Fetch the PDF
+        const pdfResponse = await fetch(cvUrl)
+        if (!pdfResponse.ok) {
+            return {
+                success: false,
+                error: `Failed to fetch resume: ${pdfResponse.statusText}`,
+            }
+        }
+
+        const pdfBuffer = await pdfResponse.arrayBuffer()
+        const base64Pdf = Buffer.from(pdfBuffer).toString('base64')
+
+        // Use GPT-4 Vision to analyze the PDF
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `You are an expert HR resume parser. Analyze this PDF resume and extract structured information.
+
+Extract and return a JSON object with this structure:
+{
+    "summary": "<professional summary>",
+    "skills": [{"name": "<skill>", "category": "<technical|soft|language|tool>", "proficiency": "<beginner|intermediate|advanced|expert>"}],
+    "experience": [{"title": "<job title>", "company": "<company>", "startDate": "<YYYY-MM>", "endDate": "<YYYY-MM or null>", "isCurrent": <bool>, "duration": "<duration>", "responsibilities": ["<list>"], "achievements": ["<list>"]}],
+    "education": [{"degree": "<degree>", "institution": "<school>", "field": "<field>", "graduationYear": "<YYYY>"}],
+    "languages": [{"language": "<language>", "proficiency": "<beginner|intermediate|advanced|native>"}],
+    "certifications": ["<list>"],
+    "links": {"linkedin": "<url>", "portfolio": "<url>", "github": "<url>", "other": ["<urls>"]}
+}
+
+Return ONLY valid JSON.`,
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:application/pdf;base64,${base64Pdf}`,
+                            },
+                        },
+                    ],
+                },
+            ],
+            max_tokens: 4000,
+        })
+
+        let responseText = response.choices[0]?.message?.content?.trim() || '{}'
+        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+        const jsonMatch = responseText.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+            responseText = jsonMatch[0]
+        }
+
+        const parsedData = JSON.parse(responseText)
+
+        console.log('✅ [OpenAI Resume] Parsed successfully')
+
+        return {
+            success: true,
+            profile: {
+                summary: parsedData.summary || '',
+                skills: normalizeSkills(parsedData.skills || []),
+                experience: normalizeExperience(parsedData.experience || []),
+                education: normalizeEducation(parsedData.education || []),
+                languages: normalizeLanguages(parsedData.languages || []),
+                certifications: parsedData.certifications || [],
+                links: {
+                    linkedin: parsedData.links?.linkedin || undefined,
+                    portfolio: parsedData.links?.portfolio || undefined,
+                    behance: parsedData.links?.behance || undefined,
+                    github: parsedData.links?.github || undefined,
+                    other: parsedData.links?.other || [],
+                },
+            },
+            rawText: responseText,
+        }
+    } catch (error) {
+        console.error('❌ [OpenAI Resume] Error:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'OpenAI fallback failed',
         }
     }
 }
