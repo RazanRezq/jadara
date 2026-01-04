@@ -104,8 +104,11 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
 
     const topCandidates = useMemo(() => {
         return completedApplicants
-            .filter(a => a.myRating !== undefined && a.myRating !== null && a.myRating >= 4)
-            .sort((a, b) => (b.myRating || 0) - (a.myRating || 0))
+            .filter(a => {
+                const rating = Number(a.myRating)
+                return !isNaN(rating) && rating >= 4
+            })
+            .sort((a, b) => (Number(b.myRating) || 0) - (Number(a.myRating) || 0))
             .slice(0, 3)
     }, [completedApplicants])
 
@@ -274,7 +277,7 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                                {topCandidates.length > 0 ? topCandidates[0].myRating : '-'}
+                                {topCandidates.length > 0 ? Number(topCandidates[0].myRating).toFixed(1) : '-'}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 {t("dashboard.reviewer.highestRating")}
@@ -356,7 +359,7 @@ export function ReviewerDashboardClient({ data }: ReviewerDashboardClientProps) 
                                         <span className="text-xs text-muted-foreground font-medium">{t("dashboard.reviewer.bestScore")}</span>
                                     </div>
                                     <div className="text-2xl font-bold text-foreground">
-                                        {topCandidates.length > 0 ? topCandidates[0].myRating : '-'}
+                                        {topCandidates.length > 0 ? Number(topCandidates[0].myRating).toFixed(1) : '-'}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">{t("dashboard.reviewer.rating")}</p>
                                 </div>

@@ -7,8 +7,25 @@ import CompanyProfile from "@/models/CompanyProfile/companyProfileSchema"
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "")
 
-// Use gemini-2.0-flash-lite model
-const MODEL_NAME = "gemini-2.0-flash-lite"
+// Use gemini-2.5-flash model (free tier available)
+const MODEL_NAME = "gemini-2.5-flash"
+
+// Rate limiting to avoid quota exhaustion
+let lastApiCallTime = 0
+const MIN_DELAY_BETWEEN_CALLS = 4000 // 4 seconds between calls (15 RPM = 1 per 4 seconds)
+
+async function waitForRateLimit(): Promise<void> {
+    const now = Date.now()
+    const timeSinceLastCall = now - lastApiCallTime
+
+    if (timeSinceLastCall < MIN_DELAY_BETWEEN_CALLS) {
+        const waitTime = MIN_DELAY_BETWEEN_CALLS - timeSinceLastCall
+        console.log(`[Rate Limiter] Waiting ${waitTime}ms before next API call...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+    }
+
+    lastApiCallTime = Date.now()
+}
 
 interface GenerateJobDescriptionInput {
     jobTitle: string
@@ -239,6 +256,7 @@ Output STRICTLY clean Markdown. Follow these rules:
 - [benefit 3]`
 
                 console.log(`[AI] Calling generateContent for ${modelName}...`)
+                await waitForRateLimit() // Rate limit before API call
                 const result = await model.generateContent(prompt)
                 console.log(`[AI] Got response from ${modelName}`)
 
@@ -275,6 +293,17 @@ Output STRICTLY clean Markdown. Follow these rules:
         const errorMessage = lastError?.message || "Unknown error occurred"
 
         // Provide more specific error messages
+        if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("rate limit") || errorMessage.includes("Quota exceeded")) {
+            // Extract retry delay if available
+            const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)s/)
+            const retrySeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60
+
+            return {
+                success: false,
+                error: `⚠️ API Quota Exceeded - The Google Gemini API has reached its rate limit. Please wait ${retrySeconds} seconds and try again. This is a temporary limit that resets automatically.`,
+            }
+        }
+
         if (errorMessage.includes("404") || errorMessage.includes("not found")) {
             return {
                 success: false,
@@ -474,7 +503,9 @@ ${localizationInstruction}
 Return ONLY a valid JSON array with no additional text or markdown`
 
         console.log(`[AI] Calling generateContent for skill extraction...`)
-        
+
+        await waitForRateLimit() // Rate limit before API call
+
         // Use retry logic with exponential backoff
         const result = await retryWithBackoff(
             () => model.generateContent(prompt),
@@ -543,14 +574,17 @@ Return ONLY a valid JSON array with no additional text or markdown`
         
         // Provide user-friendly error messages
         let errorMessage = "Unknown error occurred"
-        
+
         if (error instanceof Error) {
             const errorMsg = error.message.toLowerCase()
-            
+
             if (errorMsg.includes('503') || errorMsg.includes('service unavailable') || errorMsg.includes('overloaded')) {
                 errorMessage = "The AI service is temporarily overloaded. Please wait a moment and try again."
-            } else if (errorMsg.includes('429') || errorMsg.includes('rate limit')) {
-                errorMessage = "Too many requests. Please wait a few seconds before trying again."
+            } else if (errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('rate limit')) {
+                // Extract retry delay if available
+                const retryMatch = error.message.match(/retry in (\d+\.?\d*)s/)
+                const retrySeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60
+                errorMessage = `⚠️ API Quota Exceeded - The Google Gemini API has reached its rate limit. Please wait ${retrySeconds} seconds and try again. This is a temporary limit that resets automatically.`
             } else if (errorMsg.includes('401') || errorMsg.includes('403') || errorMsg.includes('api_key')) {
                 errorMessage = "Invalid API key. Please check your GOOGLE_API_KEY configuration."
             } else if (errorMsg.includes('network') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout')) {

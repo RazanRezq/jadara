@@ -441,20 +441,41 @@ function StatusBadge({ status }: { status: string }) {
 
     // Golden List + Legacy (API normalizes legacy statuses before sending to client)
     const statusConfig: Record<string, { color: string; bg: string; darkBg: string }> = {
-        // Golden List (5 statuses)
-        new: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/30" },
-        evaluated: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
-        interview: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
-        hired: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100", darkBg: "dark:bg-emerald-900/30" },
-        rejected: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/30" },
+        // Golden List (5 statuses) - Updated color scheme for better UX
+        // New applicants - Purple/Violet (fresh, needs attention)
+        new: { color: "text-violet-700 dark:text-violet-300", bg: "bg-violet-100", darkBg: "dark:bg-violet-900/50" },
+
+        // Pending evaluation - Amber/Yellow (waiting, in-progress)
+        pending: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/50" },
+
+        // Evaluated - Blue (processed, reviewed)
+        evaluated: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/50" },
+
+        // Interview scheduled - Indigo (next step, important)
+        interview: { color: "text-indigo-700 dark:text-indigo-300", bg: "bg-indigo-100", darkBg: "dark:bg-indigo-900/50" },
+
+        // Hired - Green (success, positive outcome)
+        hired: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100", darkBg: "dark:bg-emerald-900/50" },
+
+        // Rejected - Red (negative outcome)
+        rejected: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/50" },
+
+        // Failed - Red with higher contrast (error state)
+        failed: { color: "text-red-800 dark:text-red-200", bg: "bg-red-100", darkBg: "dark:bg-red-900/60" },
+
+        // Archived - Gray (inactive, stored)
+        archived: { color: "text-gray-600 dark:text-gray-400", bg: "bg-gray-100", darkBg: "dark:bg-gray-800/50" },
+
+        // Withdrawn - Gray (applicant withdrew)
+        withdrawn: { color: "text-slate-600 dark:text-slate-400", bg: "bg-slate-100", darkBg: "dark:bg-slate-800/50" },
+
         // Legacy (for backwards compatibility - should not appear in normal flow)
-        screening: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
-        interviewing: { color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30" },
-        shortlisted: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30" },
-        withdrawn: { color: "text-red-700 dark:text-red-300", bg: "bg-red-100", darkBg: "dark:bg-red-900/30" },
+        screening: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/50" },
+        interviewing: { color: "text-indigo-700 dark:text-indigo-300", bg: "bg-indigo-100", darkBg: "dark:bg-indigo-900/50" },
+        shortlisted: { color: "text-violet-700 dark:text-violet-300", bg: "bg-violet-100", darkBg: "dark:bg-violet-900/50" },
     }
 
-    const config = statusConfig[status] || { color: "text-gray-700", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" }
+    const config = statusConfig[status] || { color: "text-gray-700 dark:text-gray-300", bg: "bg-gray-100", darkBg: "dark:bg-gray-900/30" }
 
     return (
         <Badge

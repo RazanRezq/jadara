@@ -37,25 +37,26 @@ export function KanbanBoard({ applicants, onApplicantClick }: KanbanBoardProps) 
     // ═══════════════════════════════════════════════════════════════════════════════
     // KANBAN COLUMNS - Based on the "Golden List" (5 statuses)
     // Only 4 columns shown (rejected is excluded from active pipeline)
+    // Updated color scheme for better UX consistency
     // ═══════════════════════════════════════════════════════════════════════════════
     const columns: KanbanColumn[] = [
         {
             status: "new",
             title: t("applicants.status.new"),
-            color: "text-blue-700 dark:text-blue-300",
-            bgColor: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
+            color: "text-violet-700 dark:text-violet-300",
+            bgColor: "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800",
         },
         {
             status: "evaluated",
             title: t("applicants.status.evaluated"),
-            color: "text-purple-700 dark:text-purple-300",
-            bgColor: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
+            color: "text-blue-700 dark:text-blue-300",
+            bgColor: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
         },
         {
             status: "interview",
             title: t("applicants.status.interview"),
-            color: "text-amber-700 dark:text-amber-300",
-            bgColor: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
+            color: "text-indigo-700 dark:text-indigo-300",
+            bgColor: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800",
         },
         {
             status: "hired",

@@ -19,7 +19,7 @@ import {
 } from './types'
 
 // Gemini 2.5 Flash for candidate scoring
-const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+const GEMINI_MODEL = 'gemini-2.5-flash'
 
 // Initialize OpenAI client (lazy)
 let openaiClient: OpenAI | null = null

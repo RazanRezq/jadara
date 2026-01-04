@@ -110,14 +110,34 @@ export function AIRecommendedSection({ applicants, evaluations, onApplicantClick
     // Get status badge config
     const getStatusBadge = (status: string) => {
         const configs: Record<string, { label: string; className: string }> = {
-            new: { label: t("applicants.status.new"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
-            pending: { label: t("applicants.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
-            evaluated: { label: t("applicants.status.evaluated"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
-            interview: { label: t("applicants.status.interview"), className: "bg-primary/10 text-primary dark:bg-primary/20" },
-            hired: { label: t("applicants.status.hired"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" },
-            rejected: { label: t("applicants.status.rejected"), className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" },
+            // New applicants - Purple/Violet (fresh, needs attention)
+            new: { label: t("applicants.status.new"), className: "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 font-medium" },
+
+            // Pending evaluation - Amber/Yellow (waiting, in-progress)
+            pending: { label: t("applicants.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 font-medium" },
+
+            // Evaluated - Blue (processed, reviewed)
+            evaluated: { label: t("applicants.status.evaluated"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-medium" },
+
+            // Interview scheduled - Indigo (next step, important)
+            interview: { label: t("applicants.status.interview"), className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-medium" },
+
+            // Hired - Green (success, positive outcome)
+            hired: { label: t("applicants.status.hired"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 font-medium" },
+
+            // Rejected - Red (negative outcome)
+            rejected: { label: t("applicants.status.rejected"), className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 font-medium" },
+
+            // Failed - Red with higher contrast (error state)
+            failed: { label: t("applicants.status.failed"), className: "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 font-medium" },
+
+            // Archived - Gray (inactive, stored)
+            archived: { label: t("applicants.status.archived"), className: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400 font-medium" },
+
+            // Withdrawn - Gray (applicant withdrew)
+            withdrawn: { label: t("applicants.status.withdrawn"), className: "bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400 font-medium" },
         }
-        return configs[status] || { label: status, className: "bg-muted text-muted-foreground" }
+        return configs[status] || { label: status, className: "bg-muted text-muted-foreground font-medium" }
     }
 
     // Get top strength for a candidate

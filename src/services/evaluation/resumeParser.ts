@@ -9,7 +9,7 @@ import OpenAI from 'openai'
 import { ParsedResume, ExtractedSkill, WorkExperience, Education, LanguageSkill } from './types'
 
 // Gemini 2.0 Flash for resume parsing
-const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+const GEMINI_MODEL = 'gemini-2.5-flash'
 
 // Initialize OpenAI client (lazy)
 let openaiClient: OpenAI | null = null

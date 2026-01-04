@@ -340,10 +340,10 @@ async function getReviewerStats(userId: string, userName: string) {
 
     // Fetch all non-archived applicants and all reviews by this reviewer in parallel
     const [applicants, reviews, jobs, ratingDistribution] = await Promise.all([
-        // Get all applicants with status 'evaluated' only (sorted by newest first)
+        // Get all complete applicants (reviewer should see all they've reviewed, regardless of status)
         Applicant.find({
-            status: 'evaluated',
-            isComplete: true
+            isComplete: true,
+            status: { $nin: ['archived', 'withdrawn'] } // Exclude only archived/withdrawn
         })
             .sort({ createdAt: -1 })
             .select('_id personalData jobId status createdAt sessionId aiScore')
@@ -414,8 +414,8 @@ async function getReviewerStats(userId: string, userName: string) {
                 status: app.status,
                 createdAt: app.createdAt ? new Date(app.createdAt).toISOString() : new Date().toISOString(),
                 sessionId: app.sessionId,
-                aiScore: app.aiScore,
-                myRating: reviewData.rating,
+                aiScore: app.aiScore ? Number(app.aiScore) : 0,
+                myRating: Number(reviewData.rating),
                 reviewedAt: reviewData.reviewedAt ? new Date(reviewData.reviewedAt).toISOString() : null,
             })
         }
