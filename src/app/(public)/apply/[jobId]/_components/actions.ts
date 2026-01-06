@@ -113,24 +113,13 @@ export async function submitApplication(
         // Generate unique session ID
         const sessionId = uuidv4()
 
-        // Convert screeningAnswers and languageProficiency to Maps for MongoDB
+        // Prepare personalData - Mongoose Map type expects plain objects, not JavaScript Map instances
+        // Mongoose will handle the conversion internally
         const personalData: any = {
             ...payload.personalData,
             email: payload.personalData.email.toLowerCase(),
-        }
-
-        // Convert screeningAnswers object to Map if it exists
-        if (payload.personalData.screeningAnswers && Object.keys(payload.personalData.screeningAnswers).length > 0) {
-            personalData.screeningAnswers = new Map(
-                Object.entries(payload.personalData.screeningAnswers)
-            )
-        }
-
-        // Convert languageProficiency object to Map if it exists
-        if (payload.personalData.languageProficiency && Object.keys(payload.personalData.languageProficiency).length > 0) {
-            personalData.languageProficiency = new Map(
-                Object.entries(payload.personalData.languageProficiency)
-            )
+            // Keep screeningAnswers and languageProficiency as plain objects
+            // Mongoose's Map type will convert them automatically
         }
 
         // Create the applicant record with pending evaluation status
