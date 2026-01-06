@@ -280,22 +280,27 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                             <FormField
                                 control={form.control}
                                 name="location"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-sm font-medium">
-                                            {t("applicants.location")}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder={t("applicants.locationPlaceholder")}
-                                                dir={detectTextDirection(t("applicants.locationPlaceholder"))}
-                                                className="h-10"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                render={({ field }) => {
+                                    const placeholderText = t("apply.locationPlaceholder")
+                                    const placeholderDir = detectTextDirection(placeholderText)
+                                    
+                                    return (
+                                        <FormItem>
+                                            <FormLabel className="text-sm font-medium">
+                                                {t("apply.location")}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder={placeholderText}
+                                                    dir={placeholderDir}
+                                                    className="h-10"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )
+                                }}
                             />
                             </div>
                         </div>

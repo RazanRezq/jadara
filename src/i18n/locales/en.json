@@ -986,6 +986,8 @@
         "additionalInformation": "Additional Information",
         "professionalLinks": "Professional Links",
         "namePlaceholder": "Full Name",
+        "location": "Location",
+        "locationPlaceholder": "e.g., Remote, Dubai, UAE",
         "majorPlaceholder": "e.g., Computer Science",
         "yearsOfExperience": "Years of Experience",
         "portfolio": "Portfolio",

@@ -41,6 +41,14 @@ import {
 import { cn } from "@/lib/utils"
 import { ContextSelectorModal } from "./context-selector-modal"
 
+// Helper function to detect text direction based on content
+const detectTextDirection = (text: string): "rtl" | "ltr" => {
+    if (!text) return "ltr"
+    // Arabic Unicode range: \u0600-\u06FF
+    const arabicRegex = /[\u0600-\u06FF]/
+    return arabicRegex.test(text) ? "rtl" : "ltr"
+}
+
 interface Step1BasicsProps {
     form: UseFormReturn<JobWizardFormValues>
 }
@@ -210,21 +218,27 @@ export function Step1Basics({ form }: Step1BasicsProps) {
                         <FormField
                             control={form.control}
                             name="location"
-                            render={({ field }) => (
-                                <FormItem className="space-y-2">
-                                    <FormLabel className="text-sm font-medium min-h-[20px] flex items-center">
-                                        {t("jobWizard.step1.location")} <span className="text-destructive ms-1">*</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder={t("jobWizard.step1.locationPlaceholder")}
-                                            {...field}
-                                            className="h-11"
-                                        />
-                                    </FormControl>
-                                    <FormMessage className="text-xs" />
-                                </FormItem>
-                            )}
+                            render={({ field }) => {
+                                const placeholderText = t("jobWizard.step1.locationPlaceholder")
+                                const placeholderDir = detectTextDirection(placeholderText)
+                                
+                                return (
+                                    <FormItem className="space-y-2">
+                                        <FormLabel className="text-sm font-medium min-h-[20px] flex items-center">
+                                            {t("jobWizard.step1.location")} <span className="text-destructive ms-1">*</span>
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder={placeholderText}
+                                                dir={placeholderDir}
+                                                {...field}
+                                                className="h-11"
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                )
+                            }}
                         />
                     </div>
                 </CardContent>

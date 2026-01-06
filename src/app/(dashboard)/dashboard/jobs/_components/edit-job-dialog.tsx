@@ -33,6 +33,14 @@ import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
 import type { Job } from "./jobs-client"
 
+// Helper function to detect text direction based on content
+const detectTextDirection = (text: string): "rtl" | "ltr" => {
+    if (!text) return "ltr"
+    // Arabic Unicode range: \u0600-\u06FF
+    const arabicRegex = /[\u0600-\u06FF]/
+    return arabicRegex.test(text) ? "rtl" : "ltr"
+}
+
 const editJobSchema = z.object({
     title: z.string().min(3, "Title must be at least 3 characters"),
     description: z.string().min(10, "Description must be at least 10 characters"),
@@ -177,15 +185,24 @@ export function EditJobDialog({ open, onOpenChange, job, onSuccess, userId }: Ed
                             <FormField
                                 control={form.control}
                                 name="location"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("jobs.location")}</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder={t("jobs.locationPlaceholder")} {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                render={({ field }) => {
+                                    const placeholderText = t("jobs.locationPlaceholder")
+                                    const placeholderDir = detectTextDirection(placeholderText)
+                                    
+                                    return (
+                                        <FormItem>
+                                            <FormLabel>{t("jobs.location")}</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder={placeholderText}
+                                                    dir={placeholderDir}
+                                                    {...field} 
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )
+                                }}
                             />
                         </div>
 

@@ -986,6 +986,8 @@
         "additionalInformation": "معلومات إضافية",
         "professionalLinks": "الروابط المهنية",
         "namePlaceholder": "الاسم الكامل",
+        "location": "الموقع",
+        "locationPlaceholder": "مثال: عن بعد، دبي، الإمارات",
         "majorPlaceholder": "مثال: علوم الحاسب",
         "yearsOfExperience": "سنوات الخبرة",
         "portfolio": "معرض الأعمال",
