@@ -105,19 +105,34 @@ export function ApplicantsToolbar({
                             onValueChange={(value) => {
                                 if (value) onViewModeChange(value as ViewMode)
                             }}
-                            className="bg-muted p-1 rounded-lg"
+                            className="bg-muted p-1 rounded-lg border border-border/50"
+                            spacing={0}
                         >
                             <ToggleGroupItem
                                 value="list"
                                 aria-label={t("applicants.listView")}
-                                className="h-8 px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                                className={cn(
+                                    "h-8 px-3 rounded-md transition-all",
+                                    "data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+                                    "data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground",
+                                    "data-[state=off]:hover:bg-muted/50 data-[state=off]:hover:text-foreground",
+                                    "border-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
+                                    "data-[state=off]:shadow-none"
+                                )}
                             >
                                 <LayoutList className="h-4 w-4" />
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="board"
                                 aria-label={t("applicants.boardView")}
-                                className="h-8 px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                                className={cn(
+                                    "h-8 px-3 rounded-md transition-all",
+                                    "data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+                                    "data-[state=off]:bg-transparent data-[state=off]:text-muted-foreground",
+                                    "data-[state=off]:hover:bg-muted/50 data-[state=off]:hover:text-foreground",
+                                    "border-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
+                                    "data-[state=off]:shadow-none"
+                                )}
                             >
                                 <Columns3 className="h-4 w-4" />
                             </ToggleGroupItem>

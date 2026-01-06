@@ -110,6 +110,7 @@ const getPersonalDataSchema = (
                 z.coerce.number().min(0, t("apply.validation.salaryMin")),
                 z.literal(""),
             ]).optional(),
+        location: z.string().optional(),
         linkedinUrl: job.candidateDataConfig.requireLinkedIn
             ? z.string().url(t("apply.validation.linkedinRequired"))
             : z.string().url(t("apply.validation.urlInvalid")).optional().or(z.literal("")),
@@ -161,6 +162,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
             major: "",
             yearsOfExperience: undefined,
             salaryExpectation: undefined,
+            location: "",
             linkedinUrl: "",
             portfolioUrl: "",
             screeningAnswers: defaultScreeningAnswers,
@@ -259,7 +261,7 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                 control={form.control}
                                 name="phone"
                                 render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
+                                    <FormItem>
                                         <FormLabel className="text-sm font-medium">
                                             {t("applicants.phone")} <span className="text-destructive">*</span>
                                         </FormLabel>
@@ -267,6 +269,26 @@ export function PersonalInfoStep({ job, existingData, onSubmit, onBack, isSubmit
                                             <Input
                                                 placeholder="+966 5XX XXX XXXX"
                                                 dir="ltr"
+                                                className="h-10"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="location"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium">
+                                            {t("applicants.location")}
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder={t("applicants.locationPlaceholder")}
+                                                dir={detectTextDirection(t("applicants.locationPlaceholder"))}
                                                 className="h-10"
                                                 {...field}
                                             />

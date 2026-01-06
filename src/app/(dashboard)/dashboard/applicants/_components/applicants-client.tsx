@@ -20,7 +20,8 @@ import { type UserRole } from "@/lib/auth"
 import { hasPermission } from "@/lib/authClient"
 import { useTranslate } from "@/hooks/useTranslate"
 import { toast } from "sonner"
-import { X, Archive, Trash2, Users, Sparkles, Loader2 } from "lucide-react"
+import { X, Archive, Trash2, Users, Sparkles, Loader2, Briefcase } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/page-header"
 
 // Components
@@ -508,9 +509,45 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
 
     // Count pending evaluations for button badge
     // Include applicants with explicit 'pending' status OR no evaluationStatus and no aiScore (legacy data)
-    const pendingEvaluationCount = applicants.filter(
-        a => a.evaluationStatus === 'pending' || (!a.evaluationStatus && !a.aiScore)
-    ).length
+    // Respect current filters: only count applicants that match the current job filter (if any)
+    const pendingApplicants = applicants.filter(
+        a => {
+            // Must match pending evaluation criteria
+            const needsEvaluation = a.evaluationStatus === 'pending' || (!a.evaluationStatus && !a.aiScore)
+            if (!needsEvaluation) return false
+            
+            // Respect job filter if set
+            if (filters.jobFilter && filters.jobFilter !== 'all') {
+                return a.jobId?._id === filters.jobFilter
+            }
+            
+            return true
+        }
+    )
+    
+    const pendingEvaluationCount = pendingApplicants.length
+    
+    // Debug logging (only in development)
+    if (process.env.NODE_ENV === 'development' && pendingEvaluationCount > 0) {
+        console.log('🔍 [AI Evaluation Badge] Pending applicants:', {
+            count: pendingEvaluationCount,
+            jobFilter: filters.jobFilter,
+            applicants: pendingApplicants.map(a => ({
+                id: a.id,
+                name: a.personalData?.name,
+                email: a.personalData?.email,
+                jobId: a.jobId?._id,
+                jobTitle: a.jobId?.title,
+                evaluationStatus: a.evaluationStatus,
+                aiScore: a.aiScore,
+                reason: a.evaluationStatus === 'pending' 
+                    ? 'Has pending status' 
+                    : (!a.evaluationStatus && !a.aiScore) 
+                        ? 'Legacy data (no status/score)' 
+                        : 'Unknown'
+            }))
+        })
+    }
 
     // Filter applicants client-side for additional filters
     const filteredApplicants = applicants.filter(applicant => {
@@ -598,23 +635,102 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 }
                 aiEvaluationSlot={
                     pendingEvaluationCount > 0 && (
-                        <Button
-                            variant="default"
-                            size="default"
-                            onClick={handleRunAIEvaluation}
-                            disabled={isRunningEvaluation}
-                            className="gap-2"
-                        >
-                            {isRunningEvaluation ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Sparkles className="h-4 w-4" />
-                            )}
-                            {t("applicants.evaluation.runAI")}
-                            <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs font-medium">
-                                {pendingEvaluationCount}
-                            </span>
-                        </Button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="default"
+                                    size="default"
+                                    onClick={handleRunAIEvaluation}
+                                    disabled={isRunningEvaluation}
+                                    className="gap-2"
+                                >
+                                    {isRunningEvaluation ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-4 w-4" />
+                                    )}
+                                    {t("applicants.evaluation.runAI")}
+                                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs font-medium">
+                                        {pendingEvaluationCount}
+                                    </span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                                side="bottom" 
+                                className="max-w-xs p-0 bg-popover dark:bg-popover border border-border dark:border-border shadow-xl dark:shadow-2xl rounded-lg"
+                                align="end"
+                                sideOffset={8}
+                            >
+                                <div className="p-4">
+                                    {/* Header */}
+                                    <div className="flex items-start gap-3 mb-3 pb-3 border-b border-border dark:border-border">
+                                        <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20 ring-1 ring-primary/20 dark:ring-primary/30 flex-shrink-0">
+                                            <Sparkles className="h-4 w-4 text-primary dark:text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm text-foreground dark:text-foreground leading-tight mb-1">
+                                                {pendingEvaluationCount === 1 
+                                                    ? t("applicants.evaluation.pendingSingle")
+                                                    : t("applicants.evaluation.pendingMultiple").replace("{count}", pendingEvaluationCount.toString())
+                                                }
+                                            </p>
+                                            <p className="text-xs text-muted-foreground dark:text-muted-foreground">
+                                                {locale === 'ar' ? 'انقر للتقييم' : 'Click to evaluate'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Applicants List - No scrolling, shows up to 5 */}
+                                    <div className="space-y-1.5">
+                                        {pendingApplicants.slice(0, 5).map((applicant, index) => (
+                                            <div 
+                                                key={applicant.id} 
+                                                className="flex items-start gap-2.5 p-2 rounded-md bg-muted/40 dark:bg-muted/20 hover:bg-muted/60 dark:hover:bg-muted/40 transition-colors border border-transparent hover:border-border/50 dark:hover:border-border/30"
+                                            >
+                                                <div className="flex-shrink-0 mt-0.5">
+                                                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                                                        <span className="text-xs font-bold text-primary dark:text-primary">
+                                                            {index + 1}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-foreground dark:text-foreground truncate leading-tight">
+                                                        {applicant.personalData?.name || applicant.displayName}
+                                                    </p>
+                                                    {applicant.personalData?.email && (
+                                                        <p className="text-xs text-muted-foreground dark:text-muted-foreground truncate mt-0.5">
+                                                            {applicant.personalData.email}
+                                                        </p>
+                                                    )}
+                                                    {applicant.jobId?.title && (
+                                                        <div className="flex items-center gap-1.5 mt-1.5">
+                                                            <Briefcase className="h-3 w-3 text-muted-foreground dark:text-muted-foreground flex-shrink-0" />
+                                                            <p className="text-xs text-muted-foreground dark:text-muted-foreground truncate">
+                                                                {applicant.jobId.title}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {/* Show more indicator */}
+                                        {pendingApplicants.length > 5 && (
+                                            <div className="pt-2 mt-2 border-t border-border dark:border-border">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary/40 dark:bg-primary/50"></div>
+                                                    <p className="text-xs text-center text-muted-foreground dark:text-muted-foreground font-medium">
+                                                        {t("applicants.evaluation.andMore").replace("{count}", (pendingApplicants.length - 5).toString())}
+                                                    </p>
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary/40 dark:bg-primary/50"></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </TooltipContent>
+                        </Tooltip>
                     )
                 }
                 totalApplicants={total}

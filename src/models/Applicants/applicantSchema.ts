@@ -27,6 +27,7 @@ export interface IPersonalData {
     major?: string
     yearsOfExperience?: number
     salaryExpectation?: number // Hidden from reviewers
+    location?: string
     linkedinUrl?: string
     behanceUrl?: string
     portfolioUrl?: string
@@ -101,6 +102,10 @@ const personalDataSchema = new Schema<IPersonalData>(
         salaryExpectation: {
             type: Number,
             min: 0,
+        },
+        location: {
+            type: String,
+            trim: true,
         },
         linkedinUrl: {
             type: String,

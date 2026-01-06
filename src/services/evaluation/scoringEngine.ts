@@ -785,6 +785,7 @@ function buildCandidateProfile(candidateData: CandidateData, jobCriteria: Candid
 - Email: ${personalData.email}
 - Phone: ${personalData.phone}
 - Age: ${personalData.age || 'Not provided'}
+- Location: ${personalData.location || 'Not provided'}
 - Years of Experience (Self-reported): ${personalData.yearsOfExperience || 'Not provided'} ${jobCriteria.minExperience ? `[Required: ${jobCriteria.minExperience}+ years]` : ''}
 - Salary Expectation: ${personalData.salaryExpectation ? `${personalData.salaryExpectation}` : 'Not provided'} ${jobCriteria.salaryMin && jobCriteria.salaryMax ? `[Budget: ${jobCriteria.salaryMin}-${jobCriteria.salaryMax}]` : ''}
 ${personalData.linkedinUrl ? `- LinkedIn: ${personalData.linkedinUrl}` : ''}

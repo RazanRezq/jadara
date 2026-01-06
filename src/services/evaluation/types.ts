@@ -346,6 +346,7 @@ export interface CandidateEvaluationInput {
         age?: number
         yearsOfExperience?: number
         salaryExpectation?: number
+        location?: string
         linkedinUrl?: string
         behanceUrl?: string
         portfolioUrl?: string

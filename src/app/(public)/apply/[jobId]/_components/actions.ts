@@ -21,6 +21,7 @@ export interface PersonalData {
     major?: string
     yearsOfExperience?: number
     salaryExpectation?: number
+    location?: string
     linkedinUrl?: string
     portfolioUrl?: string
     screeningAnswers?: Record<string, boolean>
@@ -247,6 +248,7 @@ export async function submitApplication(
                     age: payload.personalData.age,
                     yearsOfExperience: payload.personalData.yearsOfExperience,
                     salaryExpectation: payload.personalData.salaryExpectation,
+                    location: payload.personalData.location,
                     linkedinUrl: payload.personalData.linkedinUrl,
                     portfolioUrl: payload.personalData.portfolioUrl,
                     screeningAnswers: payload.personalData.screeningAnswers,

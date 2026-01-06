@@ -33,6 +33,7 @@ export interface Applicant {
         major?: string
         yearsOfExperience?: number
         salaryExpectation?: number
+        location?: string
         linkedinUrl?: string
         behanceUrl?: string
         portfolioUrl?: string

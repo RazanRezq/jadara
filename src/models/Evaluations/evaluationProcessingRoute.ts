@@ -127,6 +127,7 @@ async function buildCandidateData(
                 age: applicant.personalData.age,
                 yearsOfExperience: applicant.personalData.yearsOfExperience,
                 salaryExpectation: applicant.personalData.salaryExpectation,
+                location: applicant.personalData.location,
                 linkedinUrl: applicant.personalData.linkedinUrl,
                 behanceUrl: applicant.personalData.behanceUrl,
                 portfolioUrl: applicant.personalData.portfolioUrl,

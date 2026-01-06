@@ -834,13 +834,15 @@ export function ViewApplicantDialog({
                                         <p className="font-medium">{applicant.personalData.age} {t("applicants.yearsOld")}</p>
                                     </div>
                                 )}
-                                <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <MapPin className="h-4 w-4" />
-                                        {t("applicants.location")}
-                                    </p>
-                                    <p className="font-medium">{t("applicants.locationValue")}</p>
-                                </div>
+                                {applicant.personalData?.location && (
+                                    <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                            <MapPin className="h-4 w-4" />
+                                            {t("applicants.location")}
+                                        </p>
+                                        <p className="font-medium">{applicant.personalData.location}</p>
+                                    </div>
+                                )}
                                 {applicant.personalData?.yearsOfExperience !== undefined && (
                                     <div className="space-y-1">
                                         <p className="text-sm text-muted-foreground flex items-center gap-2">

@@ -614,7 +614,10 @@
             "failed": "فشل",
             "runAI": "تشغيل تقييم الذكاء الاصطناعي",
             "processSuccess": "تم تقييم {count} متقدم بنجاح",
-            "noPending": "لا يوجد تقييمات معلقة"
+            "noPending": "لا يوجد تقييمات معلقة",
+            "pendingSingle": "متقدم واحد يحتاج تقييم الذكاء الاصطناعي",
+            "pendingMultiple": "{count} متقدمين يحتاجون تقييم الذكاء الاصطناعي",
+            "andMore": "و {count} آخرين"
         },
         "redFlags": "علامات تحذيرية",
         "redFlagPatterns": {

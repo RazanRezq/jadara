@@ -614,7 +614,10 @@
             "failed": "Failed",
             "runAI": "Run AI Evaluation",
             "processSuccess": "Successfully evaluated {count} applicants",
-            "noPending": "No pending evaluations found"
+            "noPending": "No pending evaluations found",
+            "pendingSingle": "1 applicant needs AI evaluation",
+            "pendingMultiple": "{count} applicants need AI evaluation",
+            "andMore": "and {count} more"
         },
         "redFlags": "Red Flags",
         "redFlagPatterns": {

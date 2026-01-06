@@ -16,6 +16,7 @@ export interface PersonalData {
     major?: string
     yearsOfExperience?: number
     salaryExpectation?: number
+    location?: string
     linkedinUrl?: string
     portfolioUrl?: string
     screeningAnswers?: Record<string, boolean> // question text as key, answer as value
