@@ -8,6 +8,20 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import * as cheerio from 'cheerio'
 import axios from 'axios'
 
+// Optional Puppeteer import for Behance scraping (JavaScript-rendered sites)
+let puppeteer: any = null
+try {
+    // Try puppeteer first (includes Chromium)
+    puppeteer = require('puppeteer')
+} catch (e) {
+    try {
+        // Fallback to puppeteer-core (requires Chrome/Chromium to be installed)
+        puppeteer = require('puppeteer-core')
+    } catch (e2) {
+        console.warn('[URL Extractor] Puppeteer not installed. Behance scraping will use fallback methods.')
+    }
+}
+
 // Gemini 2.0 Flash for URL content extraction
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
@@ -948,25 +962,115 @@ async function extractBehanceContent(behanceUrl: string): Promise<ExtractedUrlCo
             return result
         }
 
-        const response = await safeFetch(behanceUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; SmartRecruit/1.0)',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            },
-        })
+        let htmlContent = ''
+        let browser: any = null
 
-        if (!response.ok) {
-            result.error = response.error || `Failed to fetch Behance profile: ${response.status}`
+        try {
+            // Behance is a JavaScript-rendered SPA, so we need Puppeteer for proper rendering
+            if (!puppeteer) {
+                throw new Error('Puppeteer not available')
+            }
+
+            console.log('[Behance Extractor] Launching Puppeteer browser...')
+            
+            browser = await puppeteer.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                ],
+            })
+
+            const page = await browser.newPage()
+            
+            // Set a realistic viewport and user agent
+            await page.setViewport({ width: 1920, height: 1080 })
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            
+            // Navigate to the Behance profile
+            console.log('[Behance Extractor] Navigating to Behance URL...')
+            await page.goto(behanceUrl, {
+                waitUntil: 'networkidle2', // Wait for network to be idle (JS content loaded)
+                timeout: 30000, // 30 second timeout
+            })
+
+            // Wait a bit more for dynamic content to load
+            await page.waitForTimeout(2000)
+
+            // Extract the fully rendered HTML
+            htmlContent = await page.content()
+            console.log('[Behance Extractor] Puppeteer success, HTML length:', htmlContent.length)
+
+            await browser.close()
+            browser = null
+
+        } catch (puppeteerError) {
+            console.warn('[Behance Extractor] Puppeteer error:', puppeteerError)
+            
+            // Clean up browser if it's still open
+            if (browser) {
+                try {
+                    await browser.close()
+                } catch (closeError) {
+                    console.warn('[Behance Extractor] Error closing browser:', closeError)
+                }
+            }
+
+            // Fallback to ScrapingDog API if available
+            if (SCRAPINGDOG_API_KEY) {
+                try {
+                    console.log('[Behance Extractor] Falling back to ScrapingDog API...')
+                    const scrapingDogUrl = `https://api.scrapingdog.com/scrape?api_key=${SCRAPINGDOG_API_KEY}&url=${encodeURIComponent(behanceUrl)}&render=true`
+                    
+                    const scrapingResponse = await safeFetch(scrapingDogUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        },
+                    })
+
+                    if (scrapingResponse.ok && scrapingResponse.text && scrapingResponse.text.length > 500) {
+                        htmlContent = scrapingResponse.text
+                        console.log('[Behance Extractor] ScrapingDog API success, HTML length:', htmlContent.length)
+                    }
+                } catch (scrapingError) {
+                    console.warn('[Behance Extractor] ScrapingDog API error:', scrapingError)
+                }
+            }
+
+            // Final fallback to direct fetch (will likely fail for JS-rendered content)
+            if (!htmlContent) {
+                console.log('[Behance Extractor] Falling back to direct fetch (may have limited content)')
+                const response = await safeFetch(behanceUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    },
+                })
+
+                if (response.ok && response.text) {
+                    htmlContent = response.text
+                }
+            }
+        }
+
+        // Check if we got meaningful content
+        if (!htmlContent || htmlContent.length < 500) {
+            result.error = 'Failed to extract Behance content. Page may require JavaScript rendering or may be blocked. HTML length: ' + (htmlContent?.length || 0)
+            console.warn('[Behance Extractor]', result.error)
             return result
         }
 
         // First try basic extraction with cheerio
-        const basicExtraction = extractBasicInfoFromHtml(response.text, 'behance')
+        const basicExtraction = extractBasicInfoFromHtml(htmlContent, 'behance')
         
         // Use Gemini for deeper analysis if we have substantial content
-        if (response.text.length > 500) {
+        if (htmlContent.length > 500) {
             await waitForRateLimit()
-            const extracted = await extractWithGemini(response.text, 'behance', behanceUrl)
+            const extracted = await extractWithGemini(htmlContent, 'behance', behanceUrl)
             
             if (extracted) {
                 result.content = extracted
@@ -980,7 +1084,7 @@ async function extractBehanceContent(behanceUrl: string): Promise<ExtractedUrlCo
             result.content = basicExtraction
             result.success = true
         } else {
-            result.error = 'Failed to parse Behance content'
+            result.error = 'Failed to parse Behance content from HTML'
         }
 
     } catch (error) {
