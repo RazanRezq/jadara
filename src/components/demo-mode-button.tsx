@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Button, ButtonProps } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
     Tooltip,
     TooltipContent,
@@ -10,6 +10,12 @@ import {
 } from "@/components/ui/tooltip"
 import { useTranslate } from "@/hooks/useTranslate"
 import { cn } from "@/lib/utils"
+import type { VariantProps } from "class-variance-authority"
+
+type ButtonProps = React.ComponentProps<"button"> &
+    VariantProps<typeof buttonVariants> & {
+        asChild?: boolean
+    }
 
 interface DemoModeButtonProps extends ButtonProps {
     isDemo?: boolean

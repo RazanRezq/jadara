@@ -21,16 +21,24 @@ async function migrateDatabase() {
         console.log(`📡 Connecting to source database: ${sourceDbName}`)
         const sourceUri = baseUri.replace(/\/(\?|$)/, `/${sourceDbName}$1`)
         const sourceConn = await mongoose.createConnection(sourceUri).asPromise()
+        const sourceDb = sourceConn.db
+        if (!sourceDb) {
+            throw new Error('Failed to get source database instance')
+        }
         console.log('✅ Connected to source\n')
 
         // Connect to target database
         console.log(`📡 Connecting to target database: ${targetDbName}`)
         const targetUri = baseUri.replace(/\/(\?|$)/, `/${targetDbName}$1`)
         const targetConn = await mongoose.createConnection(targetUri).asPromise()
+        const targetDb = targetConn.db
+        if (!targetDb) {
+            throw new Error('Failed to get target database instance')
+        }
         console.log('✅ Connected to target\n')
 
         // Get all collections from source
-        const collections = await sourceConn.db.listCollections().toArray()
+        const collections = await sourceDb.listCollections().toArray()
         console.log(`📋 Found ${collections.length} collections to migrate:\n`)
 
         for (const collInfo of collections) {
@@ -45,7 +53,7 @@ async function migrateDatabase() {
             console.log(`📦 Migrating collection: ${collectionName}`)
 
             // Get source collection
-            const sourceCollection = sourceConn.db.collection(collectionName)
+            const sourceCollection = sourceDb.collection(collectionName)
             const sourceCount = await sourceCollection.countDocuments()
             console.log(`   Source documents: ${sourceCount}`)
 
@@ -55,7 +63,7 @@ async function migrateDatabase() {
             }
 
             // Get target collection
-            const targetCollection = targetConn.db.collection(collectionName)
+            const targetCollection = targetDb.collection(collectionName)
 
             // Check if target collection already has data
             const targetCount = await targetCollection.countDocuments()

@@ -17,7 +17,7 @@ import { DEMO_USER_EMAIL, DEMO_USER_PASSWORD } from "@/lib/demoMode";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t, isRTL, locale } = useTranslate();
+  const { t, isRTL } = useTranslate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGuestLoading, setIsGuestLoading] = useState(false);
@@ -105,22 +105,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-dvh w-full relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-[#0a0a0a] dark:via-[#111] dark:to-[#0a0a0a] flex items-center justify-center py-8 md:py-12">
+    <div className="min-h-dvh w-full relative overflow-hidden bg-linear-to-br from-gray-50 via-white to-gray-100 dark:from-[#0a0a0a] dark:via-[#111] dark:to-[#0a0a0a] flex items-center justify-center py-8 md:py-12">
       {/* Animated gradient blur orbs */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Top left gradient orb */}
-        <div className="absolute -top-[20%] -left-[10%] w-[500px] h-[500px] md:w-[700px] md:h-[700px] rounded-full bg-gradient-to-br from-blue-400/30 via-purple-400/20 to-pink-400/30 dark:from-blue-600/20 dark:via-purple-600/15 dark:to-pink-600/20 blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute -top-[20%] -left-[10%] w-125 h-125 md:w-175 md:h-175 rounded-full bg-linear-to-br from-blue-400/30 via-purple-400/20 to-pink-400/30 dark:from-blue-600/20 dark:via-purple-600/15 dark:to-pink-600/20 blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
 
         {/* Bottom right gradient orb */}
-        <div className="absolute -bottom-[20%] -right-[10%] w-[600px] h-[600px] md:w-[800px] md:h-[800px] rounded-full bg-gradient-to-tl from-cyan-400/30 via-teal-400/20 to-emerald-400/30 dark:from-cyan-600/20 dark:via-teal-600/15 dark:to-emerald-600/20 blur-3xl animate-[pulse_10s_ease-in-out_infinite_1s]" />
+        <div className="absolute -bottom-[20%] -right-[10%] w-150 h-150 md:w-200 md:h-200 rounded-full bg-linear-to-tl from-cyan-400/30 via-teal-400/20 to-emerald-400/30 dark:from-cyan-600/20 dark:via-teal-600/15 dark:to-emerald-600/20 blur-3xl animate-[pulse_10s_ease-in-out_infinite_1s]" />
 
         {/* Center gradient orb */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] rounded-full bg-gradient-to-br from-violet-400/20 via-fuchsia-400/15 to-rose-400/20 dark:from-violet-600/15 dark:via-fuchsia-600/10 dark:to-rose-600/15 blur-3xl animate-[spin_20s_linear_infinite]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-100 h-100 md:w-150 md:h-150 rounded-full bg-linear-to-br from-violet-400/20 via-fuchsia-400/15 to-rose-400/20 dark:from-violet-600/15 dark:via-fuchsia-600/10 dark:to-rose-600/15 blur-3xl animate-[spin_20s_linear_infinite]" />
 
         {/* Additional accent orbs */}
-        <div className="absolute top-[15%] right-[20%] w-[300px] h-[300px] rounded-full bg-gradient-to-br from-amber-400/25 to-orange-400/25 dark:from-amber-600/15 dark:to-orange-600/15 blur-2xl animate-[pulse_6s_ease-in-out_infinite_2s]" />
+        <div className="absolute top-[15%] right-[20%] w-75 h-75 rounded-full bg-linear-to-br from-amber-400/25 to-orange-400/25 dark:from-amber-600/15 dark:to-orange-600/15 blur-2xl animate-[pulse_6s_ease-in-out_infinite_2s]" />
 
-        <div className="absolute bottom-[25%] left-[15%] w-[350px] h-[350px] rounded-full bg-gradient-to-br from-indigo-400/25 to-blue-400/25 dark:from-indigo-600/15 dark:to-blue-600/15 blur-2xl animate-[pulse_7s_ease-in-out_infinite_3s]" />
+        <div className="absolute bottom-[25%] left-[15%] w-87.5 h-87.5 rounded-full bg-linear-to-br from-indigo-400/25 to-blue-400/25 dark:from-indigo-600/15 dark:to-blue-600/15 blur-2xl animate-[pulse_7s_ease-in-out_infinite_3s]" />
       </div>
 
       {/* Theme & Language Switcher */}
@@ -134,11 +134,11 @@ export default function LoginPage() {
       </div>
 
       {/* Login card */}
-      <div className="relative z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/10 p-5 sm:p-6 md:p-6 w-[95%] sm:w-[90%] max-w-[460px] transition-all duration-500 hover:shadow-[0_12px_48px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.6)]">
+      <div className="relative z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/10 p-5 sm:p-6 md:p-6 w-[95%] sm:w-[90%] max-w-115 transition-all duration-500 hover:shadow-[0_12px_48px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.6)]">
         {/* Header section */}
         <div className="relative flex items-center justify-between mb-2">
           {/* Logo */}
-          <div className="text-xl md:text-2xl font-black tracking-tighter bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-400 dark:via-purple-400 dark:to-fuchsia-400 bg-clip-text text-transparent font-sans">
+          <div className="text-xl md:text-2xl font-black tracking-tighter bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-400 dark:via-purple-400 dark:to-fuchsia-400 bg-clip-text text-transparent font-sans">
             {t("branding.jadara")}
           </div>
 
@@ -149,7 +149,7 @@ export default function LoginPage() {
         </div>
 
         {/* Title */}
-        <h1 className="relative text-center text-xl md:text-2xl font-bold mb-4 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+        <h1 className="relative text-center text-xl md:text-2xl font-bold mb-4 bg-linear-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
           {t("auth.login")}
         </h1>
 
@@ -261,7 +261,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={isLoading || isGuestLoading}
-            className="w-full h-10 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-500 dark:via-purple-500 dark:to-fuchsia-500 text-white font-bold text-sm rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(139,92,246,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full h-10 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-500 dark:via-purple-500 dark:to-fuchsia-500 text-white font-bold text-sm rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(139,92,246,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
