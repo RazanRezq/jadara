@@ -31,7 +31,7 @@ export default async function DashboardLayout({
             <div dir={direction} className="[--header-height:3.5rem] min-h-screen w-full bg-background">
                 <SidebarProvider key={direction} defaultOpen={true}>
                     <div className="flex min-h-screen w-full flex-col">
-                        <SiteHeader userId={session.userId} />
+                        <SiteHeader userId={session.userId} userEmail={session.email} />
                         <div className="flex flex-1 overflow-hidden">
                             <AppSidebar
                                 user={{

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Question from './questionSchema'
+import { authenticate, requireRole } from '@/lib/authMiddleware'
 
 const optionSchema = z.object({
     label: z.string().min(1, 'Option label is required'),
@@ -32,7 +33,7 @@ const updateQuestionSchema = createQuestionSchema.partial().omit({ jobId: true }
 const app = new Hono()
 
 // Create new question
-app.post('/add', async (c) => {
+app.post('/add', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
@@ -196,7 +197,7 @@ app.get('/:id', async (c) => {
 })
 
 // Update question
-app.post('/update/:id', async (c) => {
+app.post('/update/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')
@@ -261,7 +262,7 @@ app.post('/update/:id', async (c) => {
 })
 
 // Reorder questions
-app.post('/reorder', async (c) => {
+app.post('/reorder', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
@@ -324,7 +325,7 @@ app.post('/reorder', async (c) => {
 })
 
 // Delete question
-app.delete('/delete/:id', async (c) => {
+app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')

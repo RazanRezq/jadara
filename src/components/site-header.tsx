@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { DemoModeBadge } from "@/components/demo-mode-badge"
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -17,15 +18,18 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
+import { useDemoMode } from "@/hooks/useDemoMode"
 
 interface SiteHeaderProps {
     userId: string
+    userEmail?: string
 }
 
-export function SiteHeader({ userId }: SiteHeaderProps) {
+export function SiteHeader({ userId, userEmail }: SiteHeaderProps) {
     const { t, mounted } = useTranslate()
     const pathname = usePathname()
     const [jobTitle, setJobTitle] = React.useState<string | null>(null)
+    const { isDemo } = useDemoMode({ email: userEmail })
 
     // Check if we're on any job-related page and fetch job title
     React.useEffect(() => {
@@ -112,6 +116,7 @@ export function SiteHeader({ userId }: SiteHeaderProps) {
                 <div className="flex items-center gap-2 ms-auto shrink-0">
                     {mounted && (
                         <>
+                            <DemoModeBadge isDemo={isDemo} variant="header" />
                             <NotificationsDropdown userId={userId} />
                             <ThemeToggle />
                             <LanguageSwitcher />

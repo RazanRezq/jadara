@@ -21,6 +21,9 @@ import comments from '@/models/Comments/route'
 
 const app = new Hono().basePath('/api')
 
+// Note: Demo mode protection is integrated into the authenticate middleware
+// It automatically blocks write operations for the demo user
+
 const routes = app
     .route('/users', users)
     .route('/jobs', jobs)

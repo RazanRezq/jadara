@@ -91,13 +91,13 @@ export function KanbanBoard({ applicants, onApplicantClick }: KanbanBoardProps) 
     }
 
     return (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
             {columns.map((column) => {
                 const columnApplicants = getApplicantsByStatus(column.status)
                 const count = columnApplicants.length
 
                 return (
-                    <div key={column.status} className="flex-shrink-0 w-80">
+                    <div key={column.status} className="min-h-[350px] sm:min-h-[400px]">
                         <Card className={cn("h-full flex flex-col", column.bgColor)}>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-semibold flex items-center justify-between">

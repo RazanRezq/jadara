@@ -377,11 +377,16 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                         body: JSON.stringify({ applicantIds: Array.from(selectedApplicants) }),
                     })
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
-                    }
-
                     const data = await response.json()
+
+                    if (!response.ok) {
+                        // Handle demo mode restriction (403)
+                        if (response.status === 403) {
+                            toast.error(data.error || t("common.demoModeRestriction"))
+                            return
+                        }
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+                    }
 
                     if (data.success) {
                         toast.success(t("applicants.bulkDeleteSuccess").replace("{count}", data.count.toString()))
@@ -392,7 +397,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     }
                 } catch (error) {
                     console.error("Failed to bulk delete:", error)
-                    toast.error(t("common.error"))
+                    toast.error(error instanceof Error ? error.message : t("common.error"))
                 }
             }
         })
@@ -414,11 +419,15 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                         body: JSON.stringify({ applicantIds: Array.from(selectedApplicants) }),
                     })
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
-                    }
-
                     const data = await response.json()
+
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            toast.error(data.error || t("common.demoModeRestriction"))
+                            return
+                        }
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+                    }
 
                     if (data.success) {
                         toast.success(t("applicants.bulkArchiveSuccess").replace("{count}", data.count.toString()))
@@ -429,7 +438,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                     }
                 } catch (error) {
                     console.error("Failed to bulk archive:", error)
-                    toast.error(t("common.error"))
+                    toast.error(error instanceof Error ? error.message : t("common.error"))
                 }
             }
         })

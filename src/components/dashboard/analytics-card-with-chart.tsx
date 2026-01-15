@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { MagicCard } from "@/components/magicui/magic-card"
 import { IconBadge } from "@/components/ui/icon-badge"
 import { cn } from "@/lib/utils"
@@ -79,7 +79,7 @@ export function AnalyticsCardWithChart({
 
                 // Calculate arc path
                 const radius = 40
-                const innerRadius = 28
+                const innerRadius = 26
                 const centerX = 50
                 const centerY = 50
 
@@ -115,30 +115,30 @@ export function AnalyticsCardWithChart({
     }, [chartType, breakdowns])
 
     const content = (
-        <CardContent className="p-6 h-full flex flex-col">
+        <CardContent className="p-5 h-full flex flex-col">
             {/* Header with Icon */}
-            <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                         {title}
                     </h3>
-                    <p className="text-3xl font-bold tracking-tight">
+                    <p className="text-2xl font-bold tracking-tight text-foreground">
                         {typeof value === "number" ? value.toLocaleString() : value}
                     </p>
                 </div>
-                <IconBadge icon={Icon} variant={iconVariant} size="md" />
+                <IconBadge icon={Icon} variant={iconVariant} size="sm" />
             </div>
 
             {/* Chart and Breakdowns Section */}
-            <div className="flex-1 flex gap-6 items-center">
+            <div className="flex-1 flex gap-3 items-center mt-2">
                 {/* Chart */}
                 {chartType === 'donut' && breakdowns && breakdowns.length > 0 && (
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 relative">
                         <svg
-                            width="100"
-                            height="100"
+                            width="56"
+                            height="56"
                             viewBox="0 0 100 100"
-                            className="transform -rotate-0"
+                            className="drop-shadow-sm"
                         >
                             {donutSegments.segments.length > 0 ? (
                                 donutSegments.segments.map((segment, index) => (
@@ -146,8 +146,11 @@ export function AnalyticsCardWithChart({
                                         key={`${segment.label}-${index}`}
                                         d={segment.path}
                                         fill={segment.color}
-                                        className="transition-opacity hover:opacity-80"
-                                        opacity={donutSegments.hasData ? 1 : 0.5}
+                                        className="transition-all duration-200 hover:opacity-80 cursor-pointer"
+                                        opacity={donutSegments.hasData ? 1 : 0.4}
+                                        style={{
+                                            filter: donutSegments.hasData ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' : 'none'
+                                        }}
                                     />
                                 ))
                             ) : (
@@ -157,8 +160,8 @@ export function AnalyticsCardWithChart({
                                     r="40"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="12"
-                                    className="text-muted-foreground/20"
+                                    strokeWidth="14"
+                                    className="text-muted-foreground/15"
                                 />
                             )}
                         </svg>
@@ -166,26 +169,22 @@ export function AnalyticsCardWithChart({
                 )}
 
                 {/* Breakdowns List */}
-                <div className="flex-1 space-y-2.5">
+                <div className="flex-1 min-w-0 space-y-1">
                     {breakdowns.map((breakdown, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm group">
-                            <div className="flex items-center gap-2 flex-1">
-                                <span
-                                    className="w-3 h-3 rounded-sm flex-shrink-0 transition-transform group-hover:scale-110"
-                                    style={{ backgroundColor: breakdown.color }}
-                                />
-                                <span className="text-muted-foreground truncate">
-                                    {breakdown.label}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0 ms-2">
-                                <span className="font-semibold text-foreground">
-                                    {breakdown.value}
-                                </span>
-                                <span className="text-xs text-muted-foreground min-w-[3rem] text-end">
-                                    {breakdown.percentage}%
-                                </span>
-                            </div>
+                        <div 
+                            key={index} 
+                            className="flex items-center gap-2 py-0.5 rounded-md transition-colors hover:bg-muted/50 px-1 -mx-1 cursor-default group"
+                        >
+                            <span
+                                className="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-white/20 transition-transform group-hover:scale-125"
+                                style={{ backgroundColor: breakdown.color }}
+                            />
+                            <span className="text-[11px] text-muted-foreground flex-1 min-w-0 truncate group-hover:text-foreground transition-colors">
+                                {breakdown.label}
+                            </span>
+                            <span className="text-[11px] font-semibold text-foreground flex-shrink-0 tabular-nums">
+                                {breakdown.value}
+                            </span>
                         </div>
                     ))}
                 </div>
@@ -193,18 +192,20 @@ export function AnalyticsCardWithChart({
 
             {/* Trend Indicator */}
             {trend && (
-                <div className="mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center gap-2 text-sm">
+                <div className="mt-3 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-1.5 text-xs">
                         <span
                             className={cn(
-                                "flex items-center font-medium",
-                                isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                                "flex items-center font-medium px-1.5 py-0.5 rounded-md",
+                                isPositive 
+                                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50" 
+                                    : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50"
                             )}
                         >
                             {isPositive ? (
-                                <TrendingUp className="h-4 w-4 me-1" />
+                                <TrendingUp className="h-3 w-3 me-0.5" />
                             ) : (
-                                <TrendingDown className="h-4 w-4 me-1" />
+                                <TrendingDown className="h-3 w-3 me-0.5" />
                             )}
                             {Math.abs(trend.value).toFixed(1)}%
                         </span>
@@ -219,12 +220,13 @@ export function AnalyticsCardWithChart({
     return (
         <MagicCard
             className={cn(
-                "relative overflow-hidden rounded-lg border border-border bg-background h-full min-h-[280px]",
+                "relative overflow-hidden rounded-xl border border-border/60 bg-background/95 backdrop-blur-sm h-full min-h-[220px]",
+                "shadow-sm hover:shadow-md transition-shadow duration-300",
                 className
             )}
             gradientFrom={finalGradientFrom}
             gradientTo={finalGradientTo}
-            gradientSize={150}
+            gradientSize={120}
         >
             {content}
         </MagicCard>

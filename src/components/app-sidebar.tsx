@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
+import { DemoModeBadge } from "@/components/demo-mode-badge"
 import {
     Sidebar,
     SidebarContent,
@@ -30,6 +31,7 @@ import {
     SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { useTranslate } from "@/hooks/useTranslate"
+import { useDemoMode } from "@/hooks/useDemoMode"
 import { type UserRole } from "@/lib/auth"
 import { hasRolePermission } from "@/lib/authClient"
 import { SidebarMenuItemContent } from "@/components/sidebar-menu-item"
@@ -47,6 +49,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps) {
     const { t, isRTL, locale, mounted } = useTranslate()
     const pathname = usePathname()
+    const { isDemo } = useDemoMode({ email: user.email })
 
     // Use initial direction from server to prevent hydration mismatch
     const [sidebarSide, setSidebarSide] = React.useState<"left" | "right">(
@@ -193,6 +196,9 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
+            {mounted && isDemo && (
+                <DemoModeBadge isDemo={isDemo} variant="sidebar" />
+            )}
             <SidebarContent>
                 {mounted && navSections.map((section) => {
                     // Filter items based on user role permissions

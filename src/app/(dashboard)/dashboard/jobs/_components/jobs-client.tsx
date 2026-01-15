@@ -431,11 +431,15 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         body: JSON.stringify({ jobIds: Array.from(selectedJobs) }),
                     })
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
-                    }
-
                     const data = await response.json()
+
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            toast.error(data.error || t("common.demoModeRestriction"))
+                            return
+                        }
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+                    }
 
                     if (data.success) {
                         toast.success(t("jobs.bulkDeleteSuccess").replace("{count}", data.count.toString()))
@@ -446,7 +450,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     }
                 } catch (error) {
                     console.error("Failed to bulk delete:", error)
-                    toast.error(t("common.error"))
+                    toast.error(error instanceof Error ? error.message : t("common.error"))
                 }
             }
         })
@@ -468,11 +472,15 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                         body: JSON.stringify({ jobIds: Array.from(selectedJobs) }),
                     })
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
-                    }
-
                     const data = await response.json()
+
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            toast.error(data.error || t("common.demoModeRestriction"))
+                            return
+                        }
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+                    }
 
                     if (data.success) {
                         toast.success(t("jobs.bulkArchiveSuccess").replace("{count}", data.count.toString()))
@@ -483,7 +491,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     }
                 } catch (error) {
                     console.error("Failed to bulk archive:", error)
-                    toast.error(t("common.error"))
+                    toast.error(error instanceof Error ? error.message : t("common.error"))
                 }
             }
         })
@@ -500,11 +508,15 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                 body: JSON.stringify({ jobIds: Array.from(selectedJobs), status: newStatus }),
             })
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-
             const data = await response.json()
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    toast.error(data.error || t("common.demoModeRestriction"))
+                    return
+                }
+                throw new Error(data.error || `HTTP error! status: ${response.status}`)
+            }
 
             if (data.success) {
                 toast.success(t("jobs.bulkStatusChangeSuccess").replace("{count}", data.count.toString()))
@@ -515,7 +527,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
             }
         } catch (error) {
             console.error("Failed to bulk status change:", error)
-            toast.error(t("common.error"))
+            toast.error(error instanceof Error ? error.message : t("common.error"))
         }
     }
 
@@ -585,11 +597,21 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                 method: "POST",
             })
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-
             const data = await response.json()
+
+            if (!response.ok) {
+                // Revert on error
+                setJobs(prevJobs =>
+                    prevJobs.map(j =>
+                        j.id === job.id ? { ...j, status: previousStatus } : j
+                    )
+                )
+                if (response.status === 403) {
+                    toast.error(data.error || t("common.demoModeRestriction"))
+                    return
+                }
+                throw new Error(data.error || `HTTP error! status: ${response.status}`)
+            }
 
             if (data.success) {
                 toast.success(
@@ -616,7 +638,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     j.id === job.id ? { ...j, status: previousStatus } : j
                 )
             )
-            toast.error(t("common.error"))
+            toast.error(error instanceof Error ? error.message : t("common.error"))
         }
     }
 

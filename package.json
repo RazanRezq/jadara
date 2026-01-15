@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "bun run scripts/seed-users.ts",
+    "seed:demo": "bun run scripts/seed-demo-user.ts",
     "reset-passwords": "bun run scripts/reset-passwords.ts",
     "clear-db": "bun run scripts/clear-database.ts",
     "init-company": "bun run scripts/init-company-profile.ts",

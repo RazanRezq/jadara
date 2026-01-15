@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Response from './responseSchema'
+import { authenticate, requireRole } from '@/lib/authMiddleware'
 
 const createResponseSchema = z.object({
     applicantId: z.string().min(1, 'Applicant ID is required'),
@@ -336,7 +337,7 @@ app.post('/review/:id', async (c) => {
 })
 
 // Delete response
-app.delete('/delete/:id', async (c) => {
+app.delete('/delete/:id', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')

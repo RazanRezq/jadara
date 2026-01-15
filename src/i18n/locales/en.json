@@ -34,6 +34,7 @@
         "viewProfile": "View Profile",
         "viewDetails": "View Details",
         "error": "Something went wrong",
+        "demoModeRestriction": "Demo Mode - This action is disabled",
         "characters": "characters",
         "saving": "Saving...",
         "reset": "Reset",
@@ -42,7 +43,9 @@
         "yesterday": "Yesterday",
         "daysAgo": "d ago",
         "weeksAgo": "w ago",
-        "yearsShort": "y"
+        "yearsShort": "y",
+        "demoModeRestriction": "This action is disabled in Demo Mode",
+        "demoModeRestrictionDetails": "Data modifications are not allowed in demo mode."
     },
     "auth": {
         "login": "Login",
@@ -61,7 +64,11 @@
         "rememberMe": "Keep me signed in after session ends",
         "emailRequired": "Email address (required)",
         "passwordRequired": "Password (required)",
-        "enterPassword": "Enter your password"
+        "enterPassword": "Enter your password",
+        "or": "or",
+        "guestDemo": "Login as Guest (Demo)",
+        "guestDemoDescription": "Explore with read-only access",
+        "demoLoginFailed": "Demo login failed. Please try again."
     },
     "branding": {
         "jadara": "Jadara",
@@ -109,7 +116,10 @@
         "notifications": "Notifications",
         "profile": "Profile",
         "settings": "Settings",
-        "logout": "Log out"
+        "logout": "Log out",
+        "demoMode": "Demo Mode",
+        "demoModeReadOnly": "Read Only",
+        "demoModeTooltip": "You're viewing a demo. Data modifications are disabled."
     },
     "dashboard": {
         "welcomeBack": "Welcome back",

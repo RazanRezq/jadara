@@ -34,6 +34,7 @@
         "viewProfile": "عرض الملف",
         "viewDetails": "عرض التفاصيل",
         "error": "حدث خطأ ما",
+        "demoModeRestriction": "وضع العرض - هذا الإجراء غير متاح",
         "characters": "حرف",
         "saving": "جارٍ الحفظ...",
         "reset": "إعادة تعيين",
@@ -42,7 +43,9 @@
         "yesterday": "أمس",
         "daysAgo": "ي",
         "weeksAgo": "أ",
-        "yearsShort": "س"
+        "yearsShort": "س",
+        "demoModeRestriction": "هذا الإجراء معطل في الوضع التجريبي",
+        "demoModeRestrictionDetails": "تعديل البيانات غير مسموح به في الوضع التجريبي."
     },
     "auth": {
         "login": "تسجيل الدخول",
@@ -61,7 +64,11 @@
         "rememberMe": "سجل الدخول بعد انتهاء الجلسة",
         "emailRequired": "البريد الالكتروني المستخدم",
         "passwordRequired": "كلمة المرور",
-        "enterPassword": "أدخل كلمة المرور"
+        "enterPassword": "أدخل كلمة المرور",
+        "or": "أو",
+        "guestDemo": "دخول كضيف (عرض توضيحي)",
+        "guestDemoDescription": "استكشف مع وصول للقراءة فقط",
+        "demoLoginFailed": "فشل تسجيل الدخول التجريبي. حاول مرة أخرى."
     },
     "branding": {
         "jadara": "جدارة",
@@ -109,7 +116,10 @@
         "notifications": "الإشعارات",
         "profile": "الملف الشخصي",
         "settings": "الإعدادات",
-        "logout": "تسجيل الخروج"
+        "logout": "تسجيل الخروج",
+        "demoMode": "الوضع التجريبي",
+        "demoModeReadOnly": "للقراءة فقط",
+        "demoModeTooltip": "أنت تشاهد عرضًا توضيحيًا. تعديل البيانات معطل."
     },
     "dashboard": {
         "welcomeBack": "مرحباً بعودتك",

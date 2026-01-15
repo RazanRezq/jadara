@@ -828,7 +828,7 @@ app.get('/stats/:jobId', authenticate, async (c) => {
 // ===========================
 // Bulk Delete Applicants
 // ===========================
-app.post('/bulk-delete', async (c) => {
+app.post('/bulk-delete', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
 
@@ -867,7 +867,7 @@ app.post('/bulk-delete', async (c) => {
 // ===========================
 // Bulk Archive Applicants
 // ===========================
-app.post('/bulk-archive', async (c) => {
+app.post('/bulk-archive', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
 
@@ -907,7 +907,7 @@ app.post('/bulk-archive', async (c) => {
 // ===========================
 // Bulk Status Change
 // ===========================
-app.post('/bulk-status', async (c) => {
+app.post('/bulk-status', authenticate, requireRole('admin'), async (c) => {
     try {
         await dbConnect()
 

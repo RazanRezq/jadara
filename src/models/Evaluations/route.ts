@@ -66,7 +66,7 @@ const updateEvaluationSchema = z.object({
 const app = new Hono()
 
 // Create evaluation (called after AI processing)
-app.post('/create', async (c) => {
+app.post('/create', authenticate, async (c) => {
     try {
         await dbConnect()
         const body = await c.req.json()
@@ -527,7 +527,7 @@ app.get('/stats/:jobId', async (c) => {
 })
 
 // Delete evaluation
-app.delete('/delete/:id', async (c) => {
+app.delete('/delete/:id', authenticate, async (c) => {
     try {
         await dbConnect()
         const id = c.req.param('id')

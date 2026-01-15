@@ -183,8 +183,8 @@ export function ApplicantBoard({
             dir={isRTL ? "rtl" : "ltr"}
             className={cn(
                 "grid gap-3 sm:gap-4",
-                // Responsive columns: 1 on mobile, 2 on sm, 2 on md, 4 on lg+
-                "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
+                // Responsive columns: 1 on mobile, 2 on md, 3 on xl, 4 on 2xl
+                "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
                 ibmPlexArabic.className
             )}
         >
@@ -262,7 +262,7 @@ export function ApplicantBoard({
                                                         draggable
                                                         onDragStart={(e) => handleDragStart(e, applicant)}
                                                         className={cn(
-                                                            "p-4 sm:p-5 cursor-grab active:cursor-grabbing",
+                                                            "p-3 cursor-grab active:cursor-grabbing",
                                                             "hover:shadow-md transition-all duration-200",
                                                             "bg-background border hover:border-primary/30",
                                                             draggedApplicant?.id === applicant.id && "opacity-50 scale-95",
@@ -270,13 +270,13 @@ export function ApplicantBoard({
                                                         )}
                                                         onClick={() => onApplicantClick(applicant)}
                                                     >
-                                                        <div className="space-y-3">
+                                                        <div className="space-y-2.5">
                                                             {/* Header with Avatar and Name */}
-                                                            <div className="flex items-start gap-3">
+                                                            <div className="flex items-start gap-2.5">
                                                                 <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1 hidden sm:block" />
                                                                 <div
                                                                     className={cn(
-                                                                        "w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-semibold text-base shrink-0",
+                                                                        "w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm shrink-0",
                                                                         getAvatarGradient(applicant.displayName || applicant.personalData?.name || "A")
                                                                     )}
                                                                 >
@@ -290,19 +290,19 @@ export function ApplicantBoard({
                                                                         "flex items-center gap-1.5",
                                                                         isRTL ? "flex-row-reverse justify-end" : "flex-row"
                                                                     )}>
-                                                                        <h4 className="font-semibold text-base truncate">
+                                                                        <h4 className="font-semibold text-sm leading-tight line-clamp-1">
                                                                             {applicant.displayName || applicant.personalData?.name || "Unnamed"}
                                                                         </h4>
                                                                         {applicant.isSuspicious && (
-                                                                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                                                                            <AlertTriangle className="h-3 w-3 text-yellow-500 shrink-0" />
                                                                         )}
                                                                     </div>
                                                                     <div className={cn(
-                                                                        "flex items-center gap-1 text-xs text-muted-foreground mt-0.5",
+                                                                        "flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5",
                                                                         isRTL ? "flex-row-reverse justify-end" : "flex-row"
                                                                     )}>
                                                                         <Briefcase className="h-3 w-3 shrink-0" />
-                                                                        <span className="truncate">
+                                                                        <span className="line-clamp-2 leading-tight">
                                                                             {applicant.jobId?.title || "N/A"}
                                                                         </span>
                                                                     </div>
