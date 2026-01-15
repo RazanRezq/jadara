@@ -99,7 +99,7 @@ export default function LoginPage() {
                 <div className="relative flex items-center justify-between mb-6 md:mb-10">
                     {/* Logo */}
                     <div className="text-2xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-400 dark:via-purple-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
-                        GoIELTS
+                        Jadara
                     </div>
 
                     {/* Language selector */}

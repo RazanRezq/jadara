@@ -50,7 +50,7 @@
         "welcomeBack": "مرحباً بعودتك",
         "signInToAccess": "سجل دخولك للوصول إلى لوحة التحكم",
         "emailAddress": "البريد الإلكتروني",
-        "emailPlaceholder": "admin@goielts.com",
+        "emailPlaceholder": "admin@jadara.com",
         "passwordPlaceholder": "••••••••",
         "signingIn": "جاري تسجيل الدخول...",
         "signIn": "تسجيل الدخول",
@@ -64,17 +64,17 @@
         "enterPassword": "أدخل كلمة المرور"
     },
     "branding": {
-        "goielts": "GoIELTS",
-        "title": "GoIELTS - لوحة الإدارة",
+        "jadara": "جدارة",
+        "title": "جدارة - منصة التوظيف الذكية",
         "adminPortal": "لوحة الإدارة",
-        "tagline": "أتقن اختبار IELTS بثقة",
-        "description": "منصتك الشاملة لإدارة محتوى التحضير لاختبار IELTS، تتبع تقدم الطلاب، وضمان جودة التعليم."
+        "tagline": "تمكين استقطاب المواهب",
+        "description": "منصتك الذكية لتبسيط عملية التوظيف، تقييم المرشحين بالذكاء الاصطناعي، وبناء فرق استثنائية."
     },
     "features": {
-        "comprehensiveMaterials": "مواد IELTS شاملة",
+        "aiPoweredEvaluation": "تقييم المرشحين بالذكاء الاصطناعي",
         "roleBasedAccess": "التحكم في الوصول القائم على الأدوار",
-        "multiUserManagement": "إدارة المستخدمين المتعددين",
-        "progressTracking": "تتبع التقدم في الوقت الفعلي"
+        "multiUserManagement": "فرق توظيف تعاونية",
+        "progressTracking": "تتبع الطلبات في الوقت الفعلي"
     },
     "breadcrumb": {
         "company": "الشركة",
@@ -1444,7 +1444,7 @@
             "profileTitle": "ملف الشركة",
             "profileDescription": "تُستخدم هذه المعلومات لتوليد أوصاف وظيفية سياقية",
             "companyName": "اسم الشركة",
-            "companyNamePlaceholder": "GoIELTS",
+            "companyNamePlaceholder": "جدارة",
             "industry": "الصناعة",
             "industryPlaceholder": "مثل: التكنولوجيا، التعليم، الرعاية الصحية",
             "industryDescription": "يستخدمها الذكاء الاصطناعي لتخصيص أوصاف الوظائف لقطاعك",
@@ -1501,9 +1501,9 @@
                 "smtpPassword": "كلمة مرور SMTP",
                 "smtpPasswordPlaceholder": "كلمة المرور",
                 "fromEmail": "عنوان البريد الإلكتروني للمرسل",
-                "fromEmailPlaceholder": "noreply@goielts.com",
+                "fromEmailPlaceholder": "noreply@jadara.com",
                 "fromName": "اسم المرسل",
-                "fromNamePlaceholder": "GoIELTS للتوظيف",
+                "fromNamePlaceholder": "جدارة للتوظيف",
                 "replyTo": "الرد إلى البريد الإلكتروني (اختياري)",
                 "replyToPlaceholder": "support@example.com",
                 "sendTestEmail": "إرسال بريد تجريبي",

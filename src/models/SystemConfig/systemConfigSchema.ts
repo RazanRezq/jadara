@@ -109,11 +109,11 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
             apiKey: String,
             fromEmail: {
                 type: String,
-                default: 'noreply@goielts.com',
+                default: 'noreply@jadara.com',
             },
             fromName: {
                 type: String,
-                default: 'GoIELTS Recruitment',
+                default: 'Jadara Recruitment',
             },
             replyTo: String,
             smtpHost: String,
@@ -157,11 +157,11 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
         application: {
             siteName: {
                 type: String,
-                default: 'GoIELTS Recruitment',
+                default: 'Jadara Recruitment',
             },
             siteUrl: {
                 type: String,
-                default: 'https://goielts.com',
+                default: 'https://jadara.com',
             },
             maintenanceMode: {
                 type: Boolean,

@@ -186,7 +186,7 @@ export function AppSidebar({ user, initialDirection, ...props }: AppSidebarProps
                         {mounted && (
                             <SidebarHeaderContent
                                 isRTL={isRTL}
-                                brandingText="GoIELTS"
+                                brandingText="Jadara"
                                 adminPortalText={t("branding.adminPortal")}
                             />
                         )}

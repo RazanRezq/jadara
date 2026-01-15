@@ -20,8 +20,8 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 })
 
 export const metadata: Metadata = {
-    title: "GoIELTS - لوحة الإدارة",
-    description: "منصة التحضير لاختبار IELTS",
+    title: "Jadara - جدارة | Smart Recruitment Platform",
+    description: "منصة جدارة الذكية لإدارة التوظيف والموارد البشرية",
 }
 
 export default async function RootLayout({

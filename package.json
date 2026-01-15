@@ -1,5 +1,5 @@
 {
-  "name": "goielts",
+  "name": "jadara",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "bun run scripts/seed-users.ts",
     "reset-passwords": "bun run scripts/reset-passwords.ts",
-    "clear-db": "bun run scripts/clear-database.ts"
+    "clear-db": "bun run scripts/clear-database.ts",
+    "init-company": "bun run scripts/init-company-profile.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.953.0",

@@ -25,7 +25,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         console.log('📧 Using Resend API Key:', process.env.RESEND_API_KEY ? 'Set ✓' : 'Missing ✗')
 
         const { data, error } = await resend.emails.send({
-            from: params.from || 'GoIELTS Recruitment <onboarding@resend.dev>',
+            from: params.from || 'Jadara Recruitment <onboarding@resend.dev>',
             to: params.to,
             subject: params.subject,
             html: params.html,
@@ -62,7 +62,7 @@ export interface InterviewInviteData {
 }
 
 export function generateInterviewInviteEmail(data: InterviewInviteData): string {
-    const companyName = data.companyName || 'GoIELTS'
+    const companyName = data.companyName || 'Jadara'
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -170,7 +170,7 @@ export interface RejectionEmailData {
 }
 
 export function generateRejectionEmail(data: RejectionEmailData): string {
-    const companyName = data.companyName || 'GoIELTS'
+    const companyName = data.companyName || 'Jadara'
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -245,7 +245,7 @@ export interface OfferEmailData {
 }
 
 export function generateOfferEmail(data: OfferEmailData): string {
-    const companyName = data.companyName || 'GoIELTS'
+    const companyName = data.companyName || 'Jadara'
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -348,7 +348,7 @@ export async function sendInterviewInvite(
     to: string,
     data: InterviewInviteData
 ): Promise<SendEmailResult> {
-    const subject = `Interview Invitation: ${data.jobTitle} at ${data.companyName || 'GoIELTS'}`
+    const subject = `Interview Invitation: ${data.jobTitle} at ${data.companyName || 'Jadara'}`
     const html = generateInterviewInviteEmail(data)
     return sendEmail({ to, subject, html })
 }
@@ -357,7 +357,7 @@ export async function sendRejectionEmail(
     to: string,
     data: RejectionEmailData
 ): Promise<SendEmailResult> {
-    const subject = `Application Update: ${data.jobTitle} at ${data.companyName || 'GoIELTS'}`
+    const subject = `Application Update: ${data.jobTitle} at ${data.companyName || 'Jadara'}`
     const html = generateRejectionEmail(data)
     return sendEmail({ to, subject, html })
 }
@@ -366,7 +366,7 @@ export async function sendOfferEmail(
     to: string,
     data: OfferEmailData
 ): Promise<SendEmailResult> {
-    const subject = `Job Offer: ${data.jobTitle} at ${data.companyName || 'GoIELTS'}`
+    const subject = `Job Offer: ${data.jobTitle} at ${data.companyName || 'Jadara'}`
     const html = generateOfferEmail(data)
     return sendEmail({ to, subject, html })
 }

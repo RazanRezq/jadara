@@ -8,7 +8,7 @@ interface DocumentTitleProps {
     fallback?: string
 }
 
-export function DocumentTitle({ titleKey = "branding.title", fallback = "GoIELTS" }: DocumentTitleProps) {
+export function DocumentTitle({ titleKey = "branding.title", fallback = "Jadara" }: DocumentTitleProps) {
     const { t, locale, mounted } = useTranslate()
 
     useEffect(() => {

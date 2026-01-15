@@ -26,19 +26,19 @@ const User = mongoose.models.User || mongoose.model('User', userSchema)
 
 const users = [
     {
-        email: 'superadmin@goielts.com',
+        email: 'superadmin@jadara.com',
         password: 'superadmin123',
         name: 'Super Admin',
         role: 'superadmin',
     },
     {
-        email: 'admin@goielts.com',
+        email: 'admin@jadara.com',
         password: 'admin123',
         name: 'Admin User',
         role: 'admin',
     },
     {
-        email: 'reviewer@goielts.com',
+        email: 'reviewer@jadara.com',
         password: 'reviewer123',
         name: 'Content Reviewer',
         role: 'reviewer',
@@ -71,9 +71,9 @@ async function seed() {
 
         console.log('\n✅ Seed completed successfully!')
         console.log('\nTest credentials:')
-        console.log('- Super Admin: superadmin@goielts.com / superadmin123')
-        console.log('- Admin: admin@goielts.com / admin123')
-        console.log('- Reviewer: reviewer@goielts.com / reviewer123')
+        console.log('- Super Admin: superadmin@jadara.com / superadmin123')
+        console.log('- Admin: admin@jadara.com / admin123')
+        console.log('- Reviewer: reviewer@jadara.com / reviewer123')
     } catch (error) {
         console.error('Seed error:', error)
     } finally {

@@ -10,9 +10,9 @@ if (!MONGODB_URI) {
 
 // Known passwords from seed script
 const userPasswords: Record<string, string> = {
-    'superadmin@goielts.com': 'superadmin123',
-    'admin@goielts.com': 'admin123',
-    'reviewer@goielts.com': 'reviewer123',
+    'superadmin@jadara.com': 'superadmin123',
+    'admin@jadara.com': 'admin123',
+    'reviewer@jadara.com': 'reviewer123',
 }
 
 async function resetPasswords() {
@@ -37,9 +37,9 @@ async function resetPasswords() {
 
         console.log('\n✅ Password reset completed successfully!')
         console.log('\nYou can now log in with:')
-        console.log('- Super Admin: superadmin@goielts.com / superadmin123')
-        console.log('- Admin: admin@goielts.com / admin123')
-        console.log('- Reviewer: reviewer@goielts.com / reviewer123')
+        console.log('- Super Admin: superadmin@jadara.com / superadmin123')
+        console.log('- Admin: admin@jadara.com / admin123')
+        console.log('- Reviewer: reviewer@jadara.com / reviewer123')
     } catch (error) {
         console.error('❌ Password reset error:', error)
     } finally {

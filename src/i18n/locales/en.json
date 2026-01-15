@@ -50,7 +50,7 @@
         "welcomeBack": "Welcome back",
         "signInToAccess": "Sign in to access the admin dashboard",
         "emailAddress": "Email address",
-        "emailPlaceholder": "admin@goielts.com",
+        "emailPlaceholder": "admin@jadara.com",
         "passwordPlaceholder": "••••••••",
         "signingIn": "Signing in...",
         "signIn": "Sign in",
@@ -64,17 +64,17 @@
         "enterPassword": "Enter your password"
     },
     "branding": {
-        "goielts": "GoIELTS",
-        "title": "GoIELTS - Admin Portal",
+        "jadara": "Jadara",
+        "title": "Jadara - Smart Recruitment Platform",
         "adminPortal": "Admin Portal",
-        "tagline": "Master IELTS with Confidence",
-        "description": "Your comprehensive platform for managing IELTS preparation content, tracking student progress, and ensuring quality education."
+        "tagline": "Empowering Your Talent Acquisition",
+        "description": "Your intelligent platform for streamlining recruitment, evaluating candidates with AI, and building exceptional teams."
     },
     "features": {
-        "comprehensiveMaterials": "Comprehensive IELTS Materials",
+        "aiPoweredEvaluation": "AI-Powered Candidate Evaluation",
         "roleBasedAccess": "Role-Based Access Control",
-        "multiUserManagement": "Multi-User Management",
-        "progressTracking": "Real-Time Progress Tracking"
+        "multiUserManagement": "Collaborative Hiring Teams",
+        "progressTracking": "Real-Time Application Tracking"
     },
     "breadcrumb": {
         "company": "Company",
@@ -1444,7 +1444,7 @@
             "profileTitle": "Company Profile",
             "profileDescription": "This information is used to generate contextual job descriptions",
             "companyName": "Company Name",
-            "companyNamePlaceholder": "GoIELTS",
+            "companyNamePlaceholder": "Jadara",
             "industry": "Industry",
             "industryPlaceholder": "e.g., Technology, Education, Healthcare",
             "industryDescription": "Used by AI to tailor job descriptions to your sector",
@@ -1501,9 +1501,9 @@
                 "smtpPassword": "SMTP Password",
                 "smtpPasswordPlaceholder": "password",
                 "fromEmail": "From Email Address",
-                "fromEmailPlaceholder": "noreply@goielts.com",
+                "fromEmailPlaceholder": "noreply@jadara.com",
                 "fromName": "From Name",
-                "fromNamePlaceholder": "GoIELTS Recruitment",
+                "fromNamePlaceholder": "Jadara Recruitment",
                 "replyTo": "Reply-To Email (Optional)",
                 "replyToPlaceholder": "support@example.com",
                 "sendTestEmail": "Send Test Email",
