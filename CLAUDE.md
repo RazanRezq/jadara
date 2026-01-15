@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-IELTS exam preparation web application (goielts) - a bilingual (Arabic/English) recruitment platform built with Next.js 16, featuring AI-powered candidate evaluation, custom assessment wizards, and smart scoring.
+Jadara (جدارة) - a bilingual (Arabic/English) intelligent recruitment and talent acquisition platform built with Next.js 16, featuring AI-powered candidate evaluation, custom assessment wizards, and smart scoring.
 
 ## Tech Stack
 

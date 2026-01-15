@@ -132,7 +132,7 @@ export function AddUserDialog({
                             onChange={(e) =>
                                 setFormData({ ...formData, email: e.target.value })
                             }
-                            placeholder="john@goielts.com"
+                            placeholder="john@jadara.com"
                             required
                             className="text-start"
                         />

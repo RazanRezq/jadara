@@ -1,4 +1,4 @@
-# GoIELTS Platform
+# Jadara (جدارة) Platform
 ## Comprehensive Technical & Business Report
 
 ---
@@ -39,7 +39,7 @@
 
 ## 1.1 Project Overview
 
-**GoIELTS** is an enterprise-grade, AI-powered recruitment platform designed to revolutionize the hiring process for organizations operating in bilingual (Arabic/English) environments. The platform leverages cutting-edge artificial intelligence to automate candidate screening, evaluation, and ranking while maintaining human oversight in final hiring decisions.
+**Jadara (جدارة)** is an enterprise-grade, AI-powered recruitment platform designed to revolutionize the hiring process for organizations operating in bilingual (Arabic/English) environments. The platform leverages cutting-edge artificial intelligence to automate candidate screening, evaluation, and ranking while maintaining human oversight in final hiring decisions.
 
 ## 1.2 Key Value Propositions
 

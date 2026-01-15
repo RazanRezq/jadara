@@ -3,7 +3,7 @@
 
 **Generated**: December 28, 2025  
 **Analysis Date**: Today  
-**Codebase**: `/Users/husam/goielts`  
+**Codebase**: `/Users/qmr/Desktop/jadara`  
 **Requirement Documents**: 7 files from SmartRecruit_AI_SaaS/00_Original_Requirements/
 
 ---
@@ -1080,7 +1080,7 @@ The platform is **production-ready** with only minor enhancements recommended fo
 
 **Report Generated**: December 28, 2025  
 **Analyst**: AI Code Analysis Agent  
-**Codebase**: `/Users/husam/goielts`  
+**Codebase**: `/Users/qmr/Desktop/jadara`  
 **Requirement Documents**: 7 files from SmartRecruit_AI_SaaS/00_Original_Requirements/
 
 

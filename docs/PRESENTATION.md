@@ -1,4 +1,4 @@
-# GoIELTS - AI-Powered Recruitment Platform
+# Jadara (جدارة) - AI-Powered Recruitment Platform
 ## Comprehensive Technical Presentation Guide (30 Minutes)
 
 ---
@@ -21,9 +21,9 @@
 
 # 1. EXECUTIVE SUMMARY
 
-## What is GoIELTS?
+## What is Jadara?
 
-GoIELTS is a **bilingual (Arabic/English) AI-powered recruitment platform** that revolutionizes the hiring process through:
+Jadara (جدارة) is a **bilingual (Arabic/English) AI-powered recruitment platform** that revolutionizes the hiring process through:
 
 - 🤖 **AI-Powered Candidate Evaluation** - Automated scoring using Google Gemini 2.0
 - 🎤 **Voice Assessment System** - Record and analyze voice responses
@@ -1704,7 +1704,7 @@ const signedUrl = await getPresignedUrl(
 
 ```bash
 # Database
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/goielts
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/jadara
 
 # Authentication
 JWT_SECRET=your-secret-key-here
