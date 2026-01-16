@@ -33,16 +33,18 @@ async function dbConnect(): Promise<typeof mongoose> {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
+            // Optimized timeouts for serverless (Vercel)
+            serverSelectionTimeoutMS: 3000,  // Reduced from 5000
+            connectTimeoutMS: 5000,          // Reduced from 10000
+            socketTimeoutMS: 30000,          // Reduced from 45000
             family: 4,
-            // Connection pool settings for better performance
-            maxPoolSize: 20,        // Increase from default 5
-            minPoolSize: 5,         // Keep minimum connections ready
-            maxIdleTimeMS: 30000,   // Close idle connections after 30s
+            // Connection pool optimized for serverless
+            maxPoolSize: 10,         // Reduced for serverless
+            minPoolSize: 0,          // Allow full connection release
+            maxIdleTimeMS: 10000,    // Close idle connections faster
             // Performance optimizations
-            retryWrites: true,      // Auto-retry failed writes
+            retryWrites: true,
+            retryReads: true,
         }
 
         cached.promise = mongoose

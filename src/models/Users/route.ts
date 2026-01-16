@@ -40,7 +40,8 @@ app.post('/login', async (c) => {
         const { email, password } = validation.data
 
         // Find user and include password for comparison
-        const user = await User.findOne({ email, isActive: true }).select('+password')
+        // Use lean() for faster query, but we need comparePassword method so we can't use lean() here
+        const user = await User.findOne({ email, isActive: true }).select('+password').maxTimeMS(5000)
 
         if (!user) {
             return c.json(
@@ -77,9 +78,8 @@ app.post('/login', async (c) => {
             )
         }
 
-        // Update last login
-        user.lastLogin = new Date()
-        await user.save()
+        // Update last login asynchronously (don't block the response)
+        User.updateOne({ _id: user._id }, { lastLogin: new Date() }).exec()
 
         // Return user data (password excluded by default)
         const userData = {
