@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the comprehensive authorization system implemented for the reviewer role in the goielts recruitment platform. The system ensures proper access control, data filtering, and security across all API endpoints.
+This document outlines the comprehensive authorization system implemented for the reviewer role in the Jadara recruitment platform. The system ensures proper access control, data filtering, and security across all API endpoints.
 
 ## Role Hierarchy
 

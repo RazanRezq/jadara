@@ -150,7 +150,7 @@ Organizations in the Middle East require:
 
 ## 3.1 Platform Architecture
 
-GoIELTS is architected as a three-tier application:
+Jadara is architected as a three-tier application:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -203,7 +203,7 @@ Admin → Job Wizard Step 1 (Basics) → Step 2 (Criteria & Skills)
 
 ## 3.3 Differentiating Factors
 
-| Feature | GoIELTS | Traditional ATS |
+| Feature | Jadara | Traditional ATS |
 |---------|---------|-----------------|
 | AI Evaluation | ✅ Built-in Gemini | ❌ Manual or basic keyword |
 | Voice Assessment | ✅ Full support | ❌ Not available |
@@ -2409,7 +2409,7 @@ NODE_ENV=production
 
 ## 14.1 Market Comparison
 
-| Feature | GoIELTS | Greenhouse | Lever | Workday |
+| Feature | Jadara | Greenhouse | Lever | Workday |
 |---------|:-------:|:----------:|:-----:|:-------:|
 | AI Evaluation | ✅ Native | ⚠️ Add-on | ⚠️ Add-on | ⚠️ Add-on |
 | Voice Assessment | ✅ Built-in | ❌ | ❌ | ❌ |
@@ -2539,7 +2539,7 @@ NODE_ENV=production
 
 ## 18.1 Summary
 
-GoIELTS represents a significant advancement in recruitment technology for the MENA region. The platform combines:
+Jadara represents a significant advancement in recruitment technology for the MENA region. The platform combines:
 
 - **Cutting-edge AI** for automated, unbiased candidate evaluation
 - **Voice assessment** capabilities unique in the market
@@ -2683,7 +2683,7 @@ Full API documentation available at: `/api/docs` (when implemented)
 ```bash
 # Clone repository
 git clone [repository-url]
-cd goielts
+cd jadara
 
 # Install dependencies
 bun install

@@ -1,4 +1,4 @@
-# GoIELTS Video Presentation Script
+# Jadara Video Presentation Script
 ## Complete Recording Guide for Manager Presentation (30 Minutes)
 
 ---
@@ -46,11 +46,11 @@
 
 **SAY:**
 
-> "Assalamu Alaikum, and welcome to this comprehensive demonstration of GoIELTS - our AI-powered recruitment platform.
+> "Assalamu Alaikum, and welcome to this comprehensive demonstration of Jadara - our AI-powered recruitment platform.
 >
 > My name is [Your Name], and over the next 30 minutes, I'll walk you through the complete system - from how candidates apply for jobs, to how our AI evaluates them, to how recruiters manage the entire hiring pipeline.
 >
-> GoIELTS was built to solve three major challenges in recruitment:
+> Jadara was built to solve three major challenges in recruitment:
 >
 > **First** - the overwhelming volume of applications that HR teams receive. Our AI automatically scores and ranks every candidate, saving hours of manual screening.
 >
@@ -721,7 +721,7 @@
 
 > "Let me give you a quick overview of the technical architecture.
 >
-> GoIELTS is built on a modern tech stack:
+> Jadara is built on a modern tech stack:
 >
 > **Frontend:**
 > - Next.js 16 with the App Router - the latest from Vercel
@@ -956,7 +956,7 @@
 
 > "To summarize what we've covered today:
 >
-> GoIELTS is a complete AI-powered recruitment platform that:
+> Jadara is a complete AI-powered recruitment platform that:
 >
 > 1. **Streamlines applications** with a smooth, mobile-friendly candidate experience
 >

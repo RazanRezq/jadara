@@ -9,11 +9,13 @@ if (!MONGODB_URI) {
 
 // Extract base URI without database name
 const baseUri = MONGODB_URI.replace(/\/[^\/]+(\?|$)/, "/$1");
-const sourceDbName = "goielts";
-const targetDbName = "jadara";
+const sourceDbName = process.env.SOURCE_DB_NAME || "old_database";
+const targetDbName = process.env.TARGET_DB_NAME || "jadara";
 
 async function migrateDatabase() {
-  console.log("🔄 MongoDB Database Migration: goielts → jadara");
+  console.log(
+    `🔄 MongoDB Database Migration: ${sourceDbName} → ${targetDbName}`
+  );
   console.log("================================================\n");
 
   try {

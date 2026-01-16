@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete integration of audit logging system across all critical endpoints in the goielts application. This document summarizes all implemented audit logging features and provides guidance for future development.
+Complete integration of audit logging system across all critical endpoints in the Jadara application. This document summarizes all implemented audit logging features and provides guidance for future development.
 
 **Status**: ✅ Complete
 **Date**: 2025-12-25

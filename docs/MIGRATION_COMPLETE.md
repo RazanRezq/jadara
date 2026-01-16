@@ -1,14 +1,14 @@
 # ✅ Database Migration Complete!
 
 **Date**: January 15, 2026  
-**Migration**: `goielts` → `jadara`
+**Migration**: Database migration completed
 
 ---
 
 ## 🎉 What Was Done
 
 ### 1. ✅ Database Migration
-All data successfully migrated from `goielts` to `jadara` database:
+All data successfully migrated to `jadara` database:
 
 | Collection | Documents | Status |
 |------------|-----------|--------|
@@ -37,7 +37,7 @@ All database indexes were recreated in the new database for optimal performance.
 
 **Before:**
 ```env
-MONGODB_URI=mongodb+srv://rznrzq:***@cluster0.eypqvme.mongodb.net/goielts
+MONGODB_URI=mongodb+srv://rznrzq:***@cluster0.eypqvme.mongodb.net/old_database
 ```
 
 **After:**
@@ -75,7 +75,7 @@ Successfully tested connection to the new `jadara` database.
 
 3. **Drop Old Database** (⚠️ Only after thorough testing!)
    - Open MongoDB Compass
-   - Right-click `goielts` database
+   - Right-click `old_database` database
    - Select "Drop Database"
    - Confirm
 
@@ -96,7 +96,7 @@ If you need to rollback to the old database:
    bun dev
    ```
 
-3. Your old `goielts` database is still intact with all data!
+3. Your old `old_database` database is still intact with all data!
 
 ---
 

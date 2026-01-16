@@ -1,4 +1,4 @@
-# GoIELTS Video Series
+# Jadara Video Series
 ## 4-Part Comprehensive Project Presentation (60 Minutes Total)
 
 ---
@@ -49,7 +49,7 @@ Tab 5: DigitalOcean Spaces console (optional)
 
 **SAY:**
 
-> "Assalamu Alaikum everyone. Welcome to this comprehensive technical presentation of GoIELTS - our AI-powered recruitment platform.
+> "Assalamu Alaikum everyone. Welcome to this comprehensive technical presentation of Jadara - our AI-powered recruitment platform.
 >
 > I'm [Your Name], and I'll be walking you through the entire system over the course of four videos. This first video covers the project overview and business context - why we built this and what problems it solves.
 >
@@ -89,17 +89,17 @@ Tab 5: DigitalOcean Spaces console (optional)
 >
 > Organizations in Saudi Arabia, UAE, and the broader MENA region need platforms that truly understand Arabic. They need right-to-left interfaces, proper Arabic typography, and cultural context awareness. Most global ATS platforms treat Arabic as an afterthought.
 >
-> GoIELTS was built from the ground up to solve all four of these challenges."
+> Jadara was built from the ground up to solve all four of these challenges."
 
 ---
 
-### THE SOLUTION: GOIELTS (4:00 - 7:00)
+### THE SOLUTION: JADARA (4:00 - 7:00)
 
 **[SCREEN: Dashboard overview or architecture diagram]**
 
 **SAY:**
 
-> "GoIELTS is an AI-powered recruitment platform with five core pillars:
+> "Jadara is an AI-powered recruitment platform with five core pillars:
 >
 > **Pillar One: AI-Powered Evaluation**
 >
@@ -259,7 +259,7 @@ Tab 5: DigitalOcean Spaces console (optional)
 > "To summarize this first video:
 >
 > - We're solving four key problems: volume overload, unconscious bias, communication assessment, and regional requirements
-> - GoIELTS is an AI-powered platform built bilingual from day one
+> - Jadara is an AI-powered platform built bilingual from day one
 > - We have four user roles with carefully designed permissions
 > - Our stack is modern, scalable, and maintainable
 >
@@ -278,7 +278,7 @@ Tab 5: DigitalOcean Spaces console (optional)
 
 **SAY:**
 
-> "Welcome to Clip 2 of our GoIELTS presentation series.
+> "Welcome to Clip 2 of our Jadara presentation series.
 >
 > In this video, we're doing a complete walkthrough of every feature in the platform. I'll show you:
 > - The candidate application experience from start to finish
@@ -1797,7 +1797,7 @@ Tab 5: DigitalOcean Spaces console (optional)
 
 > "Let me summarize everything we've covered across these four videos.
 >
-> **What is GoIELTS?**
+> **What is Jadara?**
 > - An AI-powered recruitment platform
 > - Built bilingual from day one (Arabic/English)
 > - Voice assessment capability unique in the market
@@ -1836,7 +1836,7 @@ Tab 5: DigitalOcean Spaces console (optional)
 
 **SAY:**
 
-> "That concludes our four-part presentation series on GoIELTS.
+> "That concludes our four-part presentation series on Jadara.
 >
 > To recap the four videos:
 > - **Clip 1:** Project overview and business context

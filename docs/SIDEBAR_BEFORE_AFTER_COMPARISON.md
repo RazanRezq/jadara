@@ -6,7 +6,7 @@
 
 ```
 ┌─────────────────────────────────┐
-│ [Logo] GoIELTS                  │
+│ [Logo] Jadara                   │
 │        Admin Portal             │
 ├─────────────────────────────────┤
 │ Navigation                      │
@@ -44,7 +44,7 @@
 
 ```
 ┌─────────────────────────────────┐
-│ [Logo] GoIELTS                  │
+│ [Logo] Jadara                   │
 │        Admin Portal             │
 ├─────────────────────────────────┤
 │                                 │
@@ -516,10 +516,10 @@ We've updated the navigation to better match our ATS workflow:
 • Assessment Tools: Question Bank, Scorecards, Interview Insights
 • System Management: Hiring Team, Settings
 
-Questions? Contact support@goielts.com
+Questions? Contact support@jadara.com
 
 Happy Hiring!
-The GoIELTS Team
+The Jadara Team
 ```
 
 ---

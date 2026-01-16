@@ -120,7 +120,7 @@ https://[your-domain]/apply/[jobId]
 
 **Examples:**
 ```
-https://goielts.com/apply/507f1f77bcf86cd799439011
+https://jadara.com/apply/507f1f77bcf86cd799439011
 https://localhost:3000/apply/507f1f77bcf86cd799439011
 ```
 

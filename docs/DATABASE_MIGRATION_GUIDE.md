@@ -1,6 +1,6 @@
-# Database Migration Guide: goielts → jadara
+# Database Migration Guide
 
-This guide explains how to migrate your MongoDB database from `goielts` to `jadara`.
+This guide explains how to migrate your MongoDB database to `jadara`.
 
 ## ⚠️ Important Notes
 
@@ -17,7 +17,7 @@ This guide explains how to migrate your MongoDB database from `goielts` to `jada
 Make sure your `.env.local` file has the correct MongoDB URI:
 
 ```env
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/goielts
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/old_database
 ```
 
 ### Step 2: Run Migration Script
@@ -27,7 +27,7 @@ bun run migrate-db
 ```
 
 This script will:
-- ✅ Connect to both `goielts` and `jadara` databases
+- ✅ Connect to both source and target databases
 - ✅ Copy all collections with their data
 - ✅ Copy all indexes
 - ✅ Verify document counts
@@ -39,7 +39,7 @@ After successful migration, update your `.env.local`:
 
 ```env
 # Old
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/goielts
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/old_database
 
 # New
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/jadara
@@ -64,7 +64,7 @@ Test all features thoroughly:
 
 Once everything is working perfectly, drop the old database using MongoDB Compass:
 
-1. Right-click on `goielts` database
+1. Right-click on `old_database` database
 2. Select **"Drop Database"**
 3. Confirm the action
 
@@ -74,12 +74,12 @@ Once everything is working perfectly, drop the old database using MongoDB Compas
 
 ### Step 1: Export Collections
 
-For each collection in `goielts`:
+For each collection in `old_database`:
 
 1. Click the collection name
 2. Click **"Export Collection"** (top toolbar)
 3. Select format: **JSON**
-4. Choose location: `~/Desktop/goielts-backup/`
+4. Choose location: `~/Desktop/old_database-backup/`
 5. Click **"Export"**
 
 Repeat for all collections:
@@ -114,7 +114,7 @@ Repeat for all collections:
 
 Compare document counts between databases:
 
-| Collection | goielts | jadara | Status |
+| Collection | old_database | jadara | Status |
 |------------|---------|--------|--------|
 | applicants | 18 | ? | ⏳ |
 | auditlogs | 98 | ? | ⏳ |
@@ -137,13 +137,13 @@ Same as Method 1, Step 5.
 ### Step 1: Export (Backup)
 
 ```bash
-mongodump --uri="mongodb+srv://user:pass@cluster.mongodb.net/goielts" --out=./backup
+mongodump --uri="mongodb+srv://user:pass@cluster.mongodb.net/old_database" --out=./backup
 ```
 
 ### Step 2: Import
 
 ```bash
-mongorestore --uri="mongodb+srv://user:pass@cluster.mongodb.net/jadara" --dir=./backup/goielts
+mongorestore --uri="mongodb+srv://user:pass@cluster.mongodb.net/jadara" --dir=./backup/old_database
 ```
 
 ### Step 3: Verify & Update
@@ -180,7 +180,7 @@ Follow Steps 4-5 from Method 1.
 **Solution**:
 1. Check if migration completed successfully
 2. Verify collections exist in `jadara` database in Compass
-3. Check that `.env.local` points to `jadara` not `goielts`
+3. Check that `.env.local` points to `jadara` not `old_database`
 
 ### Some Collections Missing
 
@@ -195,7 +195,7 @@ Follow Steps 4-5 from Method 1.
 
 ## Verification Checklist
 
-Before dropping the `goielts` database, verify:
+Before dropping the `old_database` database, verify:
 
 - [ ] All collections exist in `jadara`
 - [ ] Document counts match for each collection
@@ -215,10 +215,10 @@ Before dropping the `goielts` database, verify:
 
 If something goes wrong:
 
-1. **Keep the old `goielts` database** (don't drop it yet)
-2. Update `.env.local` back to use `goielts`:
+1. **Keep the old `old_database` database** (don't drop it yet)
+2. Update `.env.local` back to use `old_database`:
    ```env
-   MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/goielts
+   MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/old_database
    ```
 3. Restart your application
 4. Investigate the issue
@@ -230,7 +230,7 @@ If something goes wrong:
 
 After successful migration and verification:
 
-1. ✅ Drop the `goielts` database to save space
+1. ✅ Drop the `old_database` database to save space
 2. ✅ Update any external services pointing to the database
 3. ✅ Update documentation
 4. ✅ Inform team members about the change

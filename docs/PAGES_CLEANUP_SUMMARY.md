@@ -4,7 +4,7 @@
 
 ## Overview
 
-This document summarizes the cleanup of unnecessary pages and access restrictions applied to the goielts recruitment platform based on user requirements.
+This document summarizes the cleanup of unnecessary pages and access restrictions applied to the Jadara recruitment platform based on user requirements.
 
 ## Changes Made
 

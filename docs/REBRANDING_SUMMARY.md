@@ -1,7 +1,7 @@
-# 🔥 Rebranding Complete: GoIELTS → Jadara (جدارة)
+# 🔥 Rebranding Complete: Jadara (جدارة)
 
 ## Overview
-Your application has been successfully rebranded from **GoIELTS** to **Jadara** (جدارة), an intelligent recruitment and talent acquisition platform.
+Your application has been successfully rebranded to **Jadara** (جدارة), an intelligent recruitment and talent acquisition platform.
 
 ## ✅ Changes Made
 
@@ -31,7 +31,7 @@ Your application has been successfully rebranded from **GoIELTS** to **Jadara** 
 - Updated features to reflect recruitment platform
 
 ### 3. Email Templates (`src/lib/email.ts`)
-- Updated all email templates to use "Jadara" instead of "GoIELTS"
+- Updated all email templates to use "Jadara"
 - Changed default sender: `Jadara Recruitment <onboarding@resend.dev>`
 - Updated interview invitations, rejection emails, and offer letters
 
@@ -159,7 +159,7 @@ After seeding, you can login with:
 
 ## 🎨 Branding Consistency
 
-All visible instances of "GoIELTS" have been replaced with "Jadara" (جدارة) including:
+All visible instances of "Jadara" have been replaced with "Jadara" (جدارة) including:
 - UI components and navigation
 - Email templates
 - System configuration
@@ -174,14 +174,7 @@ The following remain unchanged (as expected):
 - API endpoints structure
 - Core functionality and business logic
 - Component architecture
-- File/folder structure (still in `/goielts` directory)
-
-**Note**: The project folder name remains "goielts" - you can rename it to "jadara" manually if desired:
-```bash
-cd ..
-mv goielts jadara
-cd jadara
-```
+- File/folder structure
 
 ## ✨ Summary
 

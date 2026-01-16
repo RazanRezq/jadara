@@ -1652,7 +1652,7 @@ const signedUrl = await getPresignedUrl(
 
 | Time | Section | Duration | Key Points |
 |------|---------|----------|------------|
-| 0:00 | Introduction | 2 min | What is GoIELTS, problem it solves |
+| 0:00 | Introduction | 2 min | What is Jadara, problem it solves |
 | 2:00 | Live Demo: Candidate Flow | 5 min | Show application process |
 | 7:00 | Live Demo: Dashboard | 5 min | Jobs, applicants, kanban |
 | 12:00 | AI Evaluation System | 6 min | How scoring works, demo results |
@@ -1693,7 +1693,7 @@ const signedUrl = await getPresignedUrl(
 1. **Architecture Diagram** - System overview flowchart
 2. **AI Pipeline Diagram** - Evaluation flow visualization
 3. **Role Hierarchy Chart** - Permission pyramid
-4. **Feature Comparison Table** - GoIELTS vs competitors
+4. **Feature Comparison Table** - Jadara vs competitors
 5. **Database ER Diagram** - Model relationships
 
 ---

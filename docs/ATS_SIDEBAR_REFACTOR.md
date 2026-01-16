@@ -204,7 +204,7 @@ const filteredItems = section.items.filter((item) =>
 
 ```
 ┌─────────────────────────────────┐
-│ [Logo] GoIELTS                  │
+│ [Logo] Jadara                   │
 │        Admin Portal             │
 ├─────────────────────────────────┤
 │                                 │

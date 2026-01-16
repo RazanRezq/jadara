@@ -4,7 +4,7 @@
 
 ## Overview
 
-This document summarizes the comprehensive security improvements made to the reviewer authorization system in the goielts recruitment platform. The changes address critical security vulnerabilities and implement proper role-based access control (RBAC) across all API endpoints.
+This document summarizes the comprehensive security improvements made to the reviewer authorization system in the Jadara recruitment platform. The changes address critical security vulnerabilities and implement proper role-based access control (RBAC) across all API endpoints.
 
 ## Critical Security Issues Fixed
 
