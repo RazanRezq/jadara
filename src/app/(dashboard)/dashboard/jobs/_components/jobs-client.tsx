@@ -97,7 +97,9 @@ export interface Job {
     createdBy: { name: string; email: string }
     createdAt: string
     updatedAt: string
+    // Backend may provide either/both; prefer applicantCount but fall back gracefully
     applicantsCount?: number
+    applicantCount?: number
 }
 
 interface JobsClientProps {
@@ -111,6 +113,8 @@ const statusColors: Record<JobStatus, string> = {
     closed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     archived: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 }
+
+const getApplicantCount = (job: Job) => job.applicantCount ?? job.applicantsCount ?? 0
 
 // Mobile Job Card Component
 const JobCard = ({
@@ -210,7 +214,7 @@ const JobCard = ({
                             )}
                             <span className="flex items-center gap-1">
                                 <Users className="h-3.5 w-3.5" />
-                                {job.applicantsCount || 0} {t("jobs.applicants")}
+                                {getApplicantCount(job)} {t("jobs.applicants")}
                             </span>
                             <span className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
@@ -958,7 +962,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                                                     className="inline-flex items-center cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
                                                 >
                                                     <Users className="h-3 w-3 me-1" />
-                                                    {job.applicantsCount || 0}
+                                                    {getApplicantCount(job)}
                                                 </Badge>
                                             </Link>
                                         </TableCell>

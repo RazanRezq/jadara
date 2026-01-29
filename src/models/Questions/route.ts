@@ -99,19 +99,30 @@ app.post('/add', authenticate, requireRole('admin'), async (c) => {
     }
 })
 
-// Get questions by job ID
+// Get questions by job ID (paginated)
 app.get('/by-job/:jobId', async (c) => {
     try {
         await dbConnect()
         const jobId = c.req.param('jobId')
         const includeInactive = c.req.query('includeInactive') === 'true'
 
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
+
         const query: Record<string, unknown> = { jobId }
         if (!includeInactive) {
             query.isActive = true
         }
 
-        const questions = await Question.find(query).sort({ order: 1 })
+        const [questions, total] = await Promise.all([
+            Question.find(query)
+                .sort({ order: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Question.countDocuments(query),
+        ])
 
         return c.json({
             success: true,
@@ -132,7 +143,13 @@ app.get('/by-job/:jobId', async (c) => {
                 isActive: q.isActive,
                 createdAt: q.createdAt,
             })),
-            total: questions.length,
+            total,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         return c.json(

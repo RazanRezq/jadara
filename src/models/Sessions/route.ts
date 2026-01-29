@@ -25,14 +25,17 @@ app.get('/', authenticate, requireRole('superadmin'), async (c) => {
         if (userId) filter.userId = userId
         if (isActive !== undefined) filter.isActive = isActive === 'true'
 
-        const sessions = await Session.find(filter)
-            .sort({ lastActivity: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate('userId', 'name email role')
-            .lean()
+        const [sessions, total] = await Promise.all([
+            Session.find(filter)
+                .sort({ lastActivity: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('userId', 'name email role')
+                .lean(),
+            Session.countDocuments(filter),
+        ])
 
-        const total = await Session.countDocuments(filter)
+        const totalPages = Math.ceil(total / limit)
 
         return c.json({
             success: true,
@@ -42,8 +45,14 @@ app.get('/', authenticate, requireRole('superadmin'), async (c) => {
                     page,
                     limit,
                     total,
-                    totalPages: Math.ceil(total / limit),
+                    totalPages,
                 },
+            },
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
             },
         })
     } catch (error: any) {
@@ -69,16 +78,34 @@ app.get('/my-sessions', authenticate, async (c) => {
 
         const user = getAuthUser(c)
 
-        const sessions = await Session.find({
-            userId: user.userId,
-            isActive: true,
-        })
-            .sort({ lastActivity: -1 })
-            .lean()
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
+
+        const [sessions, total] = await Promise.all([
+            Session.find({
+                userId: user.userId,
+                isActive: true,
+            })
+                .sort({ lastActivity: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Session.countDocuments({
+                userId: user.userId,
+                isActive: true,
+            }),
+        ])
 
         return c.json({
             success: true,
             data: sessions,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error: any) {
         console.error('Error fetching user sessions:', error)
@@ -103,41 +130,46 @@ app.get('/stats', authenticate, requireRole('superadmin'), async (c) => {
 
         const now = new Date()
 
-        // Active sessions count
-        const activeSessions = await Session.countDocuments({ isActive: true })
-
-        // Sessions by role
-        const byRole = await Session.aggregate([
-            { $match: { isActive: true } },
-            { $group: { _id: '$userRole', count: { $sum: 1 } } },
-        ])
-
-        // Sessions by device type
-        const byDevice = await Session.aggregate([
-            { $match: { isActive: true } },
-            { $group: { _id: '$deviceType', count: { $sum: 1 } } },
-        ])
-
-        // Top users by session count
-        const topUsers = await Session.aggregate([
-            { $match: { isActive: true } },
-            {
-                $group: {
-                    _id: '$userId',
-                    count: { $sum: 1 },
-                    userName: { $first: '$userName' },
-                    userEmail: { $first: '$userEmail' },
-                },
-            },
-            { $sort: { count: -1 } },
-            { $limit: 10 },
-        ])
-
-        // Sessions created in last 24 hours
         const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-        const recentSessions = await Session.countDocuments({
-            createdAt: { $gte: last24Hours },
-        })
+
+        const [
+            activeSessions,
+            byRole,
+            byDevice,
+            topUsers,
+            recentSessions,
+        ] = await Promise.all([
+            // Active sessions count
+            Session.countDocuments({ isActive: true }),
+            // Sessions by role
+            Session.aggregate([
+                { $match: { isActive: true } },
+                { $group: { _id: '$userRole', count: { $sum: 1 } } },
+            ]),
+            // Sessions by device type
+            Session.aggregate([
+                { $match: { isActive: true } },
+                { $group: { _id: '$deviceType', count: { $sum: 1 } } },
+            ]),
+            // Top users by session count
+            Session.aggregate([
+                { $match: { isActive: true } },
+                {
+                    $group: {
+                        _id: '$userId',
+                        count: { $sum: 1 },
+                        userName: { $first: '$userName' },
+                        userEmail: { $first: '$userEmail' },
+                    },
+                },
+                { $sort: { count: -1 } },
+                { $limit: 10 },
+            ]),
+            // Sessions created in last 24 hours
+            Session.countDocuments({
+                createdAt: { $gte: last24Hours },
+            }),
+        ])
 
         return c.json({
             success: true,
@@ -249,10 +281,12 @@ app.post('/revoke-all/:userId', authenticate, requireRole('superadmin'), async (
             })
         }
 
-        // Revoke all sessions
-        for (const session of sessions) {
-            await session.revoke(user.userId, reason || 'All sessions revoked by superadmin')
-        }
+        // Revoke all sessions in parallel to avoid N+1 latency
+        await Promise.all(
+            sessions.map((session) =>
+                session.revoke(user.userId, reason || 'All sessions revoked by superadmin')
+            )
+        )
 
         // Log the action
         await logUserAction(

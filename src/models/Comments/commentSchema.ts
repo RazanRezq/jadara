@@ -51,6 +51,7 @@ const commentSchema = new Schema<IComment>(
 // Indexes for common queries
 commentSchema.index({ applicantId: 1, createdAt: -1 })
 commentSchema.index({ authorId: 1, createdAt: -1 })
+commentSchema.index({ applicantId: 1, isPrivate: 1, authorId: 1, createdAt: -1 }) // For applicant comment timelines with privacy and author filters
 
 const Comment: Model<IComment> =
     mongoose.models.Comment || mongoose.model<IComment>('Comment', commentSchema)

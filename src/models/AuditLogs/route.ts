@@ -53,14 +53,15 @@ app.get('/', authenticate, requireRole('superadmin'), async (c) => {
             ]
         }
 
-        // Fetch logs
-        const logs = await AuditLog.find(filter)
-            .sort({ timestamp: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean()
-
-        const total = await AuditLog.countDocuments(filter)
+        // Fetch logs and total in parallel
+        const [logs, total] = await Promise.all([
+            AuditLog.find(filter)
+                .sort({ timestamp: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            AuditLog.countDocuments(filter),
+        ])
 
         return c.json({
             success: true,
@@ -73,6 +74,13 @@ app.get('/', authenticate, requireRole('superadmin'), async (c) => {
                     totalPages: Math.ceil(total / limit),
                     hasMore: page * limit < total,
                 },
+            },
+            // Top-level pagination alias for universal clients
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
             },
         })
     } catch (error: any) {

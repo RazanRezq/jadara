@@ -101,9 +101,6 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
     useEffect(() => {
         if (userId) {
             fetchNotifications()
-            // Poll for new notifications every 30 seconds
-            const interval = setInterval(fetchNotifications, 30000)
-            return () => clearInterval(interval)
         }
     }, [userId, fetchNotifications])
 

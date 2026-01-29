@@ -88,6 +88,8 @@ const interviewSchema = new Schema<IInterview>(
 interviewSchema.index({ scheduledDate: 1, status: 1 })
 interviewSchema.index({ applicantId: 1, status: 1 })
 interviewSchema.index({ scheduledBy: 1, scheduledDate: 1 })
+interviewSchema.index({ applicantId: 1, scheduledDate: -1 }) // For applicant interview history timelines
+interviewSchema.index({ jobId: 1, scheduledDate: 1 }) // For job-level calendar views
 
 const Interview: Model<IInterview> =
     mongoose.models.Interview || mongoose.model<IInterview>('Interview', interviewSchema)

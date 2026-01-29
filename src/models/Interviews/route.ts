@@ -172,16 +172,25 @@ app.post('/create', authenticate, requireRole('admin'), async (c) => {
     }
 })
 
-// Get interviews for an applicant
+// Get interviews for an applicant (paginated)
 app.get('/by-applicant/:applicantId', authenticate, async (c) => {
     try {
         await dbConnect()
         const applicantId = c.req.param('applicantId')
 
-        const interviews = await Interview.find({ applicantId })
-            .populate('scheduledBy', 'name email')
-            .sort({ scheduledDate: -1 })
-            .lean()
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
+
+        const [interviews, total] = await Promise.all([
+            Interview.find({ applicantId })
+                .populate('scheduledBy', 'name email')
+                .sort({ scheduledDate: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Interview.countDocuments({ applicantId }),
+        ])
 
         return c.json({
             success: true,
@@ -196,6 +205,12 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
                 scheduledBy: i.scheduledBy,
                 createdAt: i.createdAt,
             })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         return c.json({
@@ -376,7 +391,7 @@ app.get('/count', authenticate, async (c) => {
     }
 })
 
-// Get interviews by date range (for calendar view)
+// Get interviews by date range (for calendar view, paginated)
 app.get('/by-date-range', authenticate, async (c) => {
     try {
         await dbConnect()
@@ -395,12 +410,16 @@ app.get('/by-date-range', authenticate, async (c) => {
             }, 400)
         }
 
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
+
         // Build query
         const query: Record<string, unknown> = {
             scheduledDate: {
                 $gte: new Date(start),
-                $lte: new Date(end)
-            }
+                $lte: new Date(end),
+            },
         }
 
         if (status && status !== 'all') {
@@ -413,22 +432,26 @@ app.get('/by-date-range', authenticate, async (c) => {
             query.scheduledBy = scheduledBy
         }
 
-        // Fetch with populated relations
-        let interviews = await Interview.find(query)
-            .populate('applicantId', 'personalData.name personalData.email')
-            .populate('jobId', 'title')
-            .populate('scheduledBy', 'name email')
-            .sort({ scheduledDate: 1, scheduledTime: 1 })
-            .lean()
+        const [rawInterviews, total] = await Promise.all([
+            Interview.find(query)
+                .populate('applicantId', 'personalData.name personalData.email')
+                .populate('jobId', 'title')
+                .populate('scheduledBy', 'name email')
+                .sort({ scheduledDate: 1, scheduledTime: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Interview.countDocuments(query),
+        ])
 
-        // Filter by candidate name if search term provided
-        if (search) {
-            interviews = interviews.filter((i: any) =>
-                i.applicantId?.personalData?.name
-                    ?.toLowerCase()
-                    .includes(search.toLowerCase())
-            )
-        }
+        // Filter by candidate name if search term provided (applied within current page)
+        const interviews = search
+            ? rawInterviews.filter((i: any) =>
+                  i.applicantId?.personalData?.name
+                      ?.toLowerCase()
+                      .includes(String(search).toLowerCase())
+              )
+            : rawInterviews
 
         // Transform to frontend format
         const transformedInterviews = interviews.map((i: any) => ({
@@ -457,7 +480,13 @@ app.get('/by-date-range', authenticate, async (c) => {
         return c.json({
             success: true,
             interviews: transformedInterviews,
-            count: transformedInterviews.length
+            count: transformedInterviews.length,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         return c.json({

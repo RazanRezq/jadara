@@ -83,6 +83,7 @@ userSchema.methods.comparePassword = async function (
 userSchema.index({ email: 1, isActive: 1 }) // For login queries
 userSchema.index({ role: 1, isActive: 1 }) // For finding users by role
 userSchema.index({ isActive: 1, createdAt: -1 }) // For listing active users
+userSchema.index({ createdAt: -1 }) // For sorting user lists by creation date
 
 // Prevent model recompilation in development
 const User: Model<IUser> =

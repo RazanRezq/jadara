@@ -150,7 +150,7 @@ app.post('/create', authenticate, async (c) => {
     }
 })
 
-// Get comments for an applicant
+// Get comments for an applicant (paginated)
 app.get('/by-applicant/:applicantId', authenticate, async (c) => {
     try {
         await dbConnect()
@@ -158,6 +158,10 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
         const user = getAuthUser(c)
 
         console.log('[Get Comments] Fetching comments for applicant:', applicantId)
+
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
 
         // Build query - private comments only visible to author
         const query: any = {
@@ -168,10 +172,15 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
             ],
         }
 
-        const comments = await Comment.find(query)
-            .populate({ path: 'authorId', model: User, select: 'name email role' })
-            .sort({ createdAt: -1 })
-            .lean()
+        const [comments, total] = await Promise.all([
+            Comment.find(query)
+                .populate({ path: 'authorId', model: User, select: 'name email role' })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Comment.countDocuments(query),
+        ])
 
         console.log('[Get Comments] Found', comments.length, 'comments (before filtering)')
 
@@ -214,6 +223,12 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
                 updatedAt: c.updatedAt,
                 isOwn: (c.authorId as any)._id.toString() === user.id,
             })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         console.error('[Get Comments] ERROR:', error)

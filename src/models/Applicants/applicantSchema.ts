@@ -228,6 +228,8 @@ applicantSchema.index({ createdAt: -1 })
 applicantSchema.index({ status: 1, createdAt: -1 }) // For filtering by status across all jobs
 applicantSchema.index({ isComplete: 1, status: 1 }) // For finding incomplete applications
 applicantSchema.index({ jobId: 1, status: 1, createdAt: -1 }) // For sorted filtered list
+applicantSchema.index({ jobId: 1, isComplete: 1, status: 1, createdAt: -1 }) // For job-specific applicant lists with completion and status filters
+applicantSchema.index({ 'personalData.name': 1 }) // For name search within applicants
 
 const Applicant: Model<IApplicant> =
     mongoose.models.Applicant || mongoose.model<IApplicant>('Applicant', applicantSchema)

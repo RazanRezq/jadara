@@ -104,6 +104,8 @@ app.get('/', async (c) => {
             Notification.countDocuments({ userId: userIdObjectId, isRead: false }),
         ])
 
+        const totalPages = Math.ceil(total / limit)
+
         return c.json({
             success: true,
             data: {
@@ -111,7 +113,13 @@ app.get('/', async (c) => {
                 total,
                 unreadCount,
                 page,
-                totalPages: Math.ceil(total / limit),
+                totalPages,
+            },
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
             },
         })
     } catch (error: any) {

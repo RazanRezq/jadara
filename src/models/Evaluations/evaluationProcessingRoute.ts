@@ -17,6 +17,22 @@ import {
     CandidateEvaluationInput,
 } from '@/services/evaluation'
 
+// Simple in-memory cache to avoid repeated Job lookups per batch
+const jobCache = new Map<string, any>()
+
+async function getJob(jobId: string) {
+    if (jobCache.has(jobId)) {
+        return jobCache.get(jobId)
+    }
+
+    const job = await Job.findById(jobId)
+    if (job) {
+        jobCache.set(jobId, job)
+    }
+
+    return job
+}
+
 // Validation schemas
 const processEvaluationSchema = z.object({
     applicantId: z.string().min(1, 'Applicant ID is required'),
@@ -50,8 +66,8 @@ async function buildCandidateData(
         const applicant = await Applicant.findById(applicantId)
         if (!applicant) return null
 
-        // Fetch job
-        const job = await Job.findById(jobId)
+        // Fetch job (cached per jobId to avoid N+1 lookups in batch flows)
+        const job = await getJob(jobId)
         if (!job) return null
 
         // Fetch all responses for this applicant
@@ -61,26 +77,45 @@ async function buildCandidateData(
         const voiceResponses: CandidateEvaluationInput['voiceResponses'] = []
         const textResponses: CandidateEvaluationInput['textResponses'] = []
 
-        // Get questions from job
+        // Get questions from job and build an O(1) lookup map
         const questions = job.questions || []
+        const questionLookup = new Map<string, { text: string; weight: number }>()
+
+        questions.forEach((q: any, index: number) => {
+            const weight = q.weight ?? 5
+            const keyByIndex = `q_${index}`
+
+            // Lookups by generated id (e.g. "q_0")
+            questionLookup.set(keyByIndex, {
+                text: q.text,
+                weight,
+            })
+
+            // And by question text (for legacy IDs)
+            questionLookup.set(q.text, {
+                text: q.text,
+                weight,
+            })
+        })
 
         for (const response of responses) {
-            const question = questions.find((q, index) => 
-                response.questionId === `q_${index}` || response.questionId === q.text
-            )
-            
+            const meta = questionLookup.get(response.questionId) || {
+                text: response.questionId,
+                weight: 5,
+            }
+
             if (response.type === 'voice' && response.audioUrl) {
                 voiceResponses.push({
                     questionId: response.questionId,
-                    questionText: question?.text || response.questionId,
-                    questionWeight: question?.weight || 5,
+                    questionText: meta.text,
+                    questionWeight: meta.weight,
                     audioUrl: response.audioUrl,
                 })
             } else if (response.type === 'text' && response.textAnswer) {
                 textResponses.push({
                     questionId: response.questionId,
-                    questionText: question?.text || response.questionId,
-                    questionWeight: question?.weight || 5, // Include weight
+                    questionText: meta.text,
+                    questionWeight: meta.weight,
                     answer: response.textAnswer,
                 })
             }
@@ -90,24 +125,24 @@ async function buildCandidateData(
         const jobCriteria: CandidateEvaluationInput['jobCriteria'] = {
             title: job.title,
             description: job.description,
-            skills: job.skills.map(s => ({
+            skills: job.skills.map((s: any) => ({
                 name: s.name,
                 importance: s.importance,
                 type: s.type,
             })),
             minExperience: job.minExperience || 0,
-            languages: job.languages.map(l => ({
+            languages: job.languages.map((l: any) => ({
                 language: l.language,
                 level: l.level,
             })),
-            criteria: job.criteria.map(c => ({
+            criteria: job.criteria.map((c: any) => ({
                 name: c.name,
                 description: c.description,
                 weight: c.weight,
                 required: c.required,
             })),
             // HR screening questions for knockout logic
-            screeningQuestions: job.screeningQuestions?.map(sq => ({
+            screeningQuestions: job.screeningQuestions?.map((sq: any) => ({
                 question: sq.question,
                 idealAnswer: sq.idealAnswer || false,
                 disqualify: sq.disqualify,
@@ -313,14 +348,20 @@ app.post('/process', async (c) => {
             evaluationError: undefined,
         })
 
-        // Update voice response transcripts
-        for (const transcript of result.evaluation.transcripts) {
-            await Response.findOneAndUpdate(
-                { applicantId, questionId: transcript.questionId },
-                {
-                    rawTranscript: transcript.rawTranscript,
-                    cleanTranscript: transcript.cleanTranscript,
-                }
+        // Update voice response transcripts in bulk to avoid N+1 updates
+        if (Array.isArray(result.evaluation.transcripts) && result.evaluation.transcripts.length > 0) {
+            await Response.bulkWrite(
+                result.evaluation.transcripts.map((transcript) => ({
+                    updateOne: {
+                        filter: { applicantId: applicantId as any, questionId: transcript.questionId },
+                        update: {
+                            $set: {
+                                rawTranscript: transcript.rawTranscript,
+                                cleanTranscript: transcript.cleanTranscript,
+                            },
+                        },
+                    },
+                }))
             )
         }
 

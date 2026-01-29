@@ -728,6 +728,7 @@ const evaluationSchema = new Schema<IEvaluation>(
 evaluationSchema.index({ jobId: 1, overallScore: -1 })
 evaluationSchema.index({ jobId: 1, recommendation: 1 })
 evaluationSchema.index({ jobId: 1, recommendation: 1, overallScore: -1 }) // For filtered + sorted queries
+evaluationSchema.index({ jobId: 1, isProcessed: 1 }) // For job-level stats and processing status aggregations
 evaluationSchema.index({ isProcessed: 1, createdAt: -1 }) // For finding pending evaluations
 evaluationSchema.index({ processedAt: -1 }) // For date range queries
 

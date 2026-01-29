@@ -178,6 +178,8 @@ AuditLogSchema.index({ userId: 1, timestamp: -1 })
 AuditLogSchema.index({ action: 1, timestamp: -1 })
 AuditLogSchema.index({ resource: 1, timestamp: -1 })
 AuditLogSchema.index({ severity: 1, timestamp: -1 })
+AuditLogSchema.index({ userRole: 1, timestamp: -1 }) // For role-based filtering with recent-first ordering
+AuditLogSchema.index({ userName: 1 }) // For searching logs by user name
 
 // TTL index to auto-delete old logs after 90 days (configurable)
 AuditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 })

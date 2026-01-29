@@ -306,7 +306,7 @@ app.post('/submit', authenticate, async (c) => {
     }
 })
 
-// Get reviews for an applicant
+// Get reviews for an applicant (paginated)
 app.get('/by-applicant/:applicantId', authenticate, async (c) => {
     try {
         await dbConnect()
@@ -314,10 +314,20 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
         const user = getAuthUser(c)
 
         console.log('[Get Reviews] Fetching reviews for applicant:', applicantId)
-        const reviews = await Review.find({ applicantId })
-            .populate({ path: 'reviewerId', model: User, select: 'name email role' })
-            .sort({ createdAt: -1 })
-            .lean()
+
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
+
+        const [reviews, total] = await Promise.all([
+            Review.find({ applicantId })
+                .populate({ path: 'reviewerId', model: User, select: 'name email role' })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Review.countDocuments({ applicantId }),
+        ])
 
         console.log('[Get Reviews] Found', reviews.length, 'reviews (before filtering)')
 
@@ -370,6 +380,12 @@ app.get('/by-applicant/:applicantId', authenticate, async (c) => {
                 createdAt: r.createdAt,
                 updatedAt: r.updatedAt,
             })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         console.error('[Get Reviews] ERROR:', error)

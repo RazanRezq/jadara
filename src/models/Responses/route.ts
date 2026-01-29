@@ -163,14 +163,23 @@ app.post('/update-transcript/:id', async (c) => {
     }
 })
 
-// Get responses by applicant
+// Get responses by applicant (paginated)
 app.get('/by-applicant/:applicantId', async (c) => {
     try {
         await dbConnect()
         const applicantId = c.req.param('applicantId')
+        const page = parseInt(c.req.query('page') || '1')
+        const limit = parseInt(c.req.query('limit') || '50')
+        const skip = (page - 1) * limit
 
-        const responses = await Response.find({ applicantId })
-            .sort({ questionId: 1 })
+        const [responses, total] = await Promise.all([
+            Response.find({ applicantId })
+                .sort({ questionId: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Response.countDocuments({ applicantId }),
+        ])
 
         return c.json({
             success: true,
@@ -199,7 +208,12 @@ app.get('/by-applicant/:applicantId', async (c) => {
                 reviewedAt: r.reviewedAt,
                 createdAt: r.createdAt,
             })),
-            total: responses.length,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         })
     } catch (error) {
         return c.json(
@@ -221,6 +235,7 @@ app.get('/:id', async (c) => {
 
         const response = await Response.findById(id)
             .populate('reviewedBy', 'name')
+            .lean()
 
         if (!response) {
             return c.json(

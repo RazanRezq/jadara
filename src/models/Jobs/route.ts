@@ -268,38 +268,43 @@ app.get('/list', authenticate, async (c) => {
         )
 
         // Map jobs with applicant counts
-        let mappedJobs = jobs.map((job) => ({
-            id: String(job._id),
-            title: job.title,
-            description: job.description,
-            department: job.department,
-            location: job.location,
-            employmentType: job.employmentType,
-            salaryMin: job.salaryMin,
-            salaryMax: job.salaryMax,
-            currency: job.currency,
-            // Step 2: Evaluation Criteria
-            skills: job.skills,
-            minExperience: job.minExperience,
-            autoRejectThreshold: job.autoRejectThreshold,
-            // Step 3: Candidate Data
-            candidateDataConfig: job.candidateDataConfig,
-            // Step 4: Exam Builder
-            candidateInstructions: job.candidateInstructions,
-            questions: job.questions,
-            retakePolicy: job.retakePolicy,
-            // Legacy fields
-            requiredSkills: job.requiredSkills,
-            responsibilities: job.responsibilities,
-            criteria: job.criteria,
-            status: job.status,
-            expiresAt: job.expiresAt,
-            createdBy: job.createdBy,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-            // Applicants count
-            applicantsCount: countsMap.get(String(job._id)) || 0,
-        }))
+        let mappedJobs = jobs.map((job) => {
+            const count = countsMap.get(String(job._id)) || 0
+
+            return {
+                id: String(job._id),
+                title: job.title,
+                description: job.description,
+                department: job.department,
+                location: job.location,
+                employmentType: job.employmentType,
+                salaryMin: job.salaryMin,
+                salaryMax: job.salaryMax,
+                currency: job.currency,
+                // Step 2: Evaluation Criteria
+                skills: job.skills,
+                minExperience: job.minExperience,
+                autoRejectThreshold: job.autoRejectThreshold,
+                // Step 3: Candidate Data
+                candidateDataConfig: job.candidateDataConfig,
+                // Step 4: Exam Builder
+                candidateInstructions: job.candidateInstructions,
+                questions: job.questions,
+                retakePolicy: job.retakePolicy,
+                // Legacy fields
+                requiredSkills: job.requiredSkills,
+                responsibilities: job.responsibilities,
+                criteria: job.criteria,
+                status: job.status,
+                expiresAt: job.expiresAt,
+                createdBy: job.createdBy,
+                createdAt: job.createdAt,
+                updatedAt: job.updatedAt,
+                // Applicants count (both legacy and new name)
+                applicantsCount: count,
+                applicantCount: count,
+            }
+        })
 
         // Sort by applicantsCount if requested
         if (sortBy === 'applicantsCount') {
@@ -343,14 +348,21 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-        // Total Applications
-        const totalApplications = await Applicant.countDocuments({})
-        const lastWeekApplications = await Applicant.countDocuments({
-            createdAt: { $gte: lastWeek },
-        })
-        const previousWeekApplications = await Applicant.countDocuments({
-            createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
-        })
+        // Total Applications (batched counts)
+        const [
+            totalApplications,
+            lastWeekApplications,
+            previousWeekApplications,
+        ] = await Promise.all([
+            Applicant.countDocuments({}),
+            Applicant.countDocuments({
+                createdAt: { $gte: lastWeek },
+            }),
+            Applicant.countDocuments({
+                createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
+            }),
+        ])
+
         const applicationsChange = previousWeekApplications > 0
             ? ((lastWeekApplications - previousWeekApplications) / previousWeekApplications) * 100
             : 0
@@ -432,26 +444,38 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
             },
         ])
 
-        // Hiring Pipeline
+        // Hiring Pipeline (batched counts)
+        const [
+            newCount,
+            screeningCount,
+            interviewingCount,
+            offerCount,
+        ] = await Promise.all([
+            Applicant.countDocuments({ status: 'new' }),
+            Applicant.countDocuments({ status: 'screening' }),
+            Applicant.countDocuments({ status: 'interviewing' }),
+            Applicant.countDocuments({ status: 'offer' }),
+        ])
+
         const pipelineStages = [
             {
                 name: 'New',
-                count: await Applicant.countDocuments({ status: 'new' }),
+                count: newCount,
                 color: 'bg-blue-500',
             },
             {
                 name: 'Screening',
-                count: await Applicant.countDocuments({ status: 'screening' }),
+                count: screeningCount,
                 color: 'bg-yellow-500',
             },
             {
                 name: 'Interview',
-                count: await Applicant.countDocuments({ status: 'interviewing' }),
+                count: interviewingCount,
                 color: 'bg-purple-500',
             },
             {
                 name: 'Offer',
-                count: await Applicant.countDocuments({ status: 'offer' }),
+                count: offerCount,
                 color: 'bg-green-500',
             },
         ]

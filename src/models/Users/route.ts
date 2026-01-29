@@ -212,7 +212,7 @@ app.get('/me', async (c) => {
             )
         }
 
-        const user = await User.findById(userId)
+        const user = await User.findById(userId).lean()
 
         if (!user) {
             return c.json(
@@ -272,11 +272,14 @@ app.get('/list', async (c) => {
         }
 
         const skip = (page - 1) * limit
-        const total = await User.countDocuments(query)
-        const users = await User.find(query)
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
+        const [total, users] = await Promise.all([
+            User.countDocuments(query),
+            User.find(query)
+                .skip(skip)
+                .limit(limit)
+                .sort({ createdAt: -1 })
+                .lean(),
+        ])
 
         return c.json({
             success: true,

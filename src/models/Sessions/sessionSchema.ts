@@ -129,6 +129,7 @@ const SessionSchema = new Schema<ISession>(
 
 // Indexes
 SessionSchema.index({ userId: 1, isActive: 1 })
+SessionSchema.index({ userId: 1, isActive: 1, lastActivity: -1 }) // For active session lookups and recent activity sorting
 SessionSchema.index({ sessionToken: 1, isActive: 1 })
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }) // TTL index
 

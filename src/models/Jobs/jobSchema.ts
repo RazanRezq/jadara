@@ -391,6 +391,8 @@ const jobSchema = new Schema<IJob>(
 // Index for searching jobs
 jobSchema.index({ title: 'text', description: 'text' })
 jobSchema.index({ status: 1, createdAt: -1 })
+jobSchema.index({ department: 1, status: 1 }) // For filtering jobs by department and status
+jobSchema.index({ employmentType: 1, status: 1 }) // For filtering jobs by employment type and status
 
 const Job: Model<IJob> =
     mongoose.models.Job || mongoose.model<IJob>('Job', jobSchema)
