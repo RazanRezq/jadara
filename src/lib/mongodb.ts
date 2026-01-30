@@ -12,74 +12,101 @@ function getMongoUri(): string {
 interface MongooseCache {
     conn: typeof mongoose | null
     promise: Promise<typeof mongoose> | null
+    isConnecting: boolean
 }
 
 declare global {
     // eslint-disable-next-line no-var
-    var mongoose: MongooseCache | undefined
+    var mongooseCache: MongooseCache | undefined
+    var mongooseEventHandlersRegistered: boolean | undefined
 }
 
-const cached: MongooseCache = global.mongoose || { conn: null, promise: null }
+// Use a unique key to avoid conflicts with mongoose's internal global
+const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: null, isConnecting: false }
 
-if (!global.mongoose) {
-    global.mongoose = cached
+if (!global.mongooseCache) {
+    global.mongooseCache = cached
+}
+
+// Register event handlers only once (prevents memory leaks on hot reload)
+if (!global.mongooseEventHandlersRegistered) {
+    global.mongooseEventHandlersRegistered = true
+
+    mongoose.connection.on('connected', () => {
+        console.log('MongoDB connected successfully')
+    })
+
+    mongoose.connection.on('error', (error) => {
+        console.error('MongoDB connection error:', error)
+    })
+
+    mongoose.connection.on('disconnected', () => {
+        console.log('MongoDB disconnected - will auto-reconnect')
+    })
+
+    mongoose.connection.on('reconnected', () => {
+        console.log('MongoDB reconnected')
+    })
 }
 
 async function dbConnect(): Promise<typeof mongoose> {
-    if (cached.conn) {
+    // Fast path: return existing connection immediately
+    if (cached.conn && mongoose.connection.readyState === 1) {
         return cached.conn
     }
 
-    if (!cached.promise) {
-        const opts = {
+    // If already connecting, wait for the existing promise
+    if (cached.promise && cached.isConnecting) {
+        try {
+            cached.conn = await cached.promise
+            return cached.conn
+        } catch {
+            // Connection failed, will retry below
+        }
+    }
+
+    // If connection is in a bad state, reset
+    const readyState = mongoose.connection.readyState
+    if (readyState === 0 || readyState === 3) { // 0=disconnected, 3=disconnecting
+        cached.conn = null
+        cached.promise = null
+        cached.isConnecting = false
+    }
+
+    // Create new connection if needed
+    if (!cached.promise || !cached.isConnecting) {
+        cached.isConnecting = true
+
+        const opts: mongoose.ConnectOptions = {
             bufferCommands: false,
-            // Optimized timeouts for serverless (Vercel)
-            serverSelectionTimeoutMS: 3000,  // Reduced from 5000
-            connectTimeoutMS: 5000,          // Reduced from 10000
-            socketTimeoutMS: 30000,          // Reduced from 45000
+            // Connection timeouts
+            serverSelectionTimeoutMS: 10000,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            // Force IPv4 (avoids IPv6 issues)
             family: 4,
-            // Connection pool optimized for serverless
-            maxPoolSize: 10,         // Reduced for serverless
-            minPoolSize: 0,          // Allow full connection release
-            maxIdleTimeMS: 10000,    // Close idle connections faster
-            // Performance optimizations
+            // Connection pool settings - optimized for serverless
+            maxPoolSize: 10,
+            minPoolSize: 1,
+            maxIdleTimeMS: 30000,
+            // Performance & reliability
             retryWrites: true,
             retryReads: true,
         }
 
-        cached.promise = mongoose
-            .connect(getMongoUri(), opts)
-            .then((mongoose) => {
-                console.log('MongoDB connected successfully')
-                return mongoose
-            })
-            .catch((error) => {
-                console.error('MongoDB connection error:', error)
-                cached.promise = null
-                throw error
-            })
+        cached.promise = mongoose.connect(getMongoUri(), opts)
     }
 
     try {
         cached.conn = await cached.promise
+        cached.isConnecting = false
         return cached.conn
     } catch (error) {
         cached.promise = null
+        cached.conn = null
+        cached.isConnecting = false
         throw error
     }
 }
 
-mongoose.connection.on('error', (error) => {
-    console.error('MongoDB connection error:', error)
-    cached.promise = null
-    cached.conn = null
-})
-
-mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected')
-    cached.promise = null
-    cached.conn = null
-})
-
 export default dbConnect
-

@@ -241,7 +241,7 @@ function ActionCenter({
                                 className="group flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
                             >
                                 <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
-                                    <AvatarFallback className="text-sm font-medium bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+                                    <AvatarFallback className="text-sm font-medium bg-linear-to-br from-primary/20 to-primary/5 text-primary">
                                         {candidate.name
                                             .split(" ")
                                             .map((n) => n[0])
@@ -633,7 +633,7 @@ function RecentCandidatesTable({
                                             <td className="px-6 py-3.5">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar className="w-9 h-9 border border-border/50">
-                                                        <AvatarFallback className="text-xs font-medium bg-gradient-to-br from-primary/10 to-primary/5 text-primary">
+                                                        <AvatarFallback className="text-xs font-medium bg-linear-to-br from-primary/10 to-primary/5 text-primary">
                                                             {candidate.name
                                                                 .split(" ")
                                                                 .map((n) => n[0])

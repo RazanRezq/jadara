@@ -248,7 +248,9 @@ PermissionSetSchema.statics.initializeDefaults = async function () {
     for (const [role, permissionSet] of Object.entries(defaultPermissionSets)) {
         const exists = await this.findOne({ role })
         if (!exists) {
-            await this.create(permissionSet as any)
+            // The type of permissionSet is inferred from defaultPermissionSets,
+            // but we cast to IPermissionSet here for type safety instead of 'any'.
+            await this.create(permissionSet as IPermissionSet)
         }
     }
 }

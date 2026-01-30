@@ -479,9 +479,9 @@ async function getSuperAdminStats() {
         totalReviews,
         totalResponses
     ] = await Promise.all([
-        // Basic counts
-        User.countDocuments(),
-        Job.countDocuments(),
+        // Basic counts - use estimatedDocumentCount() for unfiltered counts (instant)
+        User.estimatedDocumentCount(),
+        Job.estimatedDocumentCount(),
 
         // Recent users list
         User.find()
@@ -523,11 +523,11 @@ async function getSuperAdminStats() {
             { $group: { _id: "$status", count: { $sum: 1 } } }
         ]),
 
-        // Total counts for percentages
-        Applicant.countDocuments({ isComplete: true }),
-        Interview.countDocuments(),
-        Review.countDocuments(),
-        Response.countDocuments()
+        // Total counts for percentages - use estimatedDocumentCount() for unfiltered (instant)
+        Applicant.countDocuments({ isComplete: true }),  // Keep countDocuments - has filter
+        Interview.estimatedDocumentCount(),
+        Review.estimatedDocumentCount(),
+        Response.estimatedDocumentCount()
     ])
 
     // Format users list

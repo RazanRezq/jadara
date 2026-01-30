@@ -165,7 +165,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                 page: page.toString(),
                 limit: "50",
                 role: currentUserRole,
-                includeRelations: "true", // Fetch evaluations and reviews in single call
+                // NOTE: includeRelations disabled for performance - relations fetched on demand when opening dialog
             })
             if (filters.searchTerm) params.append("search", filters.searchTerm)
             if (filters.statusFilters.size > 0 && !filters.statusFilters.has("all")) {
@@ -673,7 +673,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                 <div className="p-4">
                                     {/* Header */}
                                     <div className="flex items-start gap-3 mb-3 pb-3 border-b border-border dark:border-border">
-                                        <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20 ring-1 ring-primary/20 dark:ring-primary/30 flex-shrink-0">
+                                        <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/20 ring-1 ring-primary/20 dark:ring-primary/30 shrink-0">
                                             <Sparkles className="h-4 w-4 text-primary dark:text-primary" />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -696,8 +696,8 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                                 key={applicant.id} 
                                                 className="flex items-start gap-2.5 p-2 rounded-md bg-muted/40 dark:bg-muted/20 hover:bg-muted/60 dark:hover:bg-muted/40 transition-colors border border-transparent hover:border-border/50 dark:hover:border-border/30"
                                             >
-                                                <div className="flex-shrink-0 mt-0.5">
-                                                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
+                                                <div className="shrink-0 mt-0.5">
+                                                    <div className="h-7 w-7 rounded-full bg-linear-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center ring-1 ring-primary/20 dark:ring-primary/30">
                                                         <span className="text-xs font-bold text-primary dark:text-primary">
                                                             {index + 1}
                                                         </span>
@@ -714,7 +714,7 @@ export function ApplicantsClient({ currentUserRole, userId }: ApplicantsClientPr
                                                     )}
                                                     {applicant.jobId?.title && (
                                                         <div className="flex items-center gap-1.5 mt-1.5">
-                                                            <Briefcase className="h-3 w-3 text-muted-foreground dark:text-muted-foreground flex-shrink-0" />
+                                                            <Briefcase className="h-3 w-3 text-muted-foreground dark:text-muted-foreground shrink-0" />
                                                             <p className="text-xs text-muted-foreground dark:text-muted-foreground truncate">
                                                                 {applicant.jobId.title}
                                                             </p>

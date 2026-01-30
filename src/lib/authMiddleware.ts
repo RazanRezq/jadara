@@ -29,7 +29,7 @@ export async function authenticate(c: Context, next: () => Promise<void>) {
     const isDemo = isDemoUser(session.email)
     
     // Debug logging for demo mode
-    console.log(`[Auth] User: ${session.email}, isDemo: ${isDemo}`)
+    // console.log(`[Auth] User: ${session.email}, isDemo: ${isDemo}`)
 
     // Attach user info to context
     c.set('user', {

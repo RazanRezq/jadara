@@ -573,7 +573,10 @@ app.get('/export', async (c) => {
             query.role = role
         }
 
-        const users = await User.find(query).sort({ createdAt: -1 })
+        const users = await User.find(query)
+            .select('name email role isActive lastLogin createdAt')
+            .sort({ createdAt: -1 })
+            .lean()
 
         // Generate CSV
         const csvHeader = 'Name,Email,Role,Active,Last Login,Created At\n'

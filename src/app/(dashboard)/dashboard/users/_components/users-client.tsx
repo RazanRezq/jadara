@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -69,6 +70,8 @@ interface UsersClientProps {
 
 export function UsersClient({ currentUserRole }: UsersClientProps) {
     const { t, locale } = useTranslate()
+    const searchParams = useSearchParams()
+    const editUserId = searchParams.get("edit")
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -113,6 +116,17 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
     useEffect(() => {
         fetchUsers()
     }, [fetchUsers])
+
+    // Handle edit query parameter - open edit dialog for specific user
+    useEffect(() => {
+        if (editUserId && users.length > 0 && !loading) {
+            const userToEdit = users.find(u => u.id === editUserId)
+            if (userToEdit) {
+                setSelectedUser(userToEdit)
+                setEditDialogOpen(true)
+            }
+        }
+    }, [editUserId, users, loading])
 
     const handleSearch = (value: string) => {
         setSearchTerm(value)
@@ -240,7 +254,7 @@ export function UsersClient({ currentUserRole }: UsersClientProps) {
                         {/* Add User Button */}
                         <Button
                             onClick={() => setAddDialogOpen(true)}
-                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
+                            className="bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
                         >
                             <Plus className="h-4 w-4 me-2" />
                             {t("users.addUser")}

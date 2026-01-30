@@ -543,7 +543,7 @@ export function SuperAdminView({ stats }: SuperAdminViewProps) {
                                             </TableCell>
                                             <TableCell className="text-end">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <Link href={`/dashboard/users/${user._id}`}>
+                                                    <Link href={`/dashboard/users?edit=${user._id}`}>
                                                         <Button variant="ghost" size="sm">
                                                             <Edit className="w-4 h-4" />
                                                         </Button>

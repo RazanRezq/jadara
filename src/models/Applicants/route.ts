@@ -346,7 +346,9 @@ app.get('/:id', authenticate, async (c) => {
         const id = c.req.param('id')
         const user = getAuthUser(c)
 
-        const applicant = await Applicant.findById(id).populate('jobId', 'title criteria')
+        const applicant = await Applicant.findById(id)
+            .populate('jobId', 'title criteria')
+            .lean() as any
 
         if (!applicant) {
             return c.json(
@@ -380,7 +382,7 @@ app.get('/:id', authenticate, async (c) => {
                 displayName: getDisplayName(applicant.personalData),
                 personalData: {
                     ...applicant.personalData,
-                    salaryExpectation: isReviewer ? undefined : applicant.personalData.salaryExpectation,
+                    salaryExpectation: isReviewer ? undefined : applicant.personalData?.salaryExpectation,
                 },
                 cvUrl: applicant.cvUrl,
                 cvParsedData: applicant.cvParsedData,

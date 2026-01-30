@@ -27,6 +27,7 @@ app.get('/', authenticate, requireRole('superadmin'), async (c) => {
 
         const [sessions, total] = await Promise.all([
             Session.find(filter)
+                .select('sessionId userId userEmail userName userRole ipAddress deviceType browser os isActive lastActivity createdAt expiresAt')
                 .sort({ lastActivity: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -87,6 +88,7 @@ app.get('/my-sessions', authenticate, async (c) => {
                 userId: user.userId,
                 isActive: true,
             })
+                .select('sessionId ipAddress deviceType browser os lastActivity createdAt')
                 .sort({ lastActivity: -1 })
                 .skip(skip)
                 .limit(limit)

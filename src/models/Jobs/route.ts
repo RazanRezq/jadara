@@ -354,7 +354,7 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
             lastWeekApplications,
             previousWeekApplications,
         ] = await Promise.all([
-            Applicant.countDocuments({}),
+            Applicant.estimatedDocumentCount(),  // Use estimatedDocumentCount for unfiltered count (instant)
             Applicant.countDocuments({
                 createdAt: { $gte: lastWeek },
             }),
@@ -416,7 +416,7 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
         const nextInterview = null
 
         // Active Applicants
-        const activeApplicants = await Applicant.countDocuments({})
+        const activeApplicants = await Applicant.estimatedDocumentCount()  // Use estimatedDocumentCount (instant)
         const newApplicantsThisWeek = await Applicant.countDocuments({
             createdAt: { $gte: lastWeek },
         })
@@ -1290,7 +1290,7 @@ app.get('/stats/overview', authenticate, async (c) => {
         await dbConnect()
 
         const [totalJobs, activeJobs, draftJobs, closedJobs] = await Promise.all([
-            Job.countDocuments(),
+            Job.estimatedDocumentCount(),  // Use estimatedDocumentCount for unfiltered count (instant)
             Job.countDocuments({ status: 'active' }),
             Job.countDocuments({ status: 'draft' }),
             Job.countDocuments({ status: 'closed' }),

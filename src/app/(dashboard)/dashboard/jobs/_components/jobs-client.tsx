@@ -152,7 +152,7 @@ const JobCard = ({
                     )}
 
                     {/* Job Icon */}
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm shrink-0">
                         <Briefcase className="h-6 w-6" />
                     </div>
 
@@ -754,7 +754,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
                     {hasPermission(currentUserRole, "jobs.create") && (
                         <Button
                             onClick={() => setWizardDialogOpen(true)}
-                            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all"
+                            className="bg-linear-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md hover:shadow-lg transition-all"
                         >
                             <Plus className="h-4 w-4 me-2" />
                             {t("jobs.addJob")}
@@ -956,7 +956,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
 
                                         {/* Applicants Cell */}
                                         <TableCell className="px-6 py-4 text-start">
-                                            <Link href={`/dashboard/applicants?jobId=${job.id}`}>
+                                            <Link href={`/dashboard/applicants?jobId=${job.id}`} prefetch={false}>
                                                 <Badge
                                                     variant="outline"
                                                     className="inline-flex items-center cursor-pointer hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
@@ -1012,7 +1012,7 @@ export function JobsClient({ currentUserRole, userId }: JobsClientProps) {
 
                                                     {/* Questions Builder */}
                                                     <DropdownMenuItem asChild>
-                                                        <Link href={`/dashboard/jobs/${job.id}/questions`} className="cursor-pointer">
+                                                        <Link href={`/dashboard/jobs/${job.id}/questions`} prefetch={false} className="cursor-pointer">
                                                             <FileQuestion className="h-4 w-4 me-2" />
                                                             {t("jobs.questions")}
                                                         </Link>
