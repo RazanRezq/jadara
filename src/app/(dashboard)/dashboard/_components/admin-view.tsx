@@ -40,7 +40,16 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { ar, enUS } from "date-fns/locale"
-import { ViewApplicantDialog } from "@/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog"
+import dynamic from "next/dynamic"
+
+// Heavy dialog (~2k lines + sub-dialogs) — load only when an applicant is opened
+const ViewApplicantDialog = dynamic(
+    () =>
+        import("@/app/(dashboard)/dashboard/applicants/_components/view-applicant-dialog").then(
+            (mod) => mod.ViewApplicantDialog
+        ),
+    { ssr: false }
+)
 import type { Applicant, EvaluationData } from "@/app/(dashboard)/dashboard/applicants/_components/types"
 import type { UserRole } from "@/lib/auth"
 import { DashboardWidget } from "@/components/dashboard/dashboard-widget"

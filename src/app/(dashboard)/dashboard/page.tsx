@@ -338,25 +338,11 @@ async function getAdminStats() {
 async function getReviewerStats(userId: string, userName: string) {
     await dbConnect()
 
-    // Fetch all non-archived applicants and all reviews by this reviewer in parallel
-    const [applicants, reviews, jobs, ratingDistribution] = await Promise.all([
-        // Get all complete applicants (reviewer should see all they've reviewed, regardless of status)
-        Applicant.find({
-            isComplete: true,
-            status: { $nin: ['archived', 'withdrawn'] } // Exclude only archived/withdrawn
-        })
-            .sort({ createdAt: -1 })
-            .select('_id personalData jobId status createdAt sessionId aiScore')
-            .lean(),
-
-        // Get all reviews by this reviewer
+    // This reviewer's reviews drive everything — fetch them first (bounded by reviewer),
+    // then fetch only the applicants/jobs they reference instead of scanning whole collections
+    const [reviews, ratingDistribution] = await Promise.all([
         Review.find({ reviewerId: userId })
             .select('applicantId rating createdAt')
-            .lean(),
-
-        // Get all jobs for lookup
-        Job.find({})
-            .select('_id title')
             .lean(),
 
         // Get rating distribution for this reviewer
@@ -388,6 +374,26 @@ async function getReviewerStats(userId: string, userName: string) {
             }
         ])
     )
+
+    // Fetch only the applicants this reviewer has reviewed
+    const applicants = reviewedApplicantsMap.size > 0
+        ? await Applicant.find({
+            _id: { $in: [...reviewedApplicantsMap.keys()] },
+            isComplete: true,
+            status: { $nin: ['archived', 'withdrawn'] } // Exclude only archived/withdrawn
+        })
+            .sort({ createdAt: -1 })
+            .select('_id personalData jobId status createdAt sessionId aiScore')
+            .lean()
+        : []
+
+    // Fetch only the jobs those applicants reference
+    const jobIds = [...new Set(applicants.map((a: any) => a.jobId?.toString()).filter(Boolean))]
+    const jobs = jobIds.length > 0
+        ? await Job.find({ _id: { $in: jobIds } })
+            .select('_id title')
+            .lean()
+        : []
 
     // Create a job lookup map
     const jobMap = new Map(
@@ -690,10 +696,10 @@ export default async function DashboardPage() {
     }
 
     if (session.role === "reviewer") {
+        // getReviewerStats returns plain serializable objects (all fields are
+        // explicitly converted to strings/numbers) — no re-serialization needed
         const data = await getReviewerStats(session.userId, session.name)
-        // Use JSON.parse(JSON.stringify(...)) to avoid serialization issues with Mongoose documents
-        const serializedData = JSON.parse(JSON.stringify(data))
-        return <ReviewerDashboardClient data={serializedData} />
+        return <ReviewerDashboardClient data={data} />
     }
 
     // Default: Admin/Recruiter view

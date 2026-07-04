@@ -2,9 +2,16 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useTranslate } from "@/hooks/useTranslate"
+import dynamic from "next/dynamic"
 import { JobLanding } from "./job-landing"
 import { AssessmentWizard } from "./assessment-wizard"
-import { ThankYouPage } from "./thank-you-page"
+
+// Loaded on demand after submission — keeps Lottie + animation JSON + confetti
+// out of the initial application-form bundle
+const ThankYouPage = dynamic(
+    () => import("./thank-you-page").then((mod) => mod.ThankYouPage),
+    { ssr: false }
+)
 import { Spinner } from "@/components/ui/spinner"
 import { AlertCircle, Ban } from "lucide-react"
 import { useApplicationStore, type PersonalData } from "./store"

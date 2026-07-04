@@ -3,6 +3,7 @@
 import { createSession, deleteSession, getSession } from "@/lib/session"
 import type { UserRole } from "@/lib/auth"
 import { headers } from "next/headers"
+import { after } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import Session from "@/models/Sessions/sessionSchema"
 import { createToken } from "@/lib/auth"
@@ -53,61 +54,64 @@ export async function loginAction(userData: {
                       headersList.get('x-real-ip') ||
                       '127.0.0.1'
 
-    // Create session record in database
-    try {
-        await dbConnect()
+    // Record session + audit log AFTER the response is sent — these are
+    // bookkeeping writes and must not block the login redirect
+    after(async () => {
+        try {
+            await dbConnect()
 
-        // Generate session token hash from JWT
-        const token = await createToken(userData)
-        const sessionToken = createHash('sha256').update(token).digest('hex')
-        const sessionId = createHash('sha256').update(`${userData.userId}-${Date.now()}`).digest('hex')
+            // Generate session token hash from JWT
+            const token = await createToken(userData)
+            const sessionToken = createHash('sha256').update(token).digest('hex')
+            const sessionId = createHash('sha256').update(`${userData.userId}-${Date.now()}`).digest('hex')
 
-        // Create session document
-        await Session.create({
-            userId: userData.userId,
-            userEmail: userData.email,
-            userName: userData.name,
-            userRole: userData.role,
-            sessionToken,
-            sessionId,
-            ipAddress,
-            userAgent,
-            deviceType: getDeviceType(userAgent),
-            browser: getBrowser(userAgent),
-            os: getOS(userAgent),
-            isActive: true,
-            lastActivity: new Date(),
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        })
-
-        // Log successful login
-        await logUserAction(
-            {
-                userId: userData.userId,
-                email: userData.email,
-                name: userData.name,
-                role: userData.role,
-            },
-            'user.login',
-            'User',
-            userData.userId,
-            `User logged in from ${ipAddress}`,
-            {
-                resourceName: userData.email,
-                metadata: {
+            // Create session document and audit log in parallel
+            await Promise.all([
+                Session.create({
+                    userId: userData.userId,
+                    userEmail: userData.email,
+                    userName: userData.name,
+                    userRole: userData.role,
+                    sessionToken,
+                    sessionId,
                     ipAddress,
                     userAgent,
                     deviceType: getDeviceType(userAgent),
                     browser: getBrowser(userAgent),
                     os: getOS(userAgent),
-                },
-                severity: 'info',
-            }
-        )
-    } catch (error) {
-        console.error('Failed to create session record:', error)
-        // Don't block login if session recording fails
-    }
+                    isActive: true,
+                    lastActivity: new Date(),
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                }),
+                logUserAction(
+                    {
+                        userId: userData.userId,
+                        email: userData.email,
+                        name: userData.name,
+                        role: userData.role,
+                    },
+                    'user.login',
+                    'User',
+                    userData.userId,
+                    `User logged in from ${ipAddress}`,
+                    {
+                        resourceName: userData.email,
+                        metadata: {
+                            ipAddress,
+                            userAgent,
+                            deviceType: getDeviceType(userAgent),
+                            browser: getBrowser(userAgent),
+                            os: getOS(userAgent),
+                        },
+                        severity: 'info',
+                    }
+                ),
+            ])
+        } catch (error) {
+            console.error('Failed to create session record:', error)
+            // Don't block login if session recording fails
+        }
+    })
 }
 
 export async function logoutAction() {

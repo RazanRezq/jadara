@@ -9,11 +9,12 @@ import "./globals.css"
 const outfit = Outfit({
     variable: "--font-outfit",
     subsets: ["latin"],
+    display: "swap",
 })
 
 const ibmPlexArabic = IBM_Plex_Sans_Arabic({
     variable: "--font-ibm-arabic",
-    weight: ["300", "400", "500", "600", "700"],
+    weight: ["400", "500", "600", "700"], // 300 is unused — don't ship it
     subsets: ["arabic"],
     display: "swap",
     fallback: ["system-ui", "sans-serif"],

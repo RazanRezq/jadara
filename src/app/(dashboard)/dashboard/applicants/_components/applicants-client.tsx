@@ -30,8 +30,17 @@ import { ApplicantFilters } from "./applicant-filters"
 import { ApplicantBoard } from "./applicant-board"
 import { ApplicantList, ApplicantListMobile } from "./applicant-list"
 import { ApplicantDashboardWidgets } from "@/components/dashboard/applicant-widgets"
-import { ViewApplicantDialog } from "./view-applicant-dialog"
-import { ScheduleInterviewDialog } from "./schedule-interview-dialog"
+import dynamic from "next/dynamic"
+
+// Heavy dialogs — loaded on demand when first opened, not with the page bundle
+const ViewApplicantDialog = dynamic(
+    () => import("./view-applicant-dialog").then((mod) => mod.ViewApplicantDialog),
+    { ssr: false }
+)
+const ScheduleInterviewDialog = dynamic(
+    () => import("./schedule-interview-dialog").then((mod) => mod.ScheduleInterviewDialog),
+    { ssr: false }
+)
 import { AIRecommendedSection } from "./ai-recommended-section"
 import { ExportButton } from "@/components/export-button"
 import { formatApplicantsForExport } from "@/lib/export-utils"

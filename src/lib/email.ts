@@ -1,10 +1,19 @@
 import { Resend } from 'resend'
 
-if (!process.env.RESEND_API_KEY) {
-    console.error('⚠️ RESEND_API_KEY is not configured in environment variables')
-}
+// Lazily instantiated — a module-scope `new Resend()` runs on every API cold start
+// (this file is transitively imported by the central router) and throws at import
+// time when RESEND_API_KEY is missing, crashing all API routes.
+let resendClient: Resend | null = null
 
-const resend = new Resend(process.env.RESEND_API_KEY || '')
+function getResend(): Resend {
+    if (!resendClient) {
+        if (!process.env.RESEND_API_KEY) {
+            console.error('⚠️ RESEND_API_KEY is not configured in environment variables')
+        }
+        resendClient = new Resend(process.env.RESEND_API_KEY || '')
+    }
+    return resendClient
+}
 
 export interface SendEmailParams {
     to: string
@@ -24,7 +33,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         console.log('📧 Attempting to send email to:', params.to)
         console.log('📧 Using Resend API Key:', process.env.RESEND_API_KEY ? 'Set ✓' : 'Missing ✗')
 
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await getResend().emails.send({
             from: params.from || 'Jadara Recruitment <onboarding@resend.dev>',
             to: params.to,
             subject: params.subject,

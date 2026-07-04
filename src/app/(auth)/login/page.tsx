@@ -43,6 +43,7 @@ export default function LoginPage() {
       if (!response.ok) {
         const data = await response.json();
         setError(data.error || t("auth.loginFailed"));
+        setIsLoading(false);
         return;
       }
 
@@ -56,11 +57,10 @@ export default function LoginPage() {
         role: data.user.role,
       });
 
+      // Keep the loading state active until the dashboard replaces this page
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError(t("auth.loginFailed"));
-    } finally {
       setIsLoading(false);
     }
   }
@@ -82,6 +82,7 @@ export default function LoginPage() {
       if (!response.ok) {
         const data = await response.json();
         setError(data.error || t("auth.demoLoginFailed"));
+        setIsGuestLoading(false);
         return;
       }
 
@@ -95,11 +96,10 @@ export default function LoginPage() {
         role: data.user.role,
       });
 
+      // Keep the loading state active until the dashboard replaces this page
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError(t("auth.demoLoginFailed"));
-    } finally {
       setIsGuestLoading(false);
     }
   }

@@ -9,17 +9,27 @@ import * as cheerio from 'cheerio'
 import axios from 'axios'
 
 // Optional Puppeteer import for Behance scraping (JavaScript-rendered sites)
+// Loaded lazily on first use — a module-scope require would pull Puppeteer into
+// every API cold start (this file is transitively imported by the central router).
 let puppeteer: any = null
-try {
-    // Try puppeteer first (includes Chromium)
-    puppeteer = require('puppeteer')
-} catch (e) {
+let puppeteerLoaded = false
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getPuppeteer(): any {
+    if (puppeteerLoaded) return puppeteer
+    puppeteerLoaded = true
     try {
-        // Fallback to puppeteer-core (requires Chrome/Chromium to be installed)
-        puppeteer = require('puppeteer-core')
-    } catch (e2) {
-        console.warn('[URL Extractor] Puppeteer not installed. Behance scraping will use fallback methods.')
+        // Try puppeteer first (includes Chromium)
+        puppeteer = require('puppeteer')
+    } catch (e) {
+        try {
+            // Fallback to puppeteer-core (requires Chrome/Chromium to be installed)
+            puppeteer = require('puppeteer-core')
+        } catch (e2) {
+            console.warn('[URL Extractor] Puppeteer not installed. Behance scraping will use fallback methods.')
+        }
     }
+    return puppeteer
 }
 
 // Gemini 2.0 Flash for URL content extraction
@@ -967,13 +977,14 @@ async function extractBehanceContent(behanceUrl: string): Promise<ExtractedUrlCo
 
         try {
             // Behance is a JavaScript-rendered SPA, so we need Puppeteer for proper rendering
-            if (!puppeteer) {
+            const puppeteerInstance = getPuppeteer()
+            if (!puppeteerInstance) {
                 throw new Error('Puppeteer not available')
             }
 
             console.log('[Behance Extractor] Launching Puppeteer browser...')
-            
-            browser = await puppeteer.launch({
+
+            browser = await puppeteerInstance.launch({
                 headless: true,
                 args: [
                     '--no-sandbox',

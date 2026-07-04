@@ -348,11 +348,18 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-        // Total Applications (batched counts)
+        // Run all independent queries in a single batch (one DB round-trip wave)
         const [
             totalApplications,
             lastWeekApplications,
             previousWeekApplications,
+            applicationsChartData,
+            activeJobsCount,
+            activeJobsByDepartment,
+            newCount,
+            screeningCount,
+            interviewingCount,
+            offerCount,
         ] = await Promise.all([
             Applicant.estimatedDocumentCount(),  // Use estimatedDocumentCount for unfiltered count (instant)
             Applicant.countDocuments({
@@ -361,101 +368,69 @@ app.get('/dashboard-widgets', authenticate, async (c) => {
             Applicant.countDocuments({
                 createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
             }),
+            // Chart data for applications (last 30 days)
+            Applicant.aggregate([
+                {
+                    $match: {
+                        createdAt: { $gte: thirtyDaysAgo },
+                    },
+                },
+                {
+                    $group: {
+                        _id: {
+                            $dateToString: {
+                                format: '%Y-%m-%d',
+                                date: '$createdAt',
+                            },
+                        },
+                        count: { $sum: 1 },
+                    },
+                },
+                {
+                    $sort: { _id: 1 },
+                },
+            ]),
+            Job.countDocuments({ status: 'active' }),
+            Job.aggregate([
+                {
+                    $match: { status: 'active' },
+                },
+                {
+                    $group: {
+                        _id: '$department',
+                        count: { $sum: 1 },
+                    },
+                },
+                {
+                    $sort: { count: -1 },
+                },
+                {
+                    $limit: 3,
+                },
+            ]),
+            // Hiring pipeline counts
+            Applicant.countDocuments({ status: 'new' }),
+            Applicant.countDocuments({ status: 'screening' }),
+            Applicant.countDocuments({ status: 'interviewing' }),
+            Applicant.countDocuments({ status: 'offer' }),
         ])
 
         const applicationsChange = previousWeekApplications > 0
             ? ((lastWeekApplications - previousWeekApplications) / previousWeekApplications) * 100
             : 0
 
-        // Get chart data for applications (last 30 days)
-        const applicationsChartData = await Applicant.aggregate([
-            {
-                $match: {
-                    createdAt: { $gte: thirtyDaysAgo },
-                },
-            },
-            {
-                $group: {
-                    _id: {
-                        $dateToString: {
-                            format: '%Y-%m-%d',
-                            date: '$createdAt',
-                        },
-                    },
-                    count: { $sum: 1 },
-                },
-            },
-            {
-                $sort: { _id: 1 },
-            },
-        ])
-
-        // Active Jobs
-        const activeJobsCount = await Job.countDocuments({ status: 'active' })
-        const activeJobsByDepartment = await Job.aggregate([
-            {
-                $match: { status: 'active' },
-            },
-            {
-                $group: {
-                    _id: '$department',
-                    count: { $sum: 1 },
-                },
-            },
-            {
-                $sort: { count: -1 },
-            },
-            {
-                $limit: 3,
-            },
-        ])
         const topDepartments = activeJobsByDepartment.map((d) => d._id || 'Unknown')
 
         // Interviews Scheduled (placeholder - you can implement actual interview tracking)
         const interviewsCount = 0
         const nextInterview = null
 
-        // Active Applicants
-        const activeApplicants = await Applicant.estimatedDocumentCount()  // Use estimatedDocumentCount (instant)
-        const newApplicantsThisWeek = await Applicant.countDocuments({
-            createdAt: { $gte: lastWeek },
-        })
+        // Active Applicants — same figures as above, no need to re-query
+        const activeApplicants = totalApplications
+        const newApplicantsThisWeek = lastWeekApplications
 
-        // Get chart data for applicants (last 30 days)
-        const applicantsChartData = await Applicant.aggregate([
-            {
-                $match: {
-                    createdAt: { $gte: thirtyDaysAgo },
-                },
-            },
-            {
-                $group: {
-                    _id: {
-                        $dateToString: {
-                            format: '%Y-%m-%d',
-                            date: '$createdAt',
-                        },
-                    },
-                    count: { $sum: 1 },
-                },
-            },
-            {
-                $sort: { _id: 1 },
-            },
-        ])
-
-        // Hiring Pipeline (batched counts)
-        const [
-            newCount,
-            screeningCount,
-            interviewingCount,
-            offerCount,
-        ] = await Promise.all([
-            Applicant.countDocuments({ status: 'new' }),
-            Applicant.countDocuments({ status: 'screening' }),
-            Applicant.countDocuments({ status: 'interviewing' }),
-            Applicant.countDocuments({ status: 'offer' }),
-        ])
+        // Applicants chart uses the same 30-day aggregation as applications
+        const applicantsChartData = applicationsChartData
 
         const pipelineStages = [
             {
